@@ -1,0 +1,3 @@
+[submodule "mosaiks-paper"]
+	path = mosaiks-paper
+	url = https://github.com/Global-Policy-Lab/mosaiks-paper
