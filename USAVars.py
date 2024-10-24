@@ -11,7 +11,7 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import rasterio
+#import rasterio
 import torch
 from matplotlib.figure import Figure
 from torch import Tensor
