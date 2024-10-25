@@ -1,2 +1,4 @@
 country_boundaries/*
 __pycache__
+data/*
+test_image/*
