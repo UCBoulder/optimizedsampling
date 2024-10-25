@@ -1,4 +1,4 @@
-# from USAVars import USAVars
+from USAVars import USAVars
 
 import random
 
@@ -7,7 +7,7 @@ import rasterio
 import matplotlib.pyplot as plt
 import numpy as np
 
-train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=True, checksum=False)
+train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
 test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
 val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
 

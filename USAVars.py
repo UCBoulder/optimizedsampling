@@ -11,7 +11,7 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-#import rasterio
+import rasterio
 import torch
 from matplotlib.figure import Figure
 from torch import Tensor
@@ -150,6 +150,7 @@ class USAVars(NonGeoDataset):
             'labels': Tensor(
                 [self.label_dfs[lab].loc[id_][lab] for lab in self.labels]
             ),
+            'name': tif_file,
             'image': self._load_image(os.path.join(self.root, 'uar', tif_file)),
             'centroid_lat': Tensor([self.label_dfs[self.labels[0]].loc[id_]['lat']]),
             'centroid_lon': Tensor([self.label_dfs[self.labels[0]].loc[id_]['lon']]),
