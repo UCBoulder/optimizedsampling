@@ -78,19 +78,13 @@ def get_filepaths(c, app, feattype="random", is_ACS=False):
     if is_ACS:
         c.outcomes_fpath = join(
             c.data_dir,
-            "int",
-            "applications",
-            "ACS",
             app,
-            "outcomes_sampled_{}_{}.csv".format(app, c.data_suffix),
+            ".csv".format(app, c.data_suffix),
         )
     else:
         c.outcomes_fpath = join(
             c.data_dir,
-            "int",
-            "applications",
-            app,
-            "outcomes_sampled_{}_{}.csv".format(app, c.data_suffix),
+            "{}.csv".format(app),
         )
 
     return c

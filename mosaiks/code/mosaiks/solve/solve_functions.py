@@ -3,8 +3,8 @@ import warnings
 
 import numpy as np
 import sklearn.metrics as metrics
-from mosaiks.solve import data_parser as parse
-from mosaiks.utils.io import GPU
+from ..solve import data_parser as parse
+from ..utils.io import GPU
 from scipy.linalg.misc import LinAlgWarning
 from sklearn.linear_model._base import _preprocess_data
 from sklearn.model_selection import KFold

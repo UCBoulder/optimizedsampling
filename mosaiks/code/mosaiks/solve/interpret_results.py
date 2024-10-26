@@ -2,8 +2,8 @@ import warnings
 
 import numpy as np
 import sklearn.metrics as metrics
-from mosaiks.solve import data_parser as parse
-from mosaiks.solve import solve_functions
+from ..solve import data_parser as parse
+from ..solve import solve_functions
 
 
 def find_best_hp_idx(
