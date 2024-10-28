@@ -428,26 +428,12 @@ def get_latlon_from_csv(name):
 def featurize_and_save(image_folder, out_fpath, c):
     # run feature extraction
     X_lift, names, net = featurize(image_folder, c)
-
-    with open(out_fpath, "wb") as f:
-        dill.dump(
-            {"X": X_lift, "net": net.cpu(), "names": names},
-            f,
-            protocol=4,
-        )
-    print("Dill: Features and names")
+    
     # get latlons of images from names
     latlon = np.array([get_latlon_from_csv(i) for i in names], dtype=np.float64)
     lon = latlon[:, 1]
     lat = latlon[:, 0]
 
-    with open(out_fpath, "wb") as f:
-        dill.dump(
-            {"X": X_lift, "net": net.cpu(), "latlon": latlon},
-            f,
-            protocol=4,
-        )
-    print("Dill: Features, latlons")
     # get zoom level and n-pixels of image from names
     # zoom_level, n_pixels = [int(i) for i in names[0].split("_")[2:4]]
 
