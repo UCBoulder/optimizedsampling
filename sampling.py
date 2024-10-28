@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from os.path import basename, dirname, join
 from sklearn.metrics import r2_score
+from oed import a_optimality, d_optimality, e_optimality, v_optimality
 
 from mosaiks.code.mosaiks.utils import *
 from mosaiks.code.mosaiks.utils import io
@@ -19,10 +20,6 @@ from mosaiks.code.mosaiks.solve import solve_functions as solve
 from mosaiks.code.mosaiks.solve import interpret_results as ir
 
 
-#Set X (feature matrix) and corresponding lat lons
-#UAR is the only option when working with data from torchgeo
-X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
-
 #To store results
 results_dict = {}
 results_dict_test = {}
@@ -30,7 +27,7 @@ results_dict_test = {}
 #Path to store results
 save_patt = join(
         "{save_dir}",
-        "CONTUS_{sampling}_{label}_{variable}_outcomes_{{reg_type}}_subset_{subset_n}.data"
+        "CONTUS_{{rule}}_{label}_{variable}_outcomes_{{reg_type}}_subset_{{subset_n}}.data"
     )
 
 #Set solver to ridge regression
@@ -53,14 +50,20 @@ def valid_set(c, label, X, latlons):
 
     return size_of_valid, X, latlons
 
-#Taking a random subset of training data
+#Taking a random subset of training data--Spatial-only baseline
 def random_subset(X_train, Y_train, latlon, size):
     random_subset = np.random.choice(len(X_train), size=size, replace=False)
     return X_train[random_subset], Y_train[random_subset], latlon[random_subset]
 
+#Taking a OED subset of training data--Image-only baseline
+#will not work for v-optimality rn
+def oed_subset(X_train, Y_train, latlon, rule, size):
+    subset_indices = rule(X_train, size)
+    return X_train[subset_indices], Y_train[subset_indices], latlon[subset_indices]
+
 
 #Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, subset_n=None):
+def train_and_test(c, label, X, latlons, rule=None, subset_n=None):
     print("*** Running regressions for: {label} with {num} samples".format(label=label, num=subset_n))
 
     #Test all lambdas (specified in config file)
@@ -71,11 +74,9 @@ def train_and_test(c, label, X, latlons, subset_n=None):
     c_app = getattr(c, label)
     sampling_type = c_app["sampling"]  # UAR 
     this_save_patt = save_patt.format(
-        subset_n=str(subset_n),
         save_dir="data/output",
         label=label,
-        variable=c_app["variable"],
-        sampling=c_app["sampling"],
+        variable=c_app["variable"]
     )
 
     #Bounds from config file
@@ -89,8 +90,13 @@ def train_and_test(c, label, X, latlons, subset_n=None):
         subset_str = f"_subset{subset_n}"
     else:
         subset_str = ""
-    save_path_validation = this_save_patt.format(reg_type="scatter", subset=subset_str)
-    save_path_test = this_save_patt.format(reg_type="testset", subset=subset_str)
+
+    if rule is not None:
+        rule_str = f"_{rule}"
+    else:
+        rule_str = ""
+    save_path_validation = this_save_patt.format(reg_type="scatter", subset_n=subset_str, rule=rule_str)
+    save_path_test = this_save_patt.format(reg_type="testset", subset_n=subset_str, rule=rule_str)
 
     (
         this_X,
@@ -120,8 +126,12 @@ def train_and_test(c, label, X, latlons, subset_n=None):
 
     # Take a random subset of size n
     if subset_n is not None:
-        this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
+            if rule is None:
+                this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
+            else:
+                this_X, this_Y, this_latlons = oed_subset(this_X, this_Y, this_latlons, rule, subset_n)
 
+    subset_n = this_X.shape[0]
     print("Training model...")
     import time
 
@@ -172,7 +182,7 @@ def train_and_test(c, label, X, latlons, subset_n=None):
     print("Saving validation set results to {}".format(save_path_validation))
     with open(save_path_validation, "wb") as f:
         pickle.dump(data, f)
-    results_dict[label + " with subset size " + str(subset_n)] = r2_score(truth, preds)
+    results_dict[label + ";size" + str(subset_n)] = r2_score(truth, preds)
 
     # Get test set predictions
     st_test = time.time()
@@ -206,7 +216,7 @@ def train_and_test(c, label, X, latlons, subset_n=None):
         pickle.dump(data, f)
 
     ## Store the R2
-    results_dict_test[label + " with subset size " + str(subset_n)] = holdout_results["metrics_test"][0][0][0]["r2_score"]
+    results_dict_test[label + ";size" + str(subset_n)] = holdout_results["metrics_test"][0][0][0]["r2_score"]
     print("Full reg time", time.time() - st_train)
 
 #Labels from torchgeo dataset, UAR samples
@@ -214,6 +224,10 @@ labels_to_run = ["population", "treecover", "elevation"]
 
 #Run
 for label in labels_to_run:
+    #Set X (feature matrix) and corresponding lat lons
+    #UAR is the only option when working with data from torchgeo
+    X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
+    #Remove NaN
     valid_num, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
 
     #List of sizes for subsetting the dataset
@@ -221,5 +235,13 @@ for label in labels_to_run:
     size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
     size_of_subset = [n - (n%5) for n in size_of_subset]
     for size in size_of_subset:
-        train_and_test(cfg, label, X_df, latlons_df, size)
-    train_and_test(cfg, label, X_df, latlons_df)
+        train_and_test(cfg, label, X_df, latlons_df, a_optimality, size)
+    train_and_test(cfg, label, X_df, latlons_df, a_optimality)
+
+from IPython import embed; embed()
+#Save results (R2 score) in csv
+results_df = pd.DataFrame(
+    {"Cross-validation R2": results_dict, "Test R2": results_dict_test}
+)
+results_df.index.name = "label"
+results_df.to_csv(Path("results/TestSetPerformance.csv"), index=True)
