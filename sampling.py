@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from os.path import basename, dirname, join
 from sklearn.metrics import r2_score
-from oed import a_optimality, d_optimality, e_optimality, v_optimality
+from oed import *
 
 from mosaiks.code.mosaiks.utils import *
 from mosaiks.code.mosaiks.utils import io
@@ -47,7 +47,7 @@ def valid_set(c, label, X, latlons):
     X = X[valid_rows]
     latlons = latlons[valid_rows]
     size_of_valid = X.shape[0]
-
+    print(f"Size of valid set for {label}", size_of_valid)
     return size_of_valid, X, latlons
 
 #Taking a random subset of training data--Spatial-only baseline
@@ -63,7 +63,7 @@ def oed_subset(X_train, Y_train, latlon, rule, size):
 
 
 #Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, rule=None, subset_n=None):
+def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
     print("*** Running regressions for: {label} with {num} samples".format(label=label, num=subset_n))
 
     #Test all lambdas (specified in config file)
@@ -130,6 +130,11 @@ def train_and_test(c, label, X, latlons, rule=None, subset_n=None):
                 this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
             else:
                 this_X, this_Y, this_latlons = oed_subset(this_X, this_Y, this_latlons, rule, subset_n)
+    else:
+        while (this_X.shape[0]%5 != 0):
+            this_X = this_X[:-1]
+            this_latlons = this_latlons[:-1]
+            this_Y = this_Y[:-1]
 
     subset_n = this_X.shape[0]
     print("Training model...")
@@ -235,8 +240,8 @@ for label in labels_to_run:
     size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
     size_of_subset = [n - (n%5) for n in size_of_subset]
     for size in size_of_subset:
-        train_and_test(cfg, label, X_df, latlons_df, a_optimality, size)
-    train_and_test(cfg, label, X_df, latlons_df, a_optimality)
+        train_and_test(cfg, label, X_df, latlons_df, size)
+    train_and_test(cfg, label, X_df, latlons_df, subset_n=None)
 
 from IPython import embed; embed()
 #Save results (R2 score) in csv

@@ -39,6 +39,6 @@ def plot_coverage(dataset, name):
     fig.savefig(name+ " Coverage")
     
 
-plot_coverage(train, "Train")
+plot_lat_lon(train, "Train")
 # plot_coverage(test, "Test")
 # plot_coverage(val, "Val")
