@@ -5,11 +5,11 @@ from shapely.geometry import Point
 import torch
 import matplotlib.pyplot as plt
 
-from USAVars import USAVars
+#from USAVars import USAVars
 
-train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
+# train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
+# test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
+# val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
 
 def list_coords(dataset, coord):
     coords = []
@@ -17,17 +17,20 @@ def list_coords(dataset, coord):
         coords.append(torch.squeeze(sample[coord]))
     return coords
 
-def plot_lat_lon(lats, lons):
+def plot_lat_lon(lats, lons, markersize):
     gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
 
-    world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp")
+    world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
     exclude_states = ["Alaska", "Hawaii"]
     contiguous_us = world[world['name'].isin(exclude_states) == False]
+    contiguous_outline = contiguous_us.dissolve()
 
     fig, ax = plt.subplots(figsize=(10,10))
-    contiguous_us.boundary.plot(ax=ax, color='black') 
+    contiguous_outline.boundary.plot(ax=ax, color='black') 
 
-    gdf.plot(ax=ax, color='red', markersize=0.05)
+    gdf.plot(ax=ax, color='steelblue', markersize=markersize)
+    ax.set_title("Coverage for Image-only Sampling Scheme")
+    ax.axis("off")
     return fig
 
 def plot_coverage(dataset, name):
@@ -39,6 +42,6 @@ def plot_coverage(dataset, name):
     fig.savefig(name+ " Coverage")
     
 
-plot_lat_lon(train, "Train")
+# plot_lat_lon(train, "Train")
 # plot_coverage(test, "Test")
 # plot_coverage(val, "Val")

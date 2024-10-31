@@ -136,6 +136,8 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
             this_latlons = this_latlons[:-1]
             this_Y = this_Y[:-1]
 
+    from IPython import embed; embed()
+
     subset_n = this_X.shape[0]
     print("Training model...")
     import time
@@ -240,7 +242,7 @@ for label in labels_to_run:
     size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
     size_of_subset = [n - (n%5) for n in size_of_subset]
     for size in size_of_subset:
-        train_and_test(cfg, label, X_df, latlons_df, size)
+        train_and_test(cfg, label, X_df, latlons_df, 500, rule=leverage_score_sampling)
     train_and_test(cfg, label, X_df, latlons_df, subset_n=None)
 
 from IPython import embed; embed()
