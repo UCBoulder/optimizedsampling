@@ -17,7 +17,7 @@ def list_coords(dataset, coord):
         coords.append(torch.squeeze(sample[coord]))
     return coords
 
-def plot_lat_lon(lats, lons, markersize):
+def plot_lat_lon(lats, lons, title, color='orangered', markersize=1, alpha=0.5):
     gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
 
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
@@ -28,8 +28,8 @@ def plot_lat_lon(lats, lons, markersize):
     fig, ax = plt.subplots(figsize=(10,10))
     contiguous_outline.boundary.plot(ax=ax, color='black') 
 
-    gdf.plot(ax=ax, color='steelblue', markersize=markersize)
-    ax.set_title("Coverage for Image-only Sampling Scheme")
+    gdf.plot(ax=ax, color=color, markersize=markersize, alpha=alpha)
+    ax.set_title(title)
     ax.axis("off")
     return fig
 

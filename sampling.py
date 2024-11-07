@@ -11,10 +11,11 @@ import pandas as pd
 from os.path import basename, dirname, join
 from sklearn.metrics import r2_score
 from oed import *
+from pca import pca
+# from satclip_files.satclip.satclip import get_embeddings
 
 from mosaiks.code.mosaiks.utils import *
 from mosaiks.code.mosaiks.utils import io
-from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.solve import data_parser as parse
 from mosaiks.code.mosaiks.solve import solve_functions as solve
 from mosaiks.code.mosaiks.solve import interpret_results as ir
@@ -32,6 +33,15 @@ save_patt = join(
 
 #Set solver to ridge regression
 solver = solve.ridge_regression
+
+def valid(set, *args):
+    valid = (~np.isnan(set) & ~np.isinf(set))[:,0]
+    for arg in args:
+        if len(arg.shape)==1:
+            valid = valid & ~np.isnan(arg) & ~np.isinf(arg)
+        else:
+            valid= valid & (~np.isnan(arg) & ~np.isinf(arg))[:,0]
+    return valid
 
 #Make sure X and latlons do not have NaN values
 def valid_set(c, label, X, latlons):
@@ -56,11 +66,16 @@ def random_subset(X_train, Y_train, latlon, size):
     return X_train[random_subset], Y_train[random_subset], latlon[random_subset]
 
 #Taking a OED subset of training data--Image-only baseline
-#will not work for v-optimality rn
-def oed_subset(X_train, Y_train, latlon, rule, size):
-    subset_indices = rule(X_train, size)
+#Only works for V-optimality as of 11/4
+def image_subset(X_train, Y_train, latlon, rule, size):
+    subset_indices = sampling(X_train, size, rule)
     return X_train[subset_indices], Y_train[subset_indices], latlon[subset_indices]
 
+#TODO: check
+# def satclip_subset(X_train, Y_train, latlon, rule, size):
+#     emb = get_embeddings(latlon)
+#     subset_indices = sampling(emb, size, rule)
+#     return X_train[subset_indices], Y_train[subset_indices], latlon[subset_indices]
 
 #Run ridge regression on mosaiks features for label
 def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
@@ -110,12 +125,8 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
     )
 
     #Clean up; not sure why valid_set func does not return X, latlons with no NaNs
-    valid_train = (~np.isnan(this_X) & ~np.isinf(this_X))[:,0]
-    valid_test = (~np.isnan(this_X_test) & ~np.isinf(this_X_test))[:,0]
-    valid_train = valid_train & ~np.isnan(this_Y) & ~np.isinf(this_Y)
-    valid_test = valid_test & ~np.isnan(this_Y_test) & ~np.isinf(this_Y_test)
-    valid_train = valid_train & (~np.isnan(this_latlons) & ~np.isinf(this_latlons))[:,0]
-    valid_test = valid_test & (~np.isnan(this_latlons_test) & ~np.isinf(this_latlons_test))[:,0]
+    valid_train=valid(this_X, this_Y, this_latlons)
+    valid_test=valid(this_X_test, this_Y_test, this_latlons_test)
 
     this_X = this_X[valid_train]
     this_X_test = this_X_test[valid_test]
@@ -124,12 +135,14 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
     this_latlons = this_latlons[valid_train]
     this_latlons_test = this_latlons_test[valid_test]
 
+    #this_X, this_X_test = pca(this_X, this_X_test)
+
     # Take a random subset of size n
     if subset_n is not None:
             if rule is None:
                 this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
             else:
-                this_X, this_Y, this_latlons = oed_subset(this_X, this_Y, this_latlons, rule, subset_n)
+                this_X, this_Y, this_latlons = image_subset(this_X, this_Y, this_latlons, rule, subset_n)
     else:
         while (this_X.shape[0]%5 != 0):
             this_X = this_X[:-1]
@@ -137,7 +150,6 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
             this_Y = this_Y[:-1]
 
     from IPython import embed; embed()
-
     subset_n = this_X.shape[0]
     print("Training model...")
     import time
@@ -222,33 +234,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
     with open(save_path_test, "wb") as f:
         pickle.dump(data, f)
 
+    print("R^2 score: ", holdout_results["metrics_test"][0][0][0]["r2_score"])
     ## Store the R2
     results_dict_test[label + ";size" + str(subset_n)] = holdout_results["metrics_test"][0][0][0]["r2_score"]
     print("Full reg time", time.time() - st_train)
-
-#Labels from torchgeo dataset, UAR samples
-labels_to_run = ["population", "treecover", "elevation"]
-
-#Run
-for label in labels_to_run:
-    #Set X (feature matrix) and corresponding lat lons
-    #UAR is the only option when working with data from torchgeo
-    X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
-    #Remove NaN
-    valid_num, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
-
-    #List of sizes for subsetting the dataset
-    size_of_subset = [0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
-    size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
-    size_of_subset = [n - (n%5) for n in size_of_subset]
-    for size in size_of_subset:
-        train_and_test(cfg, label, X_df, latlons_df, 500, rule=leverage_score_sampling)
-    train_and_test(cfg, label, X_df, latlons_df, subset_n=None)
-
-from IPython import embed; embed()
-#Save results (R2 score) in csv
-results_df = pd.DataFrame(
-    {"Cross-validation R2": results_dict, "Test R2": results_dict_test}
-)
-results_df.index.name = "label"
-results_df.to_csv(Path("results/TestSetPerformance.csv"), index=True)

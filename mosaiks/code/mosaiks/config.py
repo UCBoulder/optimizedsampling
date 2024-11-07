@@ -66,13 +66,13 @@ images = {"source": "google", "zoom_level": 16, "n_pixels": 640}
 # FEATURIZATION
 features = {
     "random": {
-        "patch_size": 3,
+        "patch_size": 3, #Make bigger
         "seed": 0,
         "type": "random_features",
         "num_filters": 4096,
         "pool_size": 256,
         "pool_stride": 256,
-        "bias": 0.0,
+        "bias": 0.0, #Not zero, -1, -0,1
         "filter_scale": 1e-3,
         "patch_distribution": "empirical",
     },

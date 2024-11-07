@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 df = pd.read_csv("results/TestSetPerformance.csv", index_col=0)
-df_vopt = pd.read_csv("results/TestSetPerformanceVoptimality.csv", index_col=0)
+df_vopt = pd.read_csv("results/TestSetPerformancePCAVOptimality.csv", index_col=0)
 
 df.drop('Cross-validation R2', axis=1, errors='ignore', inplace=True)
 df_vopt.drop('Cross-validation R2', axis=1, errors='ignore', inplace=True)
@@ -38,7 +38,7 @@ for label in labels:
 
     # Plot
     axs[i].plot(filtered_df.index, filtered_df["Test R2"], marker='o', linestyle='-', label="Spatial-only (SRS)", color='orangered')
-    axs[i].plot(filtered_df_vopt.index, filtered_df_vopt["Test R2"], marker='o', linestyle='-', label="Image-only", color='steelblue')
+    axs[i].plot(filtered_df_vopt.index, filtered_df_vopt["Test R2"], marker='o', linestyle='-', label="Image-only with PCA", color='steelblue')
 
     # Customize the plot
     axs[i].set_xlabel("Size of Subset")
