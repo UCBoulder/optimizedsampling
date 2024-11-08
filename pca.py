@@ -4,13 +4,27 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
+def pca(set):
+    #Scale data and perform pca
+    # scaling = StandardScaler()
+    # scaling.fit(train)
+    # train = scaling.transform(train)
+    # test = scaling.transform(test)
+
+    pca = PCA(0.95)
+    pca.fit(set)
+    print("Number of PCA Components: ", pca.n_components_)
+    set = pca.transform(set)
+
+    return set
+
 
 def pca(train, test):
     #Scale data and perform pca
-    scaling = StandardScaler()
-    scaling.fit(train)
-    train = scaling.transform(train)
-    test = scaling.transform(test)
+    # scaling = StandardScaler()
+    # scaling.fit(train)
+    # train = scaling.transform(train)
+    # test = scaling.transform(test)
 
     pca = PCA(0.95)
     pca.fit(train)
