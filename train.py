@@ -3,6 +3,7 @@ import pandas as pd
 
 from sampling import valid_set, train_and_test, results_dict, results_dict_test
 from oed import *
+from pca import *
 
 from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.utils import io
@@ -16,6 +17,9 @@ def run(labels_to_run, rule=None):
         #Remove NaN
         valid_num, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
 
+        #PCA
+        # X_df = pca(X_df)
+
         #List of sizes for subsetting the dataset
         size_of_subset = [0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
         size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
@@ -24,7 +28,7 @@ def run(labels_to_run, rule=None):
         #uncomment to run all sizes
         # for size in size_of_subset:
         #      train_and_test(cfg, label, X_df, latlons_df, size, rule=rule)
-        train_and_test(cfg, label, X_df, latlons_df, subset_n=5000, rule=v_optimal_design)
+        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None)
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
@@ -38,5 +42,5 @@ def run(labels_to_run, rule=None):
 
 #Labels from torchgeo dataset, UAR samples
 labels_to_run = ["population", "treecover", "elevation"]
-rule=v_optimal_design
+# rule=v_optimal_design
 run(labels_to_run)

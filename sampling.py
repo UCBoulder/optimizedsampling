@@ -135,7 +135,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
     this_latlons = this_latlons[valid_train]
     this_latlons_test = this_latlons_test[valid_test]
 
-    #this_X, this_X_test = pca(this_X, this_X_test)
+    this_X, this_X_test = pca(this_X, this_X_test)
 
     # Take a random subset of size n
     if subset_n is not None:
