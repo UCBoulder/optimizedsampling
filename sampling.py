@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from os.path import basename, dirname, join
 from sklearn.metrics import r2_score
+from plot_coverage import plot_lat_lon
 from oed import *
 from pca import pca
 # from satclip_files.satclip.satclip import get_embeddings
@@ -58,28 +59,37 @@ def valid_set(c, label, X, latlons):
     latlons = latlons[valid_rows]
     size_of_valid = X.shape[0]
     print(f"Size of valid set for {label}", size_of_valid)
-    return size_of_valid, X, latlons
+    return size_of_valid, valid_rows, X, latlons
 
 #Taking a random subset of training data--Spatial-only baseline
 def random_subset(X_train, Y_train, latlon, size):
+    print("Generating subset using SRS...")
     random_subset = np.random.choice(len(X_train), size=size, replace=False)
     return X_train[random_subset], Y_train[random_subset], latlon[random_subset]
 
 #Taking a OED subset of training data--Image-only baseline
 #Only works for V-optimality as of 11/4
-def image_subset(X_train, Y_train, latlon, rule, size):
+def image_subset(X_train, Y_train, latlon_train, rule, size):
+    print("Generating subset using {rule}...".format(rule=rule))
     subset_indices = sampling(X_train, size, rule)
-    return X_train[subset_indices], Y_train[subset_indices], latlon[subset_indices]
+    return X_train[subset_indices], Y_train[subset_indices], latlon_train[subset_indices]
 
-#TODO: check
-# def satclip_subset(X_train, Y_train, latlon, rule, size):
-#     emb = get_embeddings(latlon)
-#     subset_indices = sampling(emb, size, rule)
-#     return X_train[subset_indices], Y_train[subset_indices], latlon[subset_indices]
+#Taking a OED subset of training data using SatCLIP embeddings--Image and Spatial
+#Only works for V-optimality as of 11/4
+#TODO
+def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
+    print("Generating subset using satclip embeddings...")
+    subset_indices = sampling(loc_emb_train, latlon_train[:,0], latlon_train[:,1], size, rule)
+    return X_train[subset_indices], Y_train[subset_indices], latlon_train[subset_indices]
 
 #Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
-    print("*** Running regressions for: {label} with {num} samples".format(label=label, num=subset_n))
+def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None):
+
+    if loc_emb is not None:
+        satclip_str = "satclip embeddings"
+    else:
+        satclip_str = "no satclip embeddings"
+    print("*** Running regressions for: {label} with {num} samples using {rule} with {satclip_str}".format(label=label, num=subset_n, rule=rule, satclip_str=satclip_str))
 
     #Test all lambdas (specified in config file)
     this_lambdas = io.get_lambdas(c, label, best_lambda_fpath=None)
@@ -120,36 +130,35 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None):
         this_Y_test,
         this_latlons,
         this_latlons_test,
+        this_emb,
+        this_emb_test
     ) = parse.merge_dropna_transform_split_train_test(
-        c, label, X, latlons
+        c, label, X, latlons, loc_emb
     )
 
-    #Clean up; not sure why valid_set func does not return X, latlons with no NaNs
-    valid_train=valid(this_X, this_Y, this_latlons)
-    valid_test=valid(this_X_test, this_Y_test, this_latlons_test)
-
-    this_X = this_X[valid_train]
-    this_X_test = this_X_test[valid_test]
-    this_Y = this_Y[valid_train]
-    this_Y_test = this_Y_test[valid_test]
-    this_latlons = this_latlons[valid_train]
-    this_latlons_test = this_latlons_test[valid_test]
-
-    this_X, this_X_test = pca(this_X, this_X_test)
+    # Perform PCA
+    # this_X, this_X_test = pca(this_X, this_X_test)
 
     # Take a random subset of size n
-    if subset_n is not None:
+    #CHANGE
+    if subset_n is None:
             if rule is None:
                 this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
-            else:
+            elif loc_emb is None:
                 this_X, this_Y, this_latlons = image_subset(this_X, this_Y, this_latlons, rule, subset_n)
+            else:
+                this_X, this_Y, this_latlons = satclip_subset(this_X, this_Y, this_latlons, this_emb, rule, subset_n)
     else:
         while (this_X.shape[0]%5 != 0):
             this_X = this_X[:-1]
             this_latlons = this_latlons[:-1]
             this_Y = this_Y[:-1]
 
-    from IPython import embed; embed()
+    #Plot coverage
+    print("plotting coverage ...")
+    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
+    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
+
     subset_n = this_X.shape[0]
     print("Training model...")
     import time

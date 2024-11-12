@@ -18,31 +18,43 @@ def dropna_Y(Y, label):
     return Y, valid
 
 
-def dropna(X, Y, latlon, c_app):
+def dropna(X, Y, latlon, c_app, loc_emb=None):
     Y = Y.squeeze()
 
     # drop obs with missing labels:
     Y, valid = dropna_Y(Y, c_app["application"])
     latlon = latlon[valid]
     X = X[valid]
-    return X, Y, latlon
+    if loc_emb is not None:
+        loc_emb = loc_emb[valid]
+
+    #also drop obs with missing values in X and latlon
+    no_nan = (~np.isnan(X) & ~np.isinf(X))[:,0]
+    no_nan = no_nan & (~np.isnan(latlon) & ~np.isinf(latlon))[:,0]
+    latlon = latlon[no_nan]
+    X = X[no_nan]
+    Y = Y[no_nan]
+    if loc_emb is not None:
+        loc_emb = loc_emb[no_nan]
+
+    return X, Y, latlon, loc_emb
 
 
-def dropna_and_transform(X, Y, latlon, c_app):
+def dropna_and_transform(X, Y, latlon, c_app, loc_emb=None):
     name = c_app["application"]
-    X, Y, latlon = dropna(X, Y, latlon, c_app)
+    X, Y, latlon, loc_emb = dropna(X, Y, latlon, c_app, loc_emb)
     transform_func = globals()["transform_" + name]
-    return transform_func(X, Y, latlon, c_app["logged"])
+    return transform_func(X, Y, latlon, c_app["logged"], loc_emb)
 
 
 def transform_elevation(X, Y, latlon, log):
     return X, Y, latlon
 
 
-def transform_population(X, Y, latlon, log):
+def transform_population(X, Y, latlon, log, loc_emb=None):
     if log:
         Y = np.log(Y + 1)
-    return X, Y, latlon
+    return X, Y, latlon, loc_emb
 
 
 def transform_housing(X, Y, latlon, log):

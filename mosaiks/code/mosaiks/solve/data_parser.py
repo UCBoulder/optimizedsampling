@@ -70,7 +70,7 @@ def merge(df_w_subset, *dfs):
     list of :class:`numpy.ndarray`
         The consistently sorted arrays, in the same order as the input DataFrames.
     """
-    return [df_w_subset.values] + [d.reindex(df_w_subset.index).values for d in dfs]
+    return [df_w_subset.values] + [d.reindex(df_w_subset.index).values for d in dfs if d is not None]
 
 
 def split_idxs_train_test(n, nums_train_test=None, frac_test=None, seed=0):
@@ -223,7 +223,7 @@ def split_world_sample_regular(data, xvec, yvec):
     return data
 
 
-def merge_dropna_transform_split_train_test(c, app, X, latlons, ACS=False, seed=0):
+def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, ACS=False, seed=0):
     """This function performs a common workflow for many of our experiments. It involves
     the following steps:
         1. Load label values
@@ -274,10 +274,13 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, ACS=False, seed=
     ## merge X and Y accounting for different ordering
     ## and the sampling type
     print("Merging labels and features...")
-    Y, X, latlons = merge(Y, X, latlons)
+    if loc_emb is not None:
+        Y, X, latlons, loc_emb = merge(Y, X, latlons, loc_emb)
+    else:
+        Y, X, latlons = merge(Y, X, latlons)
 
     ## drop obs and log transform if needed
-    X, Y, latlons = transforms.dropna_and_transform(X, Y, latlons, c_app)
+    X, Y, latlons, loc_emb = transforms.dropna_and_transform(X, Y, latlons, c_app, loc_emb)
 
     ## Split the data into the training/validation sample vs. test sample
     ## (discarding test set for now to keep memory low)
@@ -288,4 +291,8 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, ACS=False, seed=
     latlons_train = latlons[idxs_train]
     latlons_test = latlons[idxs_test]
 
-    return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test
+    if loc_emb is not None:
+        loc_emb_train = loc_emb[idxs_train]
+        loc_emb_test = loc_emb[idxs_test]
+
+    return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test

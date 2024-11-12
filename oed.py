@@ -23,14 +23,15 @@ def v_optimal_design(X):
     return l 
 
 #Returns a subset of a matrix of specified size
-def sampling(X, size, rule):
+def sampling(X, lats, lons, size, rule):
     scores = rule(X)
+    from IPython import embed; embed()
     n = X.shape[1]
 
-    #highest leverage scores
+    #Highest scores according to rule
     best_indices = np.argpartition(scores, -size)[-size:]
 
-    print("Returning samples according to leverage scores...")
+    print(f"Returning samples according {rule}...")
     return best_indices
 
 def e_optimal_design(V):

@@ -5,17 +5,19 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 def pca(train, test):
+    X = np.concatenate((train, test), axis=0)
+
     #Scale data
     # scaling = StandardScaler()
-    # scaling.fit(train)
+    # scaling.fit(X)
     # train = scaling.transform(train)
     # test = scaling.transform(test)
 
-    X = np.concatenate((train, test), axis=0)
+    # from IPython import embed; embed()
 
     #PCA
     print("Performing PCA...")
-    pca = PCA(n_components=0.99)
+    pca = PCA(n_components=8192)
     X_pca = pca.fit_transform(X)
 
     print("Number of PCA Components: ", pca.n_components_)
