@@ -78,6 +78,24 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
     ax.axis("off")
     return fig
 
+def plot_lat_lon_with_rgb(lats, lons, loc_emb, title, markersize=1, alpha=0.5):
+    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
+    colors = loc_emb
+
+    world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
+    exclude_states = ["Alaska", "Hawaii"]
+    contiguous_us = world[world['name'].isin(exclude_states) == False]
+    contiguous_outline = contiguous_us.dissolve()
+
+    fig, ax = plt.subplots(figsize=(10,10))
+    contiguous_outline.boundary.plot(ax=ax, color='black', zorder=1, alpha=0.5) 
+
+    for i, (geom, color) in enumerate(zip(gdf.geometry, colors)):
+        ax.plot(geom.x, geom.y, 'o', color=color, markersize=markersize, alpha=alpha, zorder=2)
+    ax.set_title(title)
+    ax.axis("off")
+    return fig
+
 # plot_lat_lon(train, "Train")
 # plot_coverage(test, "Test")
 # plot_coverage(val, "Val")

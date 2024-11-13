@@ -294,5 +294,8 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, AC
     if loc_emb is not None:
         loc_emb_train = loc_emb[idxs_train]
         loc_emb_test = loc_emb[idxs_test]
+    else:
+        loc_emb_train = None
+        loc_emb_test = None
 
     return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test

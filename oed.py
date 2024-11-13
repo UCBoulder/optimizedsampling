@@ -23,10 +23,8 @@ def v_optimal_design(X):
     return l 
 
 #Returns a subset of a matrix of specified size
-def sampling(X, lats, lons, size, rule):
+def sampling(X, size, rule):
     scores = rule(X)
-    from IPython import embed; embed()
-    n = X.shape[1]
 
     #Highest scores according to rule
     best_indices = np.argpartition(scores, -size)[-size:]

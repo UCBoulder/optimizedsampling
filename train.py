@@ -31,10 +31,10 @@ def run(labels_to_run, rule=None):
         size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
-        # for size in size_of_subset:
-        #     train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=satclip_df)
-        #CHANGE
-        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=rule, loc_emb=satclip_df)
+        #Change location embeddings
+        for size in size_of_subset:
+            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=None)
+        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None)
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
@@ -42,9 +42,9 @@ def run(labels_to_run, rule=None):
     )
     results_df.index.name = "label"
     if rule is None:
-        results_df.to_csv(Path("results/TestSetPerformanceSatCLIP.csv"), index=True)
+        results_df.to_csv(Path("results/TestSetPerformance.csv"), index=True)
     elif rule==v_optimal_design:
-        results_df.to_csv(Path("results/TestSetPerformanceSatCLIPVOptimality.csv"), index=True)
+        results_df.to_csv(Path("results/TestSetPerformanceVOptimality.csv"), index=True)
 
 #Labels from torchgeo dataset, UAR samples
 labels_to_run = ["population", "treecover", "elevation"]

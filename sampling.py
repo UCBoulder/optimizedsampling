@@ -79,7 +79,7 @@ def image_subset(X_train, Y_train, latlon_train, rule, size):
 #TODO
 def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
     print("Generating subset using satclip embeddings...")
-    subset_indices = sampling(loc_emb_train, latlon_train[:,0], latlon_train[:,1], size, rule)
+    subset_indices = sampling(loc_emb_train, size, rule)
     return X_train[subset_indices], Y_train[subset_indices], latlon_train[subset_indices]
 
 #Run ridge regression on mosaiks features for label
@@ -135,13 +135,11 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     ) = parse.merge_dropna_transform_split_train_test(
         c, label, X, latlons, loc_emb
     )
-
     # Perform PCA
     # this_X, this_X_test = pca(this_X, this_X_test)
 
     # Take a random subset of size n
-    #CHANGE
-    if subset_n is None:
+    if subset_n is not None:
             if rule is None:
                 this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
             elif loc_emb is None:
@@ -155,9 +153,9 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
             this_Y = this_Y[:-1]
 
     #Plot coverage
-    print("plotting coverage ...")
-    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
-    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
+    # print("plotting coverage ...")
+    # fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
+    # fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
 
     subset_n = this_X.shape[0]
     print("Training model...")

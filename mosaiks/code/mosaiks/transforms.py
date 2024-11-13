@@ -47,8 +47,8 @@ def dropna_and_transform(X, Y, latlon, c_app, loc_emb=None):
     return transform_func(X, Y, latlon, c_app["logged"], loc_emb)
 
 
-def transform_elevation(X, Y, latlon, log):
-    return X, Y, latlon
+def transform_elevation(X, Y, latlon, log, loc_emb=None):
+    return X, Y, latlon, loc_emb
 
 
 def transform_population(X, Y, latlon, log, loc_emb=None):
@@ -81,10 +81,10 @@ def transform_roads(X, Y, latlon, log):
     return X, Y, latlon
 
 
-def transform_treecover(X, Y, latlon, log):
+def transform_treecover(X, Y, latlon, log, loc_emb=None):
     if log:
         Y = np.log(Y + 1)
-    return X, Y, latlon
+    return X, Y, latlon, loc_emb
 
 
 def log_all(Y, c_app):
