@@ -10,12 +10,10 @@ from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.utils import io
 
 #Run
-def run(labels_to_run, rule=None):
+def run(labels_to_run, X_df, latlon_df, rule=None, loc_emb=None):
     for label in labels_to_run:
         #Set X (feature matrix) and corresponding lat lons
         #UAR is the only option when working with data from torchgeo
-        X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
-        satclip_df = get_satclip(cfg, X_df)
 
         #Remove NaN
         valid_num, valid_rows, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
@@ -33,7 +31,7 @@ def run(labels_to_run, rule=None):
 
         #Change location embeddings
         for size in size_of_subset:
-            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=None)
+            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb)
         train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None)
 
     #Save results (R2 score) in csv
@@ -43,10 +41,7 @@ def run(labels_to_run, rule=None):
     results_df.index.name = "label"
     if rule is None:
         results_df.to_csv(Path("results/TestSetPerformance.csv"), index=True)
-    elif rule==v_optimal_design:
+    elif rule==v_optimal_design and loc_emb is None:
         results_df.to_csv(Path("results/TestSetPerformanceVOptimality.csv"), index=True)
-
-#Labels from torchgeo dataset, UAR samples
-labels_to_run = ["population", "treecover", "elevation"]
-rule=v_optimal_design
-run(labels_to_run, rule)
+    elif loc_emb is not None:
+        results_df.to_csv(Path("results/TestSetPerformanceVOptimalitySatCLIP.csv"), index=True)
