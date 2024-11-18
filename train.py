@@ -1,7 +1,8 @@
 from pathlib import Path
 import pandas as pd
+import dill
 
-from sampling import valid_set, train_and_test, results_dict, results_dict_test
+from sampling import valid_num, train_and_test, results_dict, results_dict_test
 from oed import *
 from pca import *
 from satclip import get_satclip
@@ -16,20 +17,16 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
         #UAR is the only option when working with data from torchgeo
 
         #Remove NaN
-        valid_num, valid_rows, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
-
-        #Make sure satclip embeddings only contain valid samples
-        loc_emb = loc_emb.reindex(X_df.index)
+        valid = valid_num(cfg, label, X_df, latlons_df)
 
         #PCA
         # X_df = pca(X_df)
 
         #List of sizes for subsetting the dataset
-        size_of_subset = [0.001, 0.005, 0.01, 0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
-        size_of_subset = [int(np.floor(valid_num*percent)) for percent in size_of_subset]
+        size_of_subset = [0.005, 0.01, 0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
+        size_of_subset = [int(np.floor(valid*0.80*percent)) for percent in size_of_subset]
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
-        #Change location embeddings
         for size in size_of_subset:
             train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb)
         train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None)
@@ -46,12 +43,29 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
     elif loc_emb is not None:
         results_df.to_csv(Path("results/TestSetPerformanceVOptimalitySatCLIP.csv"), index=True)
 
-X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
+#X_df, latlons_df= io.get_X_latlon(cfg, "UAR") #MOSAIKS features
+
+#TorchGeo RCF Features
+with open("data/int/feature_matrices/CONTUS_UAR_torchgeo.pkl", "rb") as f:
+        arrs = dill.load(f)
+X_df = pd.DataFrame(
+    arrs["X"].astype(np.float64),
+    index=arrs["ids_X"],
+    columns=["X_" + str(i) for i in range(arrs["X"].shape[1])],
+)
+
+# get latlons
+latlons_df = pd.DataFrame(arrs["latlon"], index=arrs["ids_X"], columns=["lat", "lon"])
+
+# sort both
+latlons_df = latlons_df.sort_values(["lat", "lon"], ascending=[False, True])
+X_df = X_df.reindex(latlons_df.index)
+
 satclip_df = get_satclip(cfg, X_df)
 
 labels_to_run = ["population", "treecover", "elevation"]
 rule=v_optimal_design
 loc_emb=satclip_df
 
-#Run Satclip sampling
-run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=loc_emb)
+#Run Random
+run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)

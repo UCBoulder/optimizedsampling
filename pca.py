@@ -8,6 +8,11 @@ def pca(train, test):
     #Concatenate train and test to perfom pca on all samples
     X = np.concatenate((train, test), axis=0)
 
+    #Scale data and perform pca
+    scaling = StandardScaler()
+    scaling.fit(X)
+    X = scaling.transform(X)
+
     #PCA
     print("Performing PCA...")
     pca = PCA(0.99)

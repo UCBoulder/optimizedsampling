@@ -44,7 +44,7 @@ def valid(set, *args):
     return valid
 
 #Make sure X and latlons do not have NaN values
-def valid_set(c, label, X, latlons):
+def valid_num(c, label, X, latlons):
     c = io.get_filepaths(c, label)
     c_app = getattr(c, label)
     Y = io.get_Y(c, c_app["colname"])
@@ -55,10 +55,10 @@ def valid_set(c, label, X, latlons):
     valid_rows = Y.notna() & (Y != -999)
     valid_rows = valid_rows & (X.notna().all(axis=1) & latlons.notna().all(axis=1))
     X = X[valid_rows]
-    latlons = latlons[valid_rows]
+
     size_of_valid = X.shape[0]
     print(f"Size of valid set for {label}", size_of_valid)
-    return size_of_valid, valid_rows, X, latlons
+    return size_of_valid
 
 #Taking a random subset of training data--Spatial-only baseline
 def random_subset(X_train, Y_train, latlon, size):
@@ -132,6 +132,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     ) = parse.merge_dropna_transform_split_train_test(
         c, label, X, latlons, loc_emb
     )
+    
     # Perform PCA
     # this_X, this_X_test = pca(this_X, this_X_test)
 
@@ -149,10 +150,11 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
             this_latlons = this_latlons[:-1]
             this_Y = this_Y[:-1]
 
+
     #Plot coverage
-    print("plotting coverage ...")
-    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
-    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
+    # print("plotting coverage ...")
+    # fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
+    # fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
 
     subset_n = this_X.shape[0]
     print("Training model...")

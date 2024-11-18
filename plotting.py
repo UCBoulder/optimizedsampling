@@ -3,7 +3,7 @@ import pandas as pd
 
 df = pd.read_csv("results/TestSetPerformance.csv", index_col=0)
 df_vopt = pd.read_csv("results/TestSetPerformanceVOptimality.csv", index_col=0)
-df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIPVOptimality.csv", index_col=0)
+df_satclip = pd.read_csv("results/TestSetPerformanceVOptimalitySatCLIP.csv", index_col=0)
 
 df.drop('Cross-validation R2', axis=1, errors='ignore', inplace=True)
 df_vopt.drop('Cross-validation R2', axis=1, errors='ignore', inplace=True)
@@ -70,4 +70,5 @@ for label in labels:
     i = i+1
 
 plt.subplots_adjust(wspace=0.4)   
-plt.savefig("Num of samples vs R^2.png")
+plt.suptitle('Number of samples vs R^2 for Torchgeo RCF features')
+plt.savefig("Num of samples vs R^2 for torchgeo.png")
