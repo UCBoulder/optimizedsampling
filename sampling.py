@@ -13,7 +13,6 @@ from sklearn.metrics import r2_score
 from plot_coverage import plot_lat_lon
 from oed import *
 from pca import pca
-# from satclip_files.satclip.satclip import get_embeddings
 
 from mosaiks.code.mosaiks.utils import *
 from mosaiks.code.mosaiks.utils import io
@@ -75,8 +74,6 @@ def image_subset(X_train, Y_train, latlon_train, rule, size):
     return X_train[subset_indices], Y_train[subset_indices], latlon_train[subset_indices]
 
 #Taking a OED subset of training data using SatCLIP embeddings--Image and Spatial
-#Only works for V-optimality as of 11/4
-#TODO
 def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
     print("Generating subset using satclip embeddings...")
     subset_indices = sampling(loc_emb_train, size, rule)
@@ -153,9 +150,9 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
             this_Y = this_Y[:-1]
 
     #Plot coverage
-    # print("plotting coverage ...")
-    # fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
-    # fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
+    print("plotting coverage ...")
+    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
+    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
 
     subset_n = this_X.shape[0]
     print("Training model...")

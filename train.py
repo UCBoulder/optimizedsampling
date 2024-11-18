@@ -10,7 +10,7 @@ from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.utils import io
 
 #Run
-def run(labels_to_run, X_df, latlon_df, rule=None, loc_emb=None):
+def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
     for label in labels_to_run:
         #Set X (feature matrix) and corresponding lat lons
         #UAR is the only option when working with data from torchgeo
@@ -19,7 +19,7 @@ def run(labels_to_run, X_df, latlon_df, rule=None, loc_emb=None):
         valid_num, valid_rows, X_df, latlons_df = valid_set(cfg, label, X_df, latlons_df)
 
         #Make sure satclip embeddings only contain valid samples
-        satclip_df = satclip_df.reindex(X_df.index)
+        loc_emb = loc_emb.reindex(X_df.index)
 
         #PCA
         # X_df = pca(X_df)
@@ -45,3 +45,13 @@ def run(labels_to_run, X_df, latlon_df, rule=None, loc_emb=None):
         results_df.to_csv(Path("results/TestSetPerformanceVOptimality.csv"), index=True)
     elif loc_emb is not None:
         results_df.to_csv(Path("results/TestSetPerformanceVOptimalitySatCLIP.csv"), index=True)
+
+X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
+satclip_df = get_satclip(cfg, X_df)
+
+labels_to_run = ["population", "treecover", "elevation"]
+rule=v_optimal_design
+loc_emb=satclip_df
+
+#Run Satclip sampling
+run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=loc_emb)
