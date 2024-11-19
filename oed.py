@@ -48,6 +48,8 @@ def sampling_with_prob(X, size, rule):
     #Create probabilities
     prob = scores / total
 
+    from IPython import embed; embed()
+
     #List of indices
     indices = np.arange(len(prob))
 

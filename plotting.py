@@ -70,5 +70,5 @@ for label in labels:
     i = i+1
 
 plt.subplots_adjust(wspace=0.4)   
-plt.suptitle('Number of samples vs R^2 for Torchgeo RCF features')
-plt.savefig("Num of samples vs R^2 for torchgeo.png")
+plt.suptitle('Number of samples vs R^2')
+plt.savefig("Num of samples vs R^2.png")

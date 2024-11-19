@@ -49,7 +49,7 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
         {'leverage_score': scores},
         geometry=gpd.points_from_xy(lons, lats)
     )
-    gdf['log_leverage_score'] = np.log10(gdf['leverage_score'] + 1e-10) 
+    #gdf['log_leverage_score'] = np.log10(gdf['leverage_score'] + 1e-10) 
 
     # Load and prepare the US boundaries
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
