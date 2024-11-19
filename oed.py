@@ -22,14 +22,39 @@ def v_optimal_design(X):
     
     return l 
 
-#Returns a subset of a matrix of specified size
-def sampling(X, size, rule):
+'''
+Samples subset according to highest scores
+'''
+def sampling_with_scores(X, size, rule):
     scores = rule(X)
 
     #Highest scores according to rule
     best_indices = np.argpartition(scores, -size)[-size:]
 
-    print(f"Returning samples according {rule}...")
+    print(f"Returning samples according to V Optimal design by taking the highest leverage scores...")
+    return best_indices
+
+'''
+Samples subset according to probability distribution induced by scores
+'''
+def sampling_with_prob(X, size, rule):
+    scores = rule(X)
+
+    total = np.sum(scores)
+
+    if total==0:
+        raise ValueError("Cannot convert to probabilities.")
+    
+    #Create probabilities
+    prob = scores / total
+
+    #List of indices
+    indices = np.arange(len(prob))
+
+    #Choose subset
+    best_indices = np.random.choice(indices, size=size, p=prob, replace=False)
+
+    print(f"Returning samples according to V Optimal Design using probabilities...")
     return best_indices
 
 def e_optimal_design(V):

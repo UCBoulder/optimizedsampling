@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import dill
 
-from sampling import valid_num, train_and_test, results_dict, results_dict_test
+from regressions import valid_num, train_and_test, results_dict, results_dict_test
 from oed import *
 from pca import *
 from satclip import get_satclip
@@ -37,29 +37,36 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
     )
     results_df.index.name = "label"
     if rule is None:
-        results_df.to_csv(Path("results/TestSetPerformance.csv"), index=True)
-    elif rule==v_optimal_design and loc_emb is None:
-        results_df.to_csv(Path("results/TestSetPerformanceVOptimality.csv"), index=True)
-    elif loc_emb is not None:
-        results_df.to_csv(Path("results/TestSetPerformanceVOptimalitySatCLIP.csv"), index=True)
+        rule_str = ''
+        loc_str = ''
+    elif rule==v_optimal_design:
+        rule_str = 'VOptimality'
 
-#X_df, latlons_df= io.get_X_latlon(cfg, "UAR") #MOSAIKS features
+        if loc_emb is not None:
+            loc_str = 'SatCLIP'
+        else:
+            loc_str = ''
+
+    results_df.to_csv(Path("results/TestSetPerformance{rule_str}{loc_str}.csv".format(rule_str=rule_str, loc_str=loc_str)), index=True)
+
+#MOSAIKS features
+X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
 
 #TorchGeo RCF Features
-with open("data/int/feature_matrices/CONTUS_UAR_torchgeo.pkl", "rb") as f:
-        arrs = dill.load(f)
-X_df = pd.DataFrame(
-    arrs["X"].astype(np.float64),
-    index=arrs["ids_X"],
-    columns=["X_" + str(i) for i in range(arrs["X"].shape[1])],
-)
+# with open("data/int/feature_matrices/CONTUS_UAR_torchgeo.pkl", "rb") as f:
+#         arrs = dill.load(f)
+# X_df = pd.DataFrame(
+#     arrs["X"].astype(np.float64),
+#     index=arrs["ids_X"],
+#     columns=["X_" + str(i) for i in range(arrs["X"].shape[1])],
+# )
 
-# get latlons
-latlons_df = pd.DataFrame(arrs["latlon"], index=arrs["ids_X"], columns=["lat", "lon"])
+# # get latlons
+# latlons_df = pd.DataFrame(arrs["latlon"], index=arrs["ids_X"], columns=["lat", "lon"])
 
-# sort both
-latlons_df = latlons_df.sort_values(["lat", "lon"], ascending=[False, True])
-X_df = X_df.reindex(latlons_df.index)
+# # sort both
+# latlons_df = latlons_df.sort_values(["lat", "lon"], ascending=[False, True])
+# X_df = X_df.reindex(latlons_df.index)
 
 satclip_df = get_satclip(cfg, X_df)
 
@@ -69,3 +76,9 @@ loc_emb=satclip_df
 
 #Run Random
 run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
+
+#Run with V Optimal Design
+# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
+
+#Run with SatCLIP embeddings
+# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=loc_emb)
