@@ -1,7 +1,10 @@
 import numpy as np
-from mosaiks.code.mosaiks.utils import io
-from oed import *
 import random
+
+from mosaiks.code.mosaiks.utils import io
+from mosaiks.code.mosaiks import config as c
+from oed import *
+from feasibility import *
 
 '''
 Determine indices of valid entries in a set (not NaN or inf)
@@ -40,8 +43,22 @@ Takes a random subset of training data
 '''
 def random_subset(X_train, Y_train, latlon, size):
     print("Generating subset using SRS...")
-    random_subset = np.random.choice(len(X_train), size=size, replace=False)
-    return X_train[random_subset], Y_train[random_subset], latlon[random_subset]
+    subset_idxs = np.random.choice(len(X_train), size=size, replace=False)
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon[subset_idxs]
+
+'''
+Spatial-only baseline
+Takes a random subset of training data and records cost
+'''
+def random_subset_and_cost(X_train, Y_train, latlon, size):
+    print("Generating subset using SRS...")
+    subset_idxs = np.random.choice(len(X_train), size=size, replace=False)
+
+    #Get costs of subset
+    costs = get_costs(c, X_train)
+    total_cost = total_cost(costs, subset_idxs)
+
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon[subset_idxs], total_cost
 
 '''
 Image-only baseline
@@ -61,6 +78,14 @@ def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
     print("Generating subset using satclip embeddings...")
     subset_idxs = sampling_with_prob(loc_emb_train, size, rule)
     return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
+
+'''
+Takes subsets greedily with lowest cost until number of samples is reached
+'''
+def greedy_by_cost(X_train, Y_train, latlon_train, size):
+    costs = get_costs(c, X_train).values
+    lowest_cost_idxs = np.argpartition(costs, size)[:size]
+    return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs]
 
 '''
 Takes a SRS subset of training data such that total cost does not exceed budget

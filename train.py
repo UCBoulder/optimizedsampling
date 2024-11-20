@@ -2,7 +2,8 @@ from pathlib import Path
 import pandas as pd
 import dill
 
-from regressions import valid_num, train_and_test, results_dict, results_dict_test
+from regressions import train_and_test, results_dict, results_dict_test, costs
+from sampling import valid_num
 from oed import *
 from pca import *
 from satclip import get_satclip
@@ -11,7 +12,7 @@ from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.utils import io
 
 #Run
-def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
+def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None, record_costs=False):
     for label in labels_to_run:
         #Set X (feature matrix) and corresponding lat lons
         #UAR is the only option when working with data from torchgeo
@@ -28,8 +29,8 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
         for size in size_of_subset:
-            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb)
-        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None)
+            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb, record_costs=record_costs)
+        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None, record_costs=record_costs)
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
@@ -48,6 +49,10 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
             loc_str = ''
 
     results_df.to_csv(Path("results/TestSetPerformance{rule_str}{loc_str}.csv".format(rule_str=rule_str, loc_str=loc_str)), index=True)
+
+    #Save costs
+    costs_df = pd.DataFrame({"Cost": costs})
+    costs_df.to_csv(Path("results/Cost.csv"))
 
 #MOSAIKS features
 X_df, latlons_df= io.get_X_latlon(cfg, "UAR")
@@ -78,7 +83,7 @@ loc_emb=satclip_df
 # run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
 
 #Run with V Optimal Design
-run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
+# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
 
 #Run with SatCLIP embeddings
-# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=loc_emb)
+run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None, record_costs=True)

@@ -24,6 +24,7 @@ from mosaiks.code.mosaiks.solve import interpret_results as ir
 #To store results
 results_dict = {}
 results_dict_test = {}
+costs = {}
 
 #Path to store results
 save_patt = join(
@@ -35,10 +36,10 @@ save_patt = join(
 solver = solve.ridge_regression
 
 #Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None):
+def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None, record_costs=False):
 
     if rule==v_optimal_design:
-        rule_str = 'V Optimal Design'
+        rule_str = 'v_optimal_design'
     else: 
         rule_str = ''
 
@@ -56,7 +57,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     c_app = getattr(c, label)
     sampling_type = c_app["sampling"]  # UAR 
     this_save_patt = save_patt.format(
-        save_dir="data/output",
+        save_dir="/share/usavars/data/output",
         label=label,
         variable=c_app["variable"]
     )
@@ -73,10 +74,6 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     else:
         subset_str = ""
 
-    if rule is not None:
-        rule_str = f"_{rule}"
-    else:
-        rule_str = ""
     save_path_validation = this_save_patt.format(reg_type="scatter", subset_n=subset_str, rule=rule_str)
     save_path_test = this_save_patt.format(reg_type="testset", subset_n=subset_str, rule=rule_str)
 
@@ -99,7 +96,10 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     # Take a random subset of size n
     if subset_n is not None:
             if rule is None:
-                this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
+                if record_costs==True:
+                    this_X, this_Y, this_latlons, total_cost = random_subset_and_cost(this_X, this_Y, this_latlons, subset_n)
+                else:
+                    this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
             elif loc_emb is None:
                 this_X, this_Y, this_latlons = image_subset(this_X, this_Y, this_latlons, rule, subset_n)
             else:
@@ -110,11 +110,10 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
             this_latlons = this_latlons[:-1]
             this_Y = this_Y[:-1]
 
-
     #Plot coverage
-    # print("plotting coverage ...")
-    # fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
-    # fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule))
+    print("Plotting coverage ...")
+    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
+    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule_str))
 
     subset_n = this_X.shape[0]
     print("Training model...")
@@ -168,6 +167,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None)
     with open(save_path_validation, "wb") as f:
         pickle.dump(data, f)
     results_dict[label + ";size" + str(subset_n)] = r2_score(truth, preds)
+    costs[label + ";size" + str(subset_n)] = total_cost
 
     # Get test set predictions
     st_test = time.time()

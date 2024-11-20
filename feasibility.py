@@ -1,63 +1,88 @@
 '''
 Modeling travel cost/feasibility
 '''
+from os.path import join
+
 import geopandas as gpd
 import numpy as np
+import dill
+import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from geopy.distance import geodesic #geodesic distance between two lat/lon
 
-cities= gdf = gpd.read_file("/share/cost/ne_10m_populated_places_simple.shp")
+cities = {
+    "city": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"],
+    "latitude": [40.7128, 34.0522, 41.8781, 29.7604, 33.4484],
+    "longitude": [-74.0060, -118.2437, -87.6298, -95.3698, -112.0740]
+}
+cities = pd.DataFrame(cities)
 
 '''
-Determine lat/lon and rank of closest city
+Determine distance to closest city
 '''
-def closest_city(lat, lon):
+def closest_city(latlon):
     closest_city_distance = float('inf')
-    closest_city_rank = 0
-    closest_city_lat = 0
-    closest_city_lon = 0
-    closest_city_name = ''
 
     for _, city_row in cities.iterrows():
         city_lat = city_row['latitude']
         city_lon = city_row['longitude']
-        distance = geodesic((lat,lon), (city_lat, city_lon))
+        distance = geodesic(latlon, (city_lat, city_lon)).km
         if distance <= closest_city_distance:
             closest_city_distance = distance
-            closest_city_rank = city_row['scalerank']
-            closest_city_name = city_row['name']
-            closest_city_lat = city_lat
-            closest_city_lon = city_lon
     
-    closest_city_latlon = [closest_city_lat, closest_city_lon]
-    return closest_city_name, closest_city_latlon, closest_city_rank
+    return closest_city_distance
 
 '''
 Use closest city distance to determine cost
 '''
-def cost_by_city_dist(lat, lon):
-    closest_city_name, closest_city_latlon, closest_city_rank = closest_city(lat, lon)
-    dist_to_city = geodesic((lat,lon), closest_city_latlon).km
+def cost_by_closest_city_dist(latlon, alpha, beta):
+    closest_city_distance = closest_city(latlon)
 
-    return (140*closest_city_rank+100 + 10*dist_to_city)
+    return (alpha*closest_city_distance + beta)
 '''
 Creates array of costs
 '''
-def costs_by_city_dist(lats, lons):
-    n = len(lats)
+def cost_array_by_city_dist(latlons, alpha, beta):
+    n = latlons.shape[0]
     costs = np.empty((n,), dtype=np.float32)
 
     for i in range(n):
-        costs[i] = cost_by_city_dist(lats[i], lons[i])
+        costs[i] = cost_by_closest_city_dist(latlons[i], alpha, beta)
 
     return costs
+
+def save_costs(latlon_path, out_fpath):
+    #Retrieve data
+    with open(latlon_path, "rb") as f:
+        arrs = dill.load(f)
+        
+    # get latlons
+    latlons = pd.DataFrame(arrs["latlon"], index=arrs["ids_X"], columns=["lat", "lon"])
+
+    # sort
+    latlons = latlons.sort_values(["lat", "lon"], ascending=[False, True])
+    ids = latlons.index.to_numpy()
+
+    # Convert to numpy array
+    latlons = latlons.values
+
+    # get cost array
+    costs = cost_array_by_city_dist(latlons, 100, 100)
+
+    # save
+    with open(out_fpath, "wb") as f:
+        dill.dump(
+            {"cost": costs, "ids": ids, "latlon": latlons},
+            f,
+            protocol=4,
+        )
 
 
 def plot_lat_lon_with_cost(lats, lons, costs, title):
     # Create a GeoDataFrame with costs
     gdf = gpd.GeoDataFrame(
-        {'costs': costs},
+        {'cost': costs},
         geometry=gpd.points_from_xy(lons, lats)
     )
 
@@ -87,3 +112,38 @@ def plot_lat_lon_with_cost(lats, lons, costs, title):
     ax.set_title(title)
     ax.axis("off")
     return fig
+
+def get_costs(X):
+    """Get costs for samples.
+
+    Parameters
+    ----------
+    X: df to match index of
+    c: config
+
+    Returns
+    -------
+    costs: :class:`pandas.DataFrame`
+        100000 x 1 array of costs, indexed by i,j ID
+    """
+
+    # Load the feature matrix locally
+    local_path = "/share/usavars/data/cost/costs_by_city_dist.pkl"
+    with open(local_path, "rb") as f:
+        arrs = dill.load(f)
+
+    # get embeddings
+    costs = pd.DataFrame(arrs["cost"], index=arrs["ids"], columns=["cost"])
+
+    # reindex embeddings according to X
+    costs = costs.reindex(X.index)
+
+    return costs
+
+'''
+Returns total cost of subset
+'''
+def cost_of_subset(costs, subset_idxs):
+    print("Determining cost of subset...")
+    subset_costs = costs[subset_idxs]
+    return np.sum(subset_costs)
