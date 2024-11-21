@@ -20,6 +20,37 @@ from mosaiks.code.mosaiks.solve import data_parser as parse
 from mosaiks.code.mosaiks.solve import solve_functions as solve
 from mosaiks.code.mosaiks.solve import interpret_results as ir
 
+'''
+Determine indices of valid entries in a set (not NaN or inf)
+'''
+def valid(set, *args):
+    valid = (~np.isnan(set) & ~np.isinf(set))[:,0]
+    for arg in args:
+        if len(arg.shape)==1:
+            valid = valid & ~np.isnan(arg) & ~np.isinf(arg)
+        else:
+            valid= valid & (~np.isnan(arg) & ~np.isinf(arg))[:,0]
+    return valid
+
+'''
+Determine number of data points that are not NaN
+'''
+def valid_num(c, label, X, latlons):
+    c = io.get_filepaths(c, label)
+    c_app = getattr(c, label)
+    Y = io.get_Y(c, c_app["colname"])
+
+    X = X.reindex(Y.index)
+    latlons = latlons.reindex(Y.index)
+
+    valid_rows = Y.notna() & (Y != -999)
+    valid_rows = valid_rows & (X.notna().all(axis=1) & latlons.notna().all(axis=1))
+    X = X[valid_rows]
+
+    size_of_valid = X.shape[0]
+    print(f"Size of valid set for {label}", size_of_valid)
+    return size_of_valid
+
 
 #To store results
 results_dict = {}

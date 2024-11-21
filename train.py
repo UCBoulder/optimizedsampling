@@ -81,10 +81,10 @@ rule=v_optimal_design
 loc_emb=satclip_df
 
 #Run Random
-run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
+# run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
 
 #Run with V Optimal Design
-run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
+# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
 
 #Run with SatCLIP embeddings
-run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
+run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=loc_emb)

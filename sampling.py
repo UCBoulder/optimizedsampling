@@ -6,36 +6,56 @@ from mosaiks.code.mosaiks import config as c
 from oed import *
 from feasibility import *
 
-'''
-Determine indices of valid entries in a set (not NaN or inf)
-'''
-def valid(set, *args):
-    valid = (~np.isnan(set) & ~np.isinf(set))[:,0]
-    for arg in args:
-        if len(arg.shape)==1:
-            valid = valid & ~np.isnan(arg) & ~np.isinf(arg)
-        else:
-            valid= valid & (~np.isnan(arg) & ~np.isinf(arg))[:,0]
-    return valid
+class Sampler:
+    '''
+    Class for sampling
+    '''
+    def __init__(self, *datasets, rule="random", loc_emb=None):
+        '''Initialize a new Sampler instance.
 
-'''
-Determine number of data points that are not NaN
-'''
-def valid_num(c, label, X, latlons):
-    c = io.get_filepaths(c, label)
-    c_app = getattr(c, label)
-    Y = io.get_Y(c, c_app["colname"])
+        Args:
+            data: data to sample from (df or array)
+            rule: use rule to sample
+        '''
+        i = 0
+        for dataset in datasets:
+            if isinstance(dataset, pd.DataFrame):
+                dataset = dataset.to_numpy()
+            setattr(self, f"dataset{i+1}", dataset)
+            i += 1
+        
+        self.rule = rule
 
-    X = X.reindex(Y.index)
-    latlons = latlons.reindex(Y.index)
+        if loc_emb is not None:
+            self.loc_emb = loc_emb
 
-    valid_rows = Y.notna() & (Y != -999)
-    valid_rows = valid_rows & (X.notna().all(axis=1) & latlons.notna().all(axis=1))
-    X = X[valid_rows]
+    '''
+    Determine indexes of subset to sample
+    '''
+    def subset_idxs(self, n=0):
+        if self.rule=="random":
+            subset_idxs = np.random.choice(len(self.dataset1), size=n, replace=False)
 
-    size_of_valid = X.shape[0]
-    print(f"Size of valid set for {label}", size_of_valid)
-    return size_of_valid
+        if self.rule=="image":
+            subset_idxs = sampling_with_scores(self.dataset1, n, v_optimal_design)
+
+        if self.rule=="satclip":
+            subset_idxs = sampling_with_scores(self.loc_emb, n, v_optimal_design)
+
+        return subset_idxs
+    
+    def sample(self, n=0):
+        subset_idxs = self.subset_idxs(n)
+
+        i = 1
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                return
+            yield dataset[subset_idxs]
+            i += 1
+
+#-----------------------------------------------------------------------------------------
 
 '''
 Spatial-only baseline
@@ -66,7 +86,7 @@ Only works for V-optimality as of 11/4
 '''
 def image_subset(X_train, Y_train, latlon_train, rule, size):
     print("Generating subset using {rule}...".format(rule='V Optimal Design'))
-    subset_idxs = sampling_with_prob(X_train, size, rule)
+    subset_idxs = sampling_with_scores(X_train, size, rule)
     return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
 
 '''
@@ -75,7 +95,7 @@ Takes an OED subset of training data using SatCLIP embeddings
 '''
 def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
     print("Generating subset using satclip embeddings...")
-    subset_idxs = sampling_with_prob(loc_emb_train, size, rule)
+    subset_idxs = sampling_with_scores(loc_emb_train, size, rule)
     return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
 
 '''
