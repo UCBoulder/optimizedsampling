@@ -33,7 +33,7 @@ def torchgeo_featurization(num_features):
     #Torchgeo Random Convolutional Feature Implementation
     rcf = RCF(
         in_channels=4, 
-        features=num_features, #if 256, not enough storage
+        features=num_features,
         kernel_size=4, #maybe change; patch in mosaiks is 3
         bias=-1.0, 
         seed=42, 

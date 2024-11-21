@@ -36,7 +36,7 @@ save_patt = join(
 solver = solve.ridge_regression
 
 #Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None, record_costs=False):
+def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None, costs=None):
 
     if rule==v_optimal_design:
         rule_str = 'v_optimal_design'
@@ -96,7 +96,7 @@ def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None,
     # Take a random subset of size n
     if subset_n is not None:
             if rule is None:
-                if record_costs==True:
+                if costs is not None:
                     this_X, this_Y, this_latlons, total_cost = random_subset_and_cost(this_X, this_Y, this_latlons, subset_n)
                 else:
                     this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)

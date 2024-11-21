@@ -7,12 +7,13 @@ from sampling import valid_num
 from oed import *
 from pca import *
 from satclip import get_satclip
+from feasibility import *
 
 from mosaiks.code.mosaiks import config as cfg
 from mosaiks.code.mosaiks.utils import io
 
 #Run
-def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None, record_costs=False):
+def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None):
     for label in labels_to_run:
         #Set X (feature matrix) and corresponding lat lons
         #UAR is the only option when working with data from torchgeo
@@ -29,8 +30,8 @@ def run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None, record_costs=F
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
         for size in size_of_subset:
-            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb, record_costs=record_costs)
-        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None, record_costs=record_costs)
+            train_and_test(cfg, label, X_df, latlons_df, size, rule=rule, loc_emb=loc_emb)
+        train_and_test(cfg, label, X_df, latlons_df, subset_n=None, rule=None, loc_emb=None)
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
@@ -80,10 +81,10 @@ rule=v_optimal_design
 loc_emb=satclip_df
 
 #Run Random
-# run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
+run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)
 
 #Run with V Optimal Design
-# run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
+run(labels_to_run, X_df, latlons_df, rule=rule, loc_emb=None)
 
 #Run with SatCLIP embeddings
-run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None, record_costs=True)
+run(labels_to_run, X_df, latlons_df, rule=None, loc_emb=None)

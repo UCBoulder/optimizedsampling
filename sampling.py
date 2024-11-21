@@ -50,12 +50,11 @@ def random_subset(X_train, Y_train, latlon, size):
 Spatial-only baseline
 Takes a random subset of training data and records cost
 '''
-def random_subset_and_cost(X_train, Y_train, latlon, size):
+def random_subset_and_cost(X_train, Y_train, latlon, size, costs):
     print("Generating subset using SRS...")
     subset_idxs = np.random.choice(len(X_train), size=size, replace=False)
 
     #Get costs of subset
-    costs = get_costs(c, X_train)
     total_cost = total_cost(costs, subset_idxs)
 
     return X_train[subset_idxs], Y_train[subset_idxs], latlon[subset_idxs], total_cost
