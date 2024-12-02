@@ -18,7 +18,7 @@ def dropna_Y(Y, label):
     return Y, valid
 
 
-def dropna(X, Y, latlon, c_app, loc_emb=None):
+def dropna(X, Y, latlon, c_app, loc_emb=None, ids=None):
     Y = Y.squeeze()
 
     # drop obs with missing labels:
@@ -27,6 +27,8 @@ def dropna(X, Y, latlon, c_app, loc_emb=None):
     X = X[valid]
     if loc_emb is not None:
         loc_emb = loc_emb[valid]
+    if ids is not None:
+        ids = ids[valid]
 
     #also drop obs with missing values in X and latlon
     no_nan = (~np.isnan(X) & ~np.isinf(X))[:,0]
@@ -36,25 +38,27 @@ def dropna(X, Y, latlon, c_app, loc_emb=None):
     Y = Y[no_nan]
     if loc_emb is not None:
         loc_emb = loc_emb[no_nan]
+    if ids is not None:
+        ids = ids[no_nan]
 
-    return X, Y, latlon, loc_emb
+    return X, Y, latlon, loc_emb, ids
 
 
-def dropna_and_transform(X, Y, latlon, c_app, loc_emb=None):
+def dropna_and_transform(X, Y, latlon, c_app, loc_emb=None, ids=None):
     name = c_app["application"]
-    X, Y, latlon, loc_emb = dropna(X, Y, latlon, c_app, loc_emb)
+    X, Y, latlon, loc_emb, ids = dropna(X, Y, latlon, c_app, loc_emb, ids)
     transform_func = globals()["transform_" + name]
-    return transform_func(X, Y, latlon, c_app["logged"], loc_emb)
+    return transform_func(X, Y, latlon, c_app["logged"], loc_emb, ids)
 
 
-def transform_elevation(X, Y, latlon, log, loc_emb=None):
-    return X, Y, latlon, loc_emb
+def transform_elevation(X, Y, latlon, log, loc_emb=None, ids=None):
+    return X, Y, latlon, loc_emb, ids
 
 
-def transform_population(X, Y, latlon, log, loc_emb=None):
+def transform_population(X, Y, latlon, log, loc_emb=None, ids=None):
     if log:
         Y = np.log(Y + 1)
-    return X, Y, latlon, loc_emb
+    return X, Y, latlon, loc_emb, ids
 
 
 def transform_housing(X, Y, latlon, log):
@@ -81,10 +85,10 @@ def transform_roads(X, Y, latlon, log):
     return X, Y, latlon
 
 
-def transform_treecover(X, Y, latlon, log, loc_emb=None):
+def transform_treecover(X, Y, latlon, log, loc_emb=None, ids=None):
     if log:
         Y = np.log(Y + 1)
-    return X, Y, latlon, loc_emb
+    return X, Y, latlon, loc_emb, ids
 
 
 def log_all(Y, c_app):

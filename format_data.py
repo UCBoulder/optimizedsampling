@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 from mosaiks.code.mosaiks.solve import data_parser as parse
+from mosaiks.code.mosaiks import config as cfg
 
 def save_with_splits(c, label, feature_path, loc_emb_path=None):
     with open(feature_path, "rb") as f:
@@ -42,7 +43,9 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
         latlons_train,
         latlons_test,
         loc_emb_train,
-        loc_emb_test
+        loc_emb_test,
+        ids_train,
+        ids_test
     ) = parse.merge_dropna_transform_split_train_test(
         c, label, X, latlons, loc_emb
     )
@@ -59,7 +62,9 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
                 "X_test": X_test,
                 "latlons_test": latlons_test,
                 "y_test": y_test,
-                "loc_emb_test": loc_emb_test},
+                "loc_emb_test": loc_emb_test,
+                "ids_train": ids_train,
+                "ids_test": ids_test},
                 f,
                 protocol=4,
             )
@@ -75,3 +80,39 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
                 f,
                 protocol=4,
             )
+
+def retrieve_splits(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    X_train = arrs["X_train"]
+    X_test = arrs["X_test"]
+    y_train = arrs["y_train"]
+    y_test = arrs["y_test"]
+    latlons_train = arrs["latlons_train"]
+    latlons_test = arrs["latlons_test"]
+    loc_emb_train = arrs["loc_emb_train"]
+    loc_emb_test = arrs["loc_emb_test"]
+    ids_train = arrs["ids_train"]
+    ids_test = arrs["ids_test"]
+
+    return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
+
+'''
+    Returns numpy array of cost with same order as training data
+'''
+def costs_of_train_data(cost_path, ids_train):
+    with open(cost_path, "rb") as f:
+        arrs = dill.load(f)
+
+    # get costs
+    costs = pd.DataFrame(
+        arrs["cost"].astype(np.float64),
+        index=arrs["ids"],
+        columns=["cost"],
+    )
+    
+    cost_train = costs.loc[ids_train].to_numpy()[:,0]
+
+    return cost_train

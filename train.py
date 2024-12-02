@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import dill
 
-from regressions import run_regression, results
+from regressions import run_regression, results, costs
 from oed import *
 from pca import *
 from satclip import get_satclip
@@ -31,11 +31,12 @@ def run(labels_to_run, rule):
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
-        {"Test R2": results}
+        {"Test R2": results,
+         "Cost": costs}
     )
     results_df.index.name = "label"
 
-    results_df.to_csv(Path("results/TestSetPerformance{rule}.csv".format(rule=rule)), index=True)
+    results_df.to_csv(Path("results/TestSetPerformance{rule}withCost.csv".format(rule=rule)), index=True)
 
 labels_to_run = ["population", "treecover", "elevation"]
 
@@ -43,7 +44,10 @@ labels_to_run = ["population", "treecover", "elevation"]
 run(labels_to_run, rule="random")
 
 #Run with V Optimal Design
-run(labels_to_run, rule="image")
+# run(labels_to_run, rule="image")
 
 #Run with SatCLIP embeddings
-run(labels_to_run, rule="satclip")
+# run(labels_to_run, rule="satclip")
+
+#Run with greedy cost algorithm
+run(labels_to_run, rule='lowcost')

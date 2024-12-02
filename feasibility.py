@@ -145,5 +145,6 @@ Returns total cost of subset
 '''
 def cost_of_subset(costs, subset_idxs):
     print("Determining cost of subset...")
-    subset_costs = costs[subset_idxs]
-    return np.sum(subset_costs)
+    total_cost = np.sum(costs[subset_idxs])
+    print("Subset of size {size} costs {cost}".format(size=len(subset_idxs), cost=total_cost))
+    return total_cost

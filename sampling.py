@@ -19,12 +19,12 @@ def random_subset(X_train, Y_train, latlon, size):
 Spatial-only baseline
 Takes a random subset of training data and records cost
 '''
-def random_subset_and_cost(X_train, Y_train, latlon, size, costs):
+def random_subset_and_cost(X_train, Y_train, latlon, costs, size):
     print("Generating subset using SRS...")
     subset_idxs = np.random.choice(len(X_train), size=size, replace=False)
 
     #Get costs of subset
-    total_cost = total_cost(costs, subset_idxs)
+    total_cost = cost_of_subset(costs, subset_idxs)
 
     return X_train[subset_idxs], Y_train[subset_idxs], latlon[subset_idxs], total_cost
 
@@ -50,10 +50,12 @@ def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
 '''
-def greedy_by_cost(X_train, Y_train, latlon_train, size):
-    costs = get_costs(c, X_train).values
+def greedy_by_cost(X_train, Y_train, latlon_train, costs, size):
+    #TODO: edit this to break ties randomly
+    print("Generating subset using greedy cost algorithm...")
     lowest_cost_idxs = np.argpartition(costs, size)[:size]
-    return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs]
+    total_cost = cost_of_subset(costs, lowest_cost_idxs)
+    return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs], total_cost
 
 '''
 Takes a SRS subset of training data such that total cost does not exceed budget

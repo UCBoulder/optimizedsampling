@@ -11,10 +11,13 @@ import sklearn
 from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
 
+from oed import *
 from sampling import *
-from mosaiks.code.mosaiks.solve import data_parser as parse
+from format_data import *
+from plot_coverage import plot_lat_lon
 
 results = {}
+costs = {}
 
 '''
 Run regressions
@@ -26,32 +29,43 @@ Parameters:
 def run_regression(label, rule=None, subset_size=None):
     print("*** Running regressions for: {label} with {num} samples using {rule} rule".format(label=label, num=subset_size, rule=rule))
 
-    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
-    with open(data_path, "rb") as f:
-        arrs = dill.load(f)
+    (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        latlon_train,
+        latlon_test,
+        loc_emb_train,
+        loc_emb_test,
+        ids_train,
+        ids_test
+    ) = retrieve_splits(label)
 
-    X_train = arrs["X_train"]
-    X_test = arrs["X_test"]
-    y_train = arrs["y_train"]
-    y_test = arrs["y_test"]
-    latlons_train = arrs["latlons_train"]
-    latlons_test = arrs["latlons_test"]
-    loc_emb_train = arrs["loc_emb_train"]
-    loc_emb_test = arrs["loc_emb_test"]
+    cost_path = "data/cost/costs_by_city_dist.pkl"
+    cost_train = costs_of_train_data(cost_path, ids_train)
 
     #Take subset according to rule
     if rule=="random":
-        X_train, y_train, latlons_train = random_subset(X_train, y_train, latlons_train, subset_size)
+        X_train, y_train, latlon_train, total_cost = random_subset_and_cost(X_train, y_train, latlon_train, cost_train, subset_size)
     if rule=="image":
-         X_train, y_train, latlons_train = image_subset(X_train, y_train, latlons_train, subset_size)
+        X_train, y_train, latlon_train = image_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
     if rule=="satclip":
-         X_train, y_train, latlons_train = satclip_subset(X_train, y_train, latlons_train, subset_size)
+        X_train, y_train, latlon_train = satclip_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
+    if rule=="lowcost":
+        X_train, y_train, latlon_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, cost_train, subset_size)
+
+    #Plot coverage
+    # print("Plotting coverage ...")
+    # fig = plot_lat_lon(latlon_train[:,0], latlon_train[:,1], title="Coverage for {rule} with {num} samples".format(rule=rule, num=subset_size), color="orange", alpha=1)
+    # fig.savefig("plots/Coverage for {rule} with {num} samples.png".format(rule=rule, num=subset_size))
 
     #Range of alphas for ridge regression
     alphas = [1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]
 
     # Perform Ridge regression with cross-validation
-    reg = RidgeCV(alphas=alphas, scoring='r2', cv=5, normalize=True)  # 5-fold cross-validation
+    reg = RidgeCV(alphas=alphas, scoring='r2', cv=5)  # 5-fold cross-validation
+    print("Fitting regression...")
     reg.fit(X_train, y_train)
 
     # Optimal alpha
@@ -65,3 +79,6 @@ def run_regression(label, rule=None, subset_size=None):
     r2 = r2_score(y_test, yhat_test)
     print(f"R2 score on test set: {r2}")
     results[label + ";size" + str(subset_size)] = r2
+    costs[label + ";size" + str(subset_size)] = total_cost
+
+run_regression("population", "lowcost", 5000)
