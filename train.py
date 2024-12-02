@@ -21,18 +21,18 @@ def run(labels_to_run, rule):
         else:
             valid = 97876
 
-        size_of_subset = [0.005, 0.01, 0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
-        size_of_subset = [int(np.floor(valid*0.80*percent)) for percent in size_of_subset]
+        size_of_subset = [0.005, 0.01, 0.05, 0.1, 0.20, 0.35, 0.5, 0.75, 1.0]
+        size_of_subset = [int(np.floor(valid*percent)) for percent in size_of_subset]
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
         for size in size_of_subset:
             run_regression(label, rule=rule, subset_size=size)
-        run_regression(label, rule=None, subset_size=None)
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
         {"Test R2": results,
-         "Cost": costs}
+         "Cost": costs
+        }
     )
     results_df.index.name = "label"
 
@@ -44,10 +44,10 @@ labels_to_run = ["population", "treecover", "elevation"]
 run(labels_to_run, rule="random")
 
 #Run with V Optimal Design
-# run(labels_to_run, rule="image")
+run(labels_to_run, rule="image")
 
 #Run with SatCLIP embeddings
-# run(labels_to_run, rule="satclip")
+run(labels_to_run, rule="satclip")
 
 #Run with greedy cost algorithm
-run(labels_to_run, rule='lowcost')
+# run(labels_to_run, rule='lowcost')

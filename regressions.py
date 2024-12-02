@@ -51,7 +51,7 @@ def run_regression(label, rule=None, subset_size=None):
     if rule=="image":
         X_train, y_train, latlon_train = image_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
     if rule=="satclip":
-        X_train, y_train, latlon_train = satclip_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
+        X_train, y_train, latlon_train = satclip_subset(X_train, y_train, latlon_train, loc_emb_train, v_optimal_design, subset_size)
     if rule=="lowcost":
         X_train, y_train, latlon_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, cost_train, subset_size)
 
@@ -79,6 +79,4 @@ def run_regression(label, rule=None, subset_size=None):
     r2 = r2_score(y_test, yhat_test)
     print(f"R2 score on test set: {r2}")
     results[label + ";size" + str(subset_size)] = r2
-    costs[label + ";size" + str(subset_size)] = total_cost
-
-run_regression("population", "lowcost", 5000)
+    costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
