@@ -6,57 +6,6 @@ from mosaiks.code.mosaiks import config as c
 from oed import *
 from feasibility import *
 
-class Sampler:
-    '''
-    Class for sampling
-    '''
-    def __init__(self, *datasets, rule="random", loc_emb=None):
-        '''Initialize a new Sampler instance.
-
-        Args:
-            data: data to sample from (df or array)
-            rule: use rule to sample
-        '''
-        i = 0
-        for dataset in datasets:
-            if isinstance(dataset, pd.DataFrame):
-                dataset = dataset.to_numpy()
-            setattr(self, f"dataset{i+1}", dataset)
-            i += 1
-        
-        self.rule = rule
-
-        if loc_emb is not None:
-            self.loc_emb = loc_emb
-
-    '''
-    Determine indexes of subset to sample
-    '''
-    def subset_idxs(self, n=0):
-        if self.rule=="random":
-            subset_idxs = np.random.choice(len(self.dataset1), size=n, replace=False)
-
-        if self.rule=="image":
-            subset_idxs = sampling_with_scores(self.dataset1, n, v_optimal_design)
-
-        if self.rule=="satclip":
-            subset_idxs = sampling_with_scores(self.loc_emb, n, v_optimal_design)
-
-        return subset_idxs
-    
-    def sample(self, n=0):
-        subset_idxs = self.subset_idxs(n)
-
-        i = 1
-        while True:
-            dataset = getattr(self, f"dataset{i}", None)
-            if dataset is None:
-                return
-            yield dataset[subset_idxs]
-            i += 1
-
-#-----------------------------------------------------------------------------------------
-
 '''
 Spatial-only baseline
 Takes a random subset of training data
@@ -109,7 +58,7 @@ def greedy_by_cost(X_train, Y_train, latlon_train, size):
 '''
 Takes a SRS subset of training data such that total cost does not exceed budget
 '''
-def constrained_random_subset(X_train, Y_train, latlon_train, budget):
+def constrained_random_subset(X_train, Y_train, latlon_train, cost_train, budget):
     cost = 0
     idxs = [i for i in range(len(X_train))]
     subset_idxs = []
@@ -117,5 +66,5 @@ def constrained_random_subset(X_train, Y_train, latlon_train, budget):
        sampled_idx = random.sample(idxs, 1)
        subset_idxs.append(sampled_idx)
        idxs = idxs[:sampled_idx] + idxs[sampled_idx + 1:]
-       cost += cost[sampled_idx]
+       cost += cost_train[sampled_idx]
     return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]

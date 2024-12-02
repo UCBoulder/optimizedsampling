@@ -26,7 +26,7 @@ image_folder = Path("/share/usavars/uar")
 #     featurize_and_save(image_folder, out_fpath, c)
 
 def torchgeo_featurization(num_features):
-    out_fpath = "data/int/feature_matrices/CONTUS_UAR_torchgeo.pkl"
+    out_fpath = "data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl"
 
     imgs, ids, latlons = format_data(train, val, test)
 
@@ -64,6 +64,7 @@ def torchgeo_featurization(num_features):
     Retrieve images, ids, and latlons from dataset
 '''
 def retrieve_data(dataset):
+    print("Retrieving ", dataset)
     imgs = np.array([dataset[i]['image'] for i in range(len(dataset))])
     ids = np.array([dataset[i]['name'].replace('tile_', '').replace('.tif', '') for i in range(len(dataset))])
     latlons = np.array([[dataset[i]['centroid_lat'].item(), dataset[i]['centroid_lon'].item()] for i in range(len(dataset))])
@@ -73,6 +74,7 @@ def retrieve_data(dataset):
     Append train, val, and test data
 '''
 def format_data(*args):
+    print("Formatting data...")
     combined_imgs = np.empty((total_num_images, num_channels, img_height, img_width), dtype=np.float32)
     combined_ids = np.empty((total_num_images,), dtype='U{}'.format(15))
     combined_latlons = np.empty((total_num_images, 2), dtype=np.float32)
@@ -92,4 +94,4 @@ def format_data(*args):
 
     return combined_imgs, combined_ids, combined_latlons
 
-torchgeo_featurization()
+torchgeo_featurization(2048)
