@@ -99,29 +99,22 @@ def retrieve_splits(label):
 
     return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
 
-'''
-    Returns numpy array of cost with same order as training data
-'''
-def costs_of_train_data(cost_path, ids_train):
-    with open(cost_path, "rb") as f:
+def retrieve_train_ids(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    with open(data_path, "rb") as f:
         arrs = dill.load(f)
 
-    # get costs
-    costs = pd.DataFrame(
-        arrs["cost"].astype(np.float64),
-        index=arrs["ids"],
-        columns=["cost"],
-    )
-    
-    cost_train = costs.loc[ids_train].to_numpy()[:,0]
+    ids_train = arrs["ids_train"]
 
-    return cost_train
+    return ids_train
+
 
 '''
     Writes array of latlons to pkl file
 '''
-def record_latlons(latlons, rule, size):
-    latlon_path = "data/latlons/Sample_{rule}_{size}.pkl".format(rule=rule, size=size)
+def record_latlons(label, latlons, rule, size):
+    print("Recording points used...")
+    latlon_path = "data/latlons/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
 
     with open(latlon_path, "wb") as f:
         dill.dump(

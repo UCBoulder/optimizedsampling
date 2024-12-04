@@ -4,31 +4,14 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
 
-df_srs = pd.read_csv("results/TestSetPerformanceRandom.csv", index_col=0)
-df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
+from format_csv import *
+
+df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_formatted.csv", index_col=0)
+df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_formatted.csv", index_col=0)
+# df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
 # df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
 
-def format_dataframe(df):
-    # Split the index into 'label' and 'size_with_prefix' parts
-    split = pd.DataFrame(df.index.str.split(';').tolist(), index=df.index, columns=['label', 'size_with_prefix'])
-    df['label'] = split['label']
-    df['size_with_prefix'] = split['size_with_prefix']
-
-    # Handle 'sizeNone' by assigning it a placeholder value (e.g., float('inf') for whole dataset)
-    #change hardcoding
-    df['size_of_subset'] = df.apply(
-        lambda row: float(54340) if (row['size_with_prefix'] == 'sizeNone' and row['label'] == 'population') 
-        else (float(97875) if (row['size_with_prefix'] == 'sizeNone' and (row['label'] in ['elevation', 'treecover'] ))
-            else int(row['size_with_prefix'].replace('size', ''))),
-        axis=1
-    )
-
-    # Set 'label' and 'size_of_subset' as a MultiIndex and drop the old index columns
-    df.set_index(['label', 'size_of_subset'], inplace=True)
-
-    df.drop(columns='size_with_prefix', inplace=True)
-
-def plot_results(*dfs):
+def plot_r2_num_samples(*dfs):
     # for df in dfs:
     #     format_dataframe(df)
 
@@ -68,11 +51,9 @@ def plot_results(*dfs):
     fig.suptitle('Number of samples vs R^2')
     fig.savefig("Num of samples vs R^2.png")
 
-def plot_results_with_cost(*dfs):
-    for df in dfs:
+def plot_r2_cost(methods, *dfs):
+    # for df in dfs:
     #     format_dataframe(df)
-        df = df.reset_index()
-        df = df.set_index(['label', 'size_of_subset'])
 
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
@@ -81,15 +62,53 @@ def plot_results_with_cost(*dfs):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in labels:
         j = 0
-        methods = ["srs", "image", 'satclip'] #FIX HARDCODING
+        colors = ["orangered", "steelblue", "green"]
         for df in dfs:
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
 
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
             filtered_df = filtered_df.sort_index()
-            x = filtered_df.index
-            y = filtered_df["Test R2"]
+
+            # Plot
+            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='',label=methods[j], color=colors[j])
+            j += 1
+
+        # Customize the plot
+        axs[i].set_xlabel("Cost of Collection")
+        axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylim(0,1)
+        if label=="population":
+            axs[i].set_title("Population")
+        if label=="elevation":
+            axs[i].set_title("Elevation")
+        if label=="treecover":
+            axs[i].set_title("Treecover")
+        axs[i].legend()
+        i = i+1
+
+    fig.subplots_adjust(wspace=0.4)   
+    fig.suptitle('Cost of Collection vs $R^2$')
+    fig.savefig("Num of samples vs R^2.png")
+
+def plot_r2_num_samples_with_cost(methods, *dfs):
+    #Plot on the same plot:
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
+
+    i=0
+    labels = dfs[0].index.get_level_values('label').unique().tolist()
+    for label in labels:
+        j = 0
+        for df in dfs:
+            df = df.reset_index()
+            df = df.set_index(['label', 'size_of_subset'])
+            # Filter rows for the specific label (e.g., "population")
+            filtered_df = df.loc[label]
+
+            # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
+            filtered_df = filtered_df.sort_index()
+            x = filtered_df.index.to_numpy()
+            y = filtered_df["Test R2"].to_numpy()
             c = filtered_df["Cost"] #parameter of color bar
 
             # Create segments of the line
@@ -98,7 +117,9 @@ def plot_results_with_cost(*dfs):
 
             # Create a LineCollection
             norm = plt.Normalize(c.min(), c.max())  # Normalize the color values
-            lc = LineCollection(segments, cmap='viridis', norm=norm, label=methods[j])
+            lc = LineCollection(segments, cmap='Spectral', norm=norm, label=methods[j])
+            axs[i].text(x[-2], y[-2] + 0.03*(-2*j+1), methods[j], fontsize=8, color='black', verticalalignment='bottom')
+            j += 1
             lc.set_array(c)  # Assign the color values to the LineCollection
             lc.set_linewidth(2)  # Set line width
 
@@ -110,24 +131,25 @@ def plot_results_with_cost(*dfs):
             #axs[i].text(segments[-1][0], segments[-1][1], methods[j], fontsize=10, ha='center', va='center')
             
 
-            # Add a color bar
-            cb = plt.colorbar(lc, ax=axs[i], extend='neither')
-            cb.set_label('Cost')
+        # Add a color bar
+        cb = plt.colorbar(lc, ax=axs[i], extend='neither')
+        cb.set_label('Cost')
 
         # Customize the plot
         axs[i].set_xlabel("Size of Subset")
         axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylim(0,1)
         if label=="population":
             axs[i].set_title("Population")
         if label=="elevation":
             axs[i].set_title("Elevation")
         if label=="treecover":
             axs[i].set_title("Treecover")
-        axs[i].legend()
+        #axs[i].legend()
         i = i+1
 
     fig.subplots_adjust(wspace=0.4)   
-    fig.suptitle('Number of samples vs R^2')
+    fig.suptitle('Number of samples vs $R^2$ with cost')
     fig.savefig("Num of samples vs R^2.png")
 
-# plot_results_with_cost(df_srs)
+plot_r2_num_samples_with_cost(["srs", "lowcost"], df_srs, df_lowcost)

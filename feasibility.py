@@ -52,6 +52,34 @@ def cost_array_by_city_dist(latlons, alpha, beta):
 
     return costs
 
+def retrieve_latlons(latlon_path):
+    #Retrieve data
+    with open(latlon_path, "rb") as f:
+        arrs = dill.load(f)
+        
+    # get latlons
+    return arrs["latlon"]
+
+def total_cost_from_latlon_file(label, rule, size, alpha, beta):
+    latlon_path = "{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
+    latlons = retrieve_latlons(latlon_path)
+
+    total_cost = cost_array_by_city_dist(latlons, alpha, beta).sum()
+
+    return total_cost
+
+def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta):
+    df = pd.read_csv(old_csv)
+    df = df.reset_index()
+    df = df.set_index(['label', 'size_of_subset'])
+
+    for (label, size_of_subset), row in df.iterrows():
+        new_cost = total_cost_from_latlon_file(label, rule, size_of_subset, alpha, beta)
+        df.at[(label, size_of_subset), 'Cost'] = new_cost
+
+    df.to_csv(new_csv, index=True)
+
+
 def save_costs(latlon_path, out_fpath):
     #Retrieve data
     with open(latlon_path, "rb") as f:
@@ -148,3 +176,21 @@ def cost_of_subset(costs, subset_idxs):
     total_cost = np.sum(costs[subset_idxs])
     print("Subset of size {size} costs {cost}".format(size=len(subset_idxs), cost=total_cost))
     return total_cost
+
+'''
+    Returns numpy array of cost with same order as training data
+'''
+def costs_of_train_data(cost_path, ids_train):
+    with open(cost_path, "rb") as f:
+        arrs = dill.load(f)
+
+    # get costs
+    costs = pd.DataFrame(
+        arrs["cost"].astype(np.float64),
+        index=arrs["ids"],
+        columns=["cost"],
+    )
+    
+    cost_train = costs.loc[ids_train].to_numpy()[:,0]
+
+    return cost_train

@@ -14,6 +14,7 @@ from sklearn.metrics import r2_score
 from oed import *
 from sampling import *
 from format_data import *
+from feasibility import *
 from plot_coverage import plot_lat_lon
 
 results = {}
@@ -51,17 +52,23 @@ def run_regression(label, rule=None, subset_size=None):
         costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
 
         #Record latlons used
-        record_latlons(latlon_train, "random", subset_size)
+        record_latlons(label, latlon_train, "random", subset_size)
     if rule=="image":
         X_train, y_train, latlon_train = image_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
+
+        #Record latlons used
+        record_latlons(label, latlon_train, "image", subset_size)
     if rule=="satclip":
         X_train, y_train, latlon_train = satclip_subset(X_train, y_train, latlon_train, loc_emb_train, v_optimal_design, subset_size)
+
+        #Record latlons used
+        record_latlons(label, latlon_train, "satclip", subset_size)
     if rule=="lowcost":
         X_train, y_train, latlon_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, cost_train, subset_size)
         costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
 
         #Record latlons used
-        record_latlons(latlon_train, "random", subset_size)
+        record_latlons(label, latlon_train, "lowcost", subset_size)
     
     if rule is None:
         costs[label + ";size" + str(subset_size)] = cost_train
