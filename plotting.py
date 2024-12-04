@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 df_srs = pd.read_csv("results/TestSetPerformanceRandom.csv", index_col=0)
-# df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
+df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
 # df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
 
 def format_dataframe(df):
@@ -15,6 +15,7 @@ def format_dataframe(df):
     df['size_with_prefix'] = split['size_with_prefix']
 
     # Handle 'sizeNone' by assigning it a placeholder value (e.g., float('inf') for whole dataset)
+    #change hardcoding
     df['size_of_subset'] = df.apply(
         lambda row: float(54340) if (row['size_with_prefix'] == 'sizeNone' and row['label'] == 'population') 
         else (float(97875) if (row['size_with_prefix'] == 'sizeNone' and (row['label'] in ['elevation', 'treecover'] ))
@@ -28,8 +29,8 @@ def format_dataframe(df):
     df.drop(columns='size_with_prefix', inplace=True)
 
 def plot_results(*dfs):
-    for df in dfs:
-        format_dataframe(df)
+    # for df in dfs:
+    #     format_dataframe(df)
 
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
@@ -69,7 +70,9 @@ def plot_results(*dfs):
 
 def plot_results_with_cost(*dfs):
     for df in dfs:
-        format_dataframe(df)
+    #     format_dataframe(df)
+        df = df.reset_index()
+        df = df.set_index(['label', 'size_of_subset'])
 
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
@@ -78,7 +81,7 @@ def plot_results_with_cost(*dfs):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in labels:
         j = 0
-        labels = ["srs", "image", 'satclip'] #FIX HARDCODING
+        methods = ["srs", "image", 'satclip'] #FIX HARDCODING
         for df in dfs:
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
@@ -95,8 +98,7 @@ def plot_results_with_cost(*dfs):
 
             # Create a LineCollection
             norm = plt.Normalize(c.min(), c.max())  # Normalize the color values
-            lc = LineCollection(segments, cmap='viridis', norm=norm, label=labels[j])
-            j += 1
+            lc = LineCollection(segments, cmap='viridis', norm=norm, label=methods[j])
             lc.set_array(c)  # Assign the color values to the LineCollection
             lc.set_linewidth(2)  # Set line width
 
@@ -105,6 +107,8 @@ def plot_results_with_cost(*dfs):
             axs[i].autoscale()  # Adjust axis limits to the data
             axs[i].set_xlim(x.min(), x.max())
             axs[i].set_ylim(y.min(), y.max())
+            #axs[i].text(segments[-1][0], segments[-1][1], methods[j], fontsize=10, ha='center', va='center')
+            
 
             # Add a color bar
             cb = plt.colorbar(lc, ax=axs[i], extend='neither')
@@ -126,4 +130,4 @@ def plot_results_with_cost(*dfs):
     fig.suptitle('Number of samples vs R^2')
     fig.savefig("Num of samples vs R^2.png")
 
-plot_results_with_cost(df_srs)
+# plot_results_with_cost(df_srs)

@@ -116,3 +116,16 @@ def costs_of_train_data(cost_path, ids_train):
     cost_train = costs.loc[ids_train].to_numpy()[:,0]
 
     return cost_train
+
+'''
+    Writes array of latlons to pkl file
+'''
+def record_latlons(latlons, rule, size):
+    latlon_path = "data/latlons/Sample_{rule}_{size}.pkl".format(rule=rule, size=size)
+
+    with open(latlon_path, "wb") as f:
+        dill.dump(
+            {"latlon": latlons},
+            f,
+            protocol=4,
+        )
