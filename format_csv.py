@@ -50,6 +50,6 @@ def format_cost(df):
 
     return df
 
-df = pd.read_csv("results/TestSetPerformanceimagewithCost.csv", index_col=0)
+df = pd.read_csv("results/TestSetPerformancesatclipwithCost.csv", index_col=0)
 format_cost(df)
-df.to_csv("results/TestSetPerformanceimagewithCost_formatted.csv", index=True)
+df.to_csv("results/TestSetPerformancesatclipwithCost_formatted.csv", index=True)

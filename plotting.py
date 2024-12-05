@@ -11,7 +11,7 @@ df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_edit.csv", i
 # df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
 # df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
 
-def plot_r2_num_samples(*dfs):
+def plot_r2_num_samples(methods, *dfs):
     # for df in dfs:
     #     format_dataframe(df)
 
@@ -23,8 +23,9 @@ def plot_r2_num_samples(*dfs):
     for label in labels:
         j = 0
         colors = ["orangered", "steelblue", "green"]
-        labels = ["srs", "image", 'satclip'] #FIX HARDCODING
         for df in dfs:
+            df = df.reset_index()
+            df = df.set_index(['label', 'size_of_subset'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
 
@@ -32,12 +33,13 @@ def plot_r2_num_samples(*dfs):
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df.index, filtered_df["Test R2"], marker='o', linestyle='-', label=labels[j], color=colors[j])
+            axs[i].plot(filtered_df.index, filtered_df["Test R2"], marker='o', linestyle='-', label=methods[j], color=colors[j])
             j += 1
 
         # Customize the plot
         axs[i].set_xlabel("Size of Subset")
         axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylim(0,1)
         if label=="population":
             axs[i].set_title("Population")
         if label=="elevation":
@@ -48,7 +50,7 @@ def plot_r2_num_samples(*dfs):
         i = i+1
 
     fig.subplots_adjust(wspace=0.4)   
-    fig.suptitle('Number of samples vs R^2')
+    fig.suptitle('$R^2$ of ridge regression trained on subsets of fixed size')
     #fig.savefig("Num of samples vs R^2.png")
 
     return fig
@@ -64,8 +66,10 @@ def plot_r2_cost(methods, *dfs):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in labels:
         j = 0
-        colors = ["orangered", "steelblue", "green"]
+        colors = ["orangered", "steelblue", "green", "black"]
         for df in dfs:
+            df = df.reset_index()
+            df = df.set_index(['label', 'size_of_subset'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
 
@@ -73,7 +77,7 @@ def plot_r2_cost(methods, *dfs):
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='',label=methods[j], color=colors[j])
+            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='-',label=methods[j], color=colors[j])
             j += 1
 
         # Customize the plot
@@ -121,7 +125,7 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
             # Create a LineCollection
             norm = plt.Normalize(c.min(), c.max())  # Normalize the color values
             lc = LineCollection(segments, cmap='Spectral', norm=norm, label=methods[j])
-            axs[i].text(x[-2], y[-2] + 0.03*(-2*j+1), methods[j], fontsize=8, color='black', verticalalignment='bottom')
+            axs[i].text(x[-3], y[-3] + 0.03, methods[j], fontsize=8, color='black', verticalalignment='bottom')
             j += 1
             lc.set_array(c)  # Assign the color values to the LineCollection
             lc.set_linewidth(2)  # Set line width
