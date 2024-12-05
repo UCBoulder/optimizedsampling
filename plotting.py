@@ -6,8 +6,8 @@ import numpy as np
 
 from format_csv import *
 
-df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_formatted.csv", index_col=0)
-df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_formatted.csv", index_col=0)
+df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_edit.csv", index_col=0)
+df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_edit.csv", index_col=0)
 # df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
 # df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
 
@@ -49,7 +49,9 @@ def plot_r2_num_samples(*dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('Number of samples vs R^2')
-    fig.savefig("Num of samples vs R^2.png")
+    #fig.savefig("Num of samples vs R^2.png")
+
+    return fig
 
 def plot_r2_cost(methods, *dfs):
     # for df in dfs:
@@ -89,7 +91,8 @@ def plot_r2_cost(methods, *dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('Cost of Collection vs $R^2$')
-    fig.savefig("Num of samples vs R^2.png")
+    #fig.savefig("Cost of collection vs R^2.png")
+    return fig
 
 def plot_r2_num_samples_with_cost(methods, *dfs):
     #Plot on the same plot:
@@ -150,6 +153,5 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('Number of samples vs $R^2$ with cost')
-    fig.savefig("Num of samples vs R^2.png")
-
-plot_r2_num_samples_with_cost(["srs", "lowcost"], df_srs, df_lowcost)
+    #fig.savefig("Num of samples vs R^2 with cost.png")
+    return fig

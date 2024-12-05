@@ -42,33 +42,35 @@ def run_regression(label, rule=None, subset_size=None):
         ids_train,
         ids_test
     ) = retrieve_splits(label)
-
+    
     cost_path = "data/cost/costs_by_city_dist.pkl"
     cost_train = costs_of_train_data(cost_path, ids_train)
 
     #Take subset according to rule
     if rule=="random":
-        X_train, y_train, latlon_train, total_cost = random_subset_and_cost(X_train, y_train, latlon_train, cost_train, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
+        X_train, y_train, latlon_train, ids_train, total_cost = random_subset_and_cost(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
+        costs[label + ";size" + str(subset_size)] = total_cost 
 
         #Record latlons used
-        record_latlons(label, latlon_train, "random", subset_size)
+        record_latlons_ids(label, latlon_train, ids_train, "random", subset_size)
     if rule=="image":
-        X_train, y_train, latlon_train = image_subset(X_train, y_train, latlon_train, v_optimal_design, subset_size)
+        X_train, y_train, latlon_train, ids_train, total_cost = image_subset(X_train, y_train, latlon_train, ids_train, cost_train, v_optimal_design, subset_size)
+        costs[label + ";size" + str(subset_size)] = total_cost 
 
         #Record latlons used
-        record_latlons(label, latlon_train, "image", subset_size)
+        record_latlons_ids(label, latlon_train, ids_train, "image", subset_size)
     if rule=="satclip":
-        X_train, y_train, latlon_train = satclip_subset(X_train, y_train, latlon_train, loc_emb_train, v_optimal_design, subset_size)
+        X_train, y_train, latlon_train, ids_train, total_cost = satclip_subset(X_train, y_train, latlon_train, loc_emb_train, ids_train, cost_train, v_optimal_design, subset_size)
+        costs[label + ";size" + str(subset_size)] = total_cost 
 
         #Record latlons used
-        record_latlons(label, latlon_train, "satclip", subset_size)
+        record_latlons_ids(label, latlon_train, ids_train, "satclip", subset_size)
     if rule=="lowcost":
-        X_train, y_train, latlon_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, cost_train, subset_size)
+        X_train, y_train, latlon_train, ids_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
         costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
 
         #Record latlons used
-        record_latlons(label, latlon_train, "lowcost", subset_size)
+        record_latlons_ids(label, latlon_train, ids_train, "lowcost", subset_size)
     
     if rule is None:
         costs[label + ";size" + str(subset_size)] = cost_train

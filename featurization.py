@@ -4,8 +4,6 @@ import dill
 import numpy as np
 
 from torchgeo.models import RCF
-# from mosaiks.code.mosaiks import config as c
-# from mosaiks.code.mosaiks.featurization import featurize_and_save
 from USAVars import USAVars
 
 train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
@@ -32,6 +30,7 @@ def torchgeo_featurization(num_features):
     ids, latlons = format_ids_latlons(train, val, test)
 
     #Torchgeo Random Convolutional Feature Implementation
+    #Patch = Kernel = kernel_size x kernel_size over all bands
     rcf = RCF(
         in_channels=4, 
         features=num_features,
@@ -39,33 +38,28 @@ def torchgeo_featurization(num_features):
         bias=-1.0, 
         seed=42, 
         mode='empirical',
-        dataset=train)
+        dataset=train
+    )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    rcf = rcf.to(device)
 
     #Forward pass of TorchGeo RCF
     print("Featurizing images...")
+    from IPython import embed; embed()
 
-    featurized_imgs = np.empty((total_num_images, num_features, img_height, img_width), dtype=np.float32)
-    img_idx = 0
+    featurized_imgs = np.empty((total_num_images, num_features), dtype=np.float32)
 
-    train_imgs = np.array([train[i]['image'] for i in range(len(train))])
-    num_train = len(train_imgs)
-    val_imgs = np.array([val[i]['image'] for i in range(len(val))])
-    num_val = len(val_imgs)
-    test_imgs = np.array([test[i]['image'] for i in range(len(test))])
-    num_test = len(test_imgs)
-
-    for i in range(len(total_num_images)):
+    for i in range(total_num_images):
         print("Featurizing image ", i)
 
-        if (i< num_train):
-            img = torch.tensor(train_imgs[i])
-        if ((i>=num_train) & ((i-num_train)<num_val)):
-            img = torch.tensor(val_imgs[i - num_train])
-        else:
-            img = torch.tensor(test_imgs[i - num_train - num_val])
+        if (i< len(train)):
+            img = train[i]['image'].to(device)
+        if ((i>=len(train)) & ((i-len(train))<len(val))):
+            img = val[i-len(train)]['image'].to(device)
+        if (i>=(len(train)+len(val))):
+            img = test[i-len(train)-len(val)]['image'].to(device)
 
-        featurized_imgs[img_idx] = rcf.forward(img).numpy()
-        img_idx += 1
+        featurized_imgs[i] = rcf.forward(img).cpu().numpy()
 
     with open(out_fpath, "wb") as f:
         dill.dump(
@@ -86,7 +80,11 @@ def retrieve_data(dataset):
 
 def retrieve_ids_latlons(dataset):
     print("Retrieving ", dataset)
+
+    print("Retrieving ids...")
     ids = np.array([dataset[i]['name'].replace('tile_', '').replace('.tif', '') for i in range(len(dataset))])
+
+    print("Retrieving latlons...")
     latlons = np.array([[dataset[i]['centroid_lat'].item(), dataset[i]['centroid_lon'].item()] for i in range(len(dataset))])
     return ids, latlons
 
@@ -117,12 +115,14 @@ def format_data(*args):
 def format_ids_latlons(*args):
     print("Formatting ids and latlons...")
     combined_ids = np.empty((total_num_images,), dtype='U{}'.format(15))
+    print(combined_ids)
     combined_latlons = np.empty((total_num_images, 2), dtype=np.float32)
+    print(combined_latlons)
 
     data_idx = 0
 
     for arg in args:
-        ids, latlons = retrieve_data(arg)
+        ids, latlons = retrieve_ids_latlons(arg)
 
         for i in range(len(ids)):
             combined_ids[data_idx] = ids[i]

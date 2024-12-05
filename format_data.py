@@ -122,3 +122,17 @@ def record_latlons(label, latlons, rule, size):
             f,
             protocol=4,
         )
+
+'''
+    Writes array of latlons and isz to pkl file
+'''
+def record_latlons_ids(label, latlons, ids, rule, size):
+    print("Recording points used...")
+    latlon_path = "data/latlons_ids/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
+
+    with open(latlon_path, "wb") as f:
+        dill.dump(
+            {"latlon": latlons, "ids": ids},
+            f,
+            protocol=4,
+        )

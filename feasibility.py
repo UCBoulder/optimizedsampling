@@ -2,6 +2,7 @@
 Modeling travel cost/feasibility
 '''
 from os.path import join
+import os
 
 import geopandas as gpd
 import numpy as np
@@ -22,6 +23,7 @@ cities = pd.DataFrame(cities)
 Determine distance to closest city
 '''
 def closest_city(latlon):
+    print("Determining closest city to {latlon}...".format(latlon=latlon))
     closest_city_distance = float('inf')
 
     for _, city_row in cities.iterrows():
@@ -34,11 +36,21 @@ def closest_city(latlon):
     return closest_city_distance
 
 '''
+Determine distance to closest city for multiple latlons
+'''
+def closest_city_array(latlons):
+    closest_city_array = np.empty((len(latlons),), dtype=np.float32)
+    for i in range(len(latlons)):
+        closest_city_array[i] = closest_city(latlons[i])
+    
+    return closest_city_array
+
+'''
 Use closest city distance to determine cost
 '''
 def cost_by_closest_city_dist(latlon, alpha, beta):
     closest_city_distance = closest_city(latlon)
-
+    print("Calculating cost...")
     return (alpha*closest_city_distance + beta)
 '''
 Creates array of costs
@@ -60,23 +72,54 @@ def retrieve_latlons(latlon_path):
     # get latlons
     return arrs["latlon"]
 
+def retrieve_ids(latlon_path):
+    #Retrieve data
+    with open(latlon_path, "rb") as f:
+        arrs = dill.load(f)
+        
+    # get latlons
+    return  arrs["ids"]
+
 def total_cost_from_latlon_file(label, rule, size, alpha, beta):
-    latlon_path = "{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
-    latlons = retrieve_latlons(latlon_path)
+    latlon_path = "data/latlons/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
+    
+    if os.path.exists(latlon_path):
+        latlons = retrieve_latlons(latlon_path)
+    else: 
+        latlon_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+        with open(latlon_path, "rb") as f:
+            arrs = dill.load(f)
+        latlons = arrs["latlons_train"]
 
     total_cost = cost_array_by_city_dist(latlons, alpha, beta).sum()
 
     return total_cost
 
-def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta):
+def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma):
+    ids_path = "data/latlons_ids/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
+
+    if os.path.exists(ids_path):
+        ids = retrieve_ids(ids_path)
+    else: 
+        ids_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+        with open(ids_path, "rb") as f:
+            arrs = dill.load(f)
+        ids = arrs["ids_train"]
+
+    dist_path = "data/cost/distance_to_closest_city.pkl"
+    total_cost = cost_of_dist_subset(dist_path, ids, alpha, beta, gamma).sum()
+
+    return total_cost
+
+def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta, gamma):
     df = pd.read_csv(old_csv)
-    df = df.reset_index()
     df = df.set_index(['label', 'size_of_subset'])
 
     for (label, size_of_subset), row in df.iterrows():
-        new_cost = total_cost_from_latlon_file(label, rule, size_of_subset, alpha, beta)
+        new_cost = total_cost_from_dist_file(label, rule, int(size_of_subset), alpha, beta, gamma)
         df.at[(label, size_of_subset), 'Cost'] = new_cost
 
+    df.index.name = "label"
     df.to_csv(new_csv, index=True)
 
 
@@ -106,6 +149,54 @@ def save_costs(latlon_path, out_fpath):
             protocol=4,
         )
 
+def save_distances(latlon_path, out_fpath):
+    #Retrieve data
+    with open(latlon_path, "rb") as f:
+        arrs = dill.load(f)
+        
+    # get latlons
+    latlons = pd.DataFrame(arrs["latlon"], index=arrs["ids_X"], columns=["lat", "lon"])
+
+    # sort
+    latlons = latlons.sort_values(["lat", "lon"], ascending=[False, True])
+    ids = latlons.index.to_numpy()
+
+    # Convert to numpy array
+    latlons = latlons.values
+
+    # get cost array
+    distances = closest_city_array(latlons)
+
+    # save
+    with open(out_fpath, "wb") as f:
+        dill.dump(
+            {"distances": distances, "ids": ids, "latlon": latlons},
+            f,
+            protocol=4,
+        )
+
+def distance_of_subset(dist_path, ids):
+    with open(dist_path, "rb") as f:
+        arrs = dill.load(f)
+
+    # get costs
+    distances = pd.DataFrame(
+        arrs["distances"].astype(np.float64),
+        index=arrs["ids"],
+        columns=["Distance"],
+    )
+
+    dist_of_subset = distances.loc[ids].to_numpy()[:,0]
+
+    return dist_of_subset
+
+def cost_of_dist_subset(dist_path, ids, alpha, beta, gamma):
+    dist_of_subset = distance_of_subset(dist_path, ids)
+
+    #Subject to change
+    cost_of_subset = alpha*(dist_of_subset)**gamma + beta
+
+    return cost_of_subset
 
 def plot_lat_lon_with_cost(lats, lons, costs, title):
     # Create a GeoDataFrame with costs
@@ -194,3 +285,4 @@ def costs_of_train_data(cost_path, ids_train):
     cost_train = costs.loc[ids_train].to_numpy()[:,0]
 
     return cost_train
+
