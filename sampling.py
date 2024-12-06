@@ -81,6 +81,23 @@ Takes subsets greedily with lowest cost until number of samples is reached
 def sample_by_dist(X_train, Y_train, latlon_train, ids_train, distances, r, size):
     print("Generating subset using radius distance algorithm...")
     inside_r_idxs = np.where(distances <= r)[0]
+    if (len(inside_r_idxs) >= size):
+        subset_idxs = np.random.choice(inside_r_idxs, size=size, replace=False)
+    else:
+        new_size = size - len(inside_r_idxs)
+        new_distances = distances.copy()
+        new_distances[inside_r_idxs] = np.inf
+        lowest_cost_idxs = np.argpartition(new_distances, new_size)[:new_size]
+
+        subset_idxs = np.concatenate([inside_r_idxs, lowest_cost_idxs])
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs]
+
+'''
+Takes subsets greedily with lowest cost until number of samples is reached
+'''
+def sample_by_radius(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+    print("Generating subset using binary radius algorithm...")
+    inside_r_idxs = np.where(distances <= r)[0]
     outside_r_idxs = np.where(distances > r)[0]
     if (len(inside_r_idxs) >= size):
         subset_idxs = np.random.choice(inside_r_idxs, size=size, replace=False)

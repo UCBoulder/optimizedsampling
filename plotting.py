@@ -38,7 +38,7 @@ def plot_r2_num_samples(methods, *dfs):
 
         # Customize the plot
         axs[i].set_xlabel("Size of Subset")
-        axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":
             axs[i].set_title("Population")
@@ -66,7 +66,7 @@ def plot_r2_cost(methods, *dfs):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in labels:
         j = 0
-        colors = ["orangered", "steelblue", "green", "black"]
+        colors = ["orangered", "black", "steelblue", "green"]
         for df in dfs:
             df = df.reset_index()
             df = df.set_index(['label', 'size_of_subset'])
@@ -78,12 +78,12 @@ def plot_r2_cost(methods, *dfs):
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='-',label=methods[j], color=colors[j])
+            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='-', alpha=0.75, label=methods[j], color=colors[j])
             j += 1
 
         # Customize the plot
         axs[i].set_xlabel("Cost of Collection")
-        axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":
             axs[i].set_title("Population")
@@ -95,7 +95,7 @@ def plot_r2_cost(methods, *dfs):
         i = i+1
 
     fig.subplots_adjust(wspace=0.4)   
-    fig.suptitle('Cost of Collection vs $R^2$')
+    fig.suptitle('$R^2$ vs Cost of Collection')
     #fig.savefig("Cost of collection vs R^2.png")
     return fig
 
@@ -145,7 +145,7 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
         # Customize the plot
         axs[i].set_xlabel("Size of Subset")
-        axs[i].set_ylabel("$R^2$ Score")
+        axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":
             axs[i].set_title("Population")

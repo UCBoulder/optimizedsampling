@@ -76,11 +76,14 @@ def run_regression(label, rule=None, subset_size=None):
 
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "lowcost", subset_size)
-
     if rule=="dist":
         X_train, y_train, latlon_train, ids_train = sample_by_dist(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "dist", subset_size)
+    if rule=="rad":
+        X_train, y_train, latlon_train, ids_train = sample_by_radius(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
+        #Record latlons used
+        record_latlons_ids(label, latlon_train, ids_train, "rad", subset_size)
     
     if rule is None:
         costs[label + ";size" + str(subset_size)] = cost_train

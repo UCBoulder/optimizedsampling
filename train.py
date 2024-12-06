@@ -42,16 +42,19 @@ def run(labels_to_run, rule):
 labels_to_run = ["population", "treecover", "elevation"]
 
 #Run Random
-run(labels_to_run, rule="random")
+#run(labels_to_run, rule="random")
 
 #Run with V Optimal Design
-run(labels_to_run, rule="image")
+#run(labels_to_run, rule="image")
 
 #Run with SatCLIP embeddings
-run(labels_to_run, rule="satclip")
+#run(labels_to_run, rule="satclip")
 
 #Run with greedy cost algorithm
-run(labels_to_run, rule='lowcost')
+#run(labels_to_run, rule='lowcost')
 
 #Run with greedy dist algorithm
-run(labels_to_run, rule='dist')
+#run(labels_to_run, rule='dist')
+
+#Run with binary rad algorithm
+run(labels_to_run, rule='rad')
