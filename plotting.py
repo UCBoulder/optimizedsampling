@@ -72,6 +72,7 @@ def plot_r2_cost(methods, *dfs):
             df = df.set_index(['label', 'size_of_subset'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
+            #filtered_df = filtered_df[filtered_df["Cost"] <= cost_limit]
 
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
             filtered_df = filtered_df.sort_index()

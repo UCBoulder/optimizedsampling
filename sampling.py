@@ -76,6 +76,21 @@ def greedy_by_cost(X_train, Y_train, latlon_train, ids_train, costs, size):
     return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs], ids_train[lowest_cost_idxs], total_cost
 
 '''
+Takes subsets greedily with lowest cost until number of samples is reached
+'''
+def sample_by_dist(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+    print("Generating subset using radius distance algorithm...")
+    inside_r_idxs = np.where(distances <= r)[0]
+    outside_r_idxs = np.where(distances > r)[0]
+    if (len(inside_r_idxs) >= size):
+        subset_idxs = np.random.choice(inside_r_idxs, size=size, replace=False)
+    else:
+        new_size = size - len(inside_r_idxs)
+        subset_idxs = np.concatenate([inside_r_idxs, np.random.choice(outside_r_idxs, size=new_size, replace=False)])
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs]
+
+
+'''
 Takes a SRS subset of training data such that total cost does not exceed budget
 '''
 def constrained_random_subset(X_train, Y_train, latlon_train, cost_train, budget):

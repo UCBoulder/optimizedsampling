@@ -95,9 +95,12 @@ def total_cost_from_latlon_file(label, rule, size, alpha, beta):
 
     return total_cost
 
-def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma):
+def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma, c):
     ids_path = "data/latlons_ids/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
 
+    #Note that for alpha*(dist to closest city) + beta all greedy lowcost functions will sample the same points
+    #Suffices to use the samples from one of them
+    #But, need to change if change cost function
     if os.path.exists(ids_path):
         ids = retrieve_ids(ids_path)
     else: 
@@ -107,16 +110,18 @@ def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma):
         ids = arrs["ids_train"]
 
     dist_path = "data/cost/distance_to_closest_city.pkl"
-    total_cost = cost_of_dist_subset(dist_path, ids, alpha, beta, gamma).sum()
+
+    #Change depending on cost function
+    total_cost = cost_of_dist_subset_free_radius(dist_path, ids, alpha, beta, gamma, c)
 
     return total_cost
 
-def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta, gamma):
+def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta, gamma, c):
     df = pd.read_csv(old_csv)
     df = df.set_index(['label', 'size_of_subset'])
 
     for (label, size_of_subset), row in df.iterrows():
-        new_cost = total_cost_from_dist_file(label, rule, int(size_of_subset), alpha, beta, gamma)
+        new_cost = total_cost_from_dist_file(label, rule, int(size_of_subset), alpha, beta, gamma, c)
         df.at[(label, size_of_subset), 'Cost'] = new_cost
 
     df.index.name = "label"
@@ -194,7 +199,20 @@ def cost_of_dist_subset(dist_path, ids, alpha, beta, gamma):
     dist_of_subset = distance_of_subset(dist_path, ids)
 
     #Subject to change
-    cost_of_subset = alpha*(dist_of_subset)**gamma + beta
+    cost_of_subset = (alpha*(dist_of_subset)**gamma + beta).sum()
+
+    return cost_of_subset
+
+def cost_of_dist_subset_free_radius(dist_path, ids, alpha, beta, gamma, c):
+    dist_of_subset = distance_of_subset(dist_path, ids)
+
+    cost_of_subset = 0
+    #Subject to change
+    for i in range(len(dist_of_subset)):
+        if (dist_of_subset[i] <= c):
+            cost_of_subset += gamma
+        if (dist_of_subset[i] > c):
+            cost_of_subset += alpha*(dist_of_subset[i]) + beta
 
     return cost_of_subset
 
@@ -285,4 +303,22 @@ def costs_of_train_data(cost_path, ids_train):
     cost_train = costs.loc[ids_train].to_numpy()[:,0]
 
     return cost_train
+
+'''
+    Returns numpy array of dist with same order as training data
+'''
+def dists_of_train_data(dist_path, ids_train):
+    with open(dist_path, "rb") as f:
+        arrs = dill.load(f)
+
+    # get costs
+    distances = pd.DataFrame(
+        arrs["distances"].astype(np.float64),
+        index=arrs["ids"],
+        columns=["distances"],
+    )
+    
+    dist_train = distances.loc[ids_train].to_numpy()[:,0]
+
+    return dist_train
 

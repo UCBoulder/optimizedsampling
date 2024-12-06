@@ -8,9 +8,9 @@ import dill
 import pandas as pd
 import numpy as np
 import sklearn
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
-from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score, KFold
 
 from oed import *
 from sampling import *
@@ -18,7 +18,7 @@ from format_data import *
 from feasibility import *
 from plot_coverage import plot_lat_lon
 
-results = {}
+results_cv = {}
 costs = {}
 
 '''
@@ -28,7 +28,7 @@ Parameters:
     rule: None (implies no subset is taken), "random", "image", or "satclip"
     subset_size: None (no subset is taken), int
 '''
-def run_regression(label, rule=None, subset_size=None):
+def run_regression_cv(label, rule=None, subset_size=None):
     print("*** Running regressions for: {label} with {num} samples using {rule} rule".format(label=label, num=subset_size, rule=rule))
 
     (
@@ -93,8 +93,11 @@ def run_regression(label, rule=None, subset_size=None):
     #Range of alphas for ridge regression
     alphas = [1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]
 
+    # Define cross-validation strategy
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
     # Perform Ridge regression with cross-validation
-    reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
+    reg = RidgeCV(alphas=alphas, scoring='r2', cv=kf)  # 5-fold cross-validation
     print("Fitting regression...")
     reg.fit(X_train, y_train)
 
@@ -102,10 +105,9 @@ def run_regression(label, rule=None, subset_size=None):
     best_alpha = reg.alpha_
     print(f"Best alpha: {best_alpha}")
 
-    # Make predictions on the test set
-    yhat_test = reg.predict(X_test)
+    reg = Ridge(alpha=best_alpha)
 
-    # Calculate R2 score
-    r2 = r2_score(y_test, yhat_test)
-    print(f"R2 score on test set: {r2}")
-    results[label + ";size" + str(subset_size)] = r2
+    # Get R^2 scores for each fold
+    r2_scores = cross_val_score(reg, X_train, y_train, cv=kf, scoring='r2')
+
+    results_cv[label + ";size" + str(subset_size)] = r2_scores
