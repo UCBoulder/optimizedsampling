@@ -1,10 +1,12 @@
 import pandas as pd
+import numpy as np
+from oed import *
 
 class Sampler:
     '''
     Class for sampling
     '''
-    def __init__(self, *datasets, rule="random", loc_emb=None):
+    def __init__(self, ids, *datasets, rule="random", loc_emb=None, costs=None):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -19,28 +21,74 @@ class Sampler:
             setattr(self, f"dataset{i+1}", dataset)
             i += 1
         
+        self.ids = ids
         self.rule = rule
 
         if loc_emb is not None:
             self.loc_emb = loc_emb
+        
+        if costs is None:
+            self.costs = np.ones(len(datasets[0]))
+        else:
+            self.costs = costs
 
+        self.scores = None
+        self.set_scores()
+
+    '''
+    Sets scores according to rule
+    '''
+    def set_scores(self):
+        if self.rule == "random":
+            self.scores = np.ones(len(self.dataset1))
+
+        elif self.rule == "image":
+            scores_path = "data/scores/CONTUS_UAR_leverage_scores.pkl"
+            self.scores = scores_from_path(scores_path, self.ids)
+
+        elif self.rule == "satclip":
+            scores_path = "data/scores/CONTUS_UAR_satclip_leverage_scores.pkl"
+            self.scores = scores_from_path(scores_path, self.ids)
+
+        elif self.rule == 'greedycost':
+            self.scores = -self.costs #Highest score corresponds to lowest cost
+    
     '''
     Determine indexes of subset to sample
+    Args:
+        self:
+        budget: cost limit
     '''
-    def subset_idxs(self, n=0):
-        if self.rule=="random":
-            subset_idxs = np.random.choice(len(self.dataset1), size=n, replace=False)
+    def subset_idxs_with_budget(self, budget=0):
+        subset_idxs = []
+        total_cost = 0
+        scores = self.scores.copy()
 
-        if self.rule=="image":
-            subset_idxs = sampling_with_scores(self.dataset1, n, v_optimal_design)
+        while total_cost < budget:
+            max_score = np.max(scores)
+            max_idxs = np.where(scores == max_score)[0]
 
-        if self.rule=="satclip":
-            subset_idxs = sampling_with_scores(self.loc_emb, n, v_optimal_design)
+            # Randomly pick one of the indices with the maximum leverage score
+            max_idx = np.random.choice(max_idxs)
+            # Update cost
+            total_cost += self.costs[max_idx]
+
+            if total_cost >= budget:
+                break
+
+            # Add to the sampled set
+            subset_idxs.append(max_idx)
+
+            #Set this points score to -inf so it's not chosen again
+            scores[max_idx] = -np.inf
 
         return subset_idxs
     
-    def sample(self, n=0):
-        subset_idxs = self.subset_idxs(n)
+    '''
+    Sample subset from each dataset
+    '''
+    def sample_with_budget(self, budget=0):
+        subset_idxs = self.subset_idxs_with_budget(budget)
 
         i = 1
         while True:

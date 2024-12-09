@@ -112,7 +112,7 @@ def total_cost_from_dist_file(label, rule, size, cost_func, *params):
     dist_path = "data/cost/distance_to_closest_city.pkl"
 
     #Change depending on cost function
-    total_cost = cost_func(dist_path, ids, *params)
+    total_cost = cost_func(dist_path, ids, *params).sum()
 
     return total_cost
 
@@ -199,42 +199,43 @@ def cost_lin(dist_path, ids, *params):
     dist_of_subset = distance_of_subset(dist_path, ids)
     alpha = params[0]
     beta = params[1]
-    gamma = params[2]
 
-    #Subject to change
-    cost_of_subset = (alpha*(dist_of_subset)**gamma + beta).sum()
+    costs = (alpha*(dist_of_subset) + beta)
 
-    return cost_of_subset
+    return costs
 
 def cost_lin_with_r(dist_path, ids, *params):
     dist_of_subset = distance_of_subset(dist_path, ids)
+    costs = np.empty(len(dist_of_subset), dtype=np.float32)
 
     alpha = params[0]
     beta = params[1]
-    gamma = params[2]
-    c = params[3]
-    cost_of_subset = 0
-    #Subject to change
-    for i in range(len(dist_of_subset)):
-        if (dist_of_subset[i] <= c):
-            cost_of_subset += gamma
-        if (dist_of_subset[i] > c):
-            cost_of_subset += alpha*(dist_of_subset[i]) + beta
+    c1 = params[2]
+    r = params[3]
 
-    return cost_of_subset
+    for i in range(len(dist_of_subset)):
+        if (dist_of_subset[i] <= r):
+            costs[i] = c1
+        if (dist_of_subset[i] > r):
+            costs[i] = alpha*(dist_of_subset[i]) + beta
+
+    return costs
 
 def cost_bin_r(dist_path, ids, *params):
     dist_of_subset = distance_of_subset(dist_path, ids)
+    costs = np.empty(len(dist_of_subset), dtype=np.float32)
 
-    cost_of_subset = 0
-    #Subject to change
+    c1 = params[0]
+    c2 = params[1]
+    r = params[3]
+
     for i in range(len(dist_of_subset)):
-        if (dist_of_subset[i] <= c):
-            cost_of_subset += params[0]
+        if (dist_of_subset[i] <= r):
+            costs[i] = c1
         if (dist_of_subset[i] > params[2]):
-            cost_of_subset += params[1]
+            costs[i] = c2
 
-    return cost_of_subset
+    return costs
 
 def plot_lat_lon_with_cost(lats, lons, costs, title):
     # Create a GeoDataFrame with costs

@@ -8,7 +8,7 @@ import dill
 import pandas as pd
 import numpy as np
 import sklearn
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
 
@@ -16,10 +16,11 @@ from oed import *
 from sampling import *
 from format_data import *
 from feasibility import *
+from sampler import Sampler
 from plot_coverage import plot_lat_lon
 
 results = {}
-costs = {}
+budget = {}
 
 '''
 Run regressions
@@ -28,8 +29,15 @@ Parameters:
     rule: None (implies no subset is taken), "random", "image", or "satclip"
     subset_size: None (no subset is taken), int
 '''
-def run_regression(label, rule=None, subset_size=None):
-    print("*** Running regressions for: {label} with {num} samples using {rule} rule".format(label=label, num=subset_size, rule=rule))
+def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'):
+    print("*** Running regressions for: {label} with ${budget} budget using {rule} rule".format(label=label, budget=budget, rule=rule))
+
+    if cost_func == cost_lin:
+        cost_str = "linear wrt distance with alpha={alpha}, beta={beta}".format(alpha=params[0], beta=params[1])
+    elif cost_func == cost_lin_with_r:
+        cost_str = "linear outside or radius {r} km with alpha={alpha}, beta = {beta}, c={c}".format(r=params[3], alpha=params[0], beta=params[1], c=params[2])
+
+    print("Cost function is {cost_str}".format(cost_str=cost_str))
 
     (
         X_train,
@@ -44,71 +52,43 @@ def run_regression(label, rule=None, subset_size=None):
         ids_test
     ) = retrieve_splits(label)
     
-    cost_path = "data/cost/costs_by_city_dist.pkl"
-    cost_train = costs_of_train_data(cost_path, ids_train)
-
     dist_path = "data/cost/distance_to_closest_city.pkl"
-    dist_train = dists_of_train_data(dist_path, ids_train)
-    r = 500
+    costs = cost_func(dist_path, ids_train, *params)
 
-    #Take subset according to rule
-    if rule=="random":
-        X_train, y_train, latlon_train, ids_train, total_cost = random_subset_and_cost(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost 
-
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "random", subset_size)
-    if rule=="image":
-        X_train, y_train, latlon_train, ids_train, total_cost = image_subset(X_train, y_train, latlon_train, ids_train, cost_train, v_optimal_design, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost 
-
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "image", subset_size)
-    if rule=="satclip":
-        X_train, y_train, latlon_train, ids_train, total_cost = satclip_subset(X_train, y_train, latlon_train, loc_emb_train, ids_train, cost_train, v_optimal_design, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost 
-
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "satclip", subset_size)
-    if rule=="lowcost":
-        X_train, y_train, latlon_train, ids_train, total_cost = sample_by_lin(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost
-
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "lowcost", subset_size)
-    if rule=="dist":
-        X_train, y_train, latlon_train, ids_train = sample_by_lin_rad(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "dist", subset_size)
-    if rule=="rad":
-        X_train, y_train, latlon_train, ids_train = sample_by_bin_rad(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
-        #Record latlons used
-        record_latlons_ids(label, latlon_train, ids_train, "rad", subset_size)
-    
-    if rule is None:
-        costs[label + ";size" + str(subset_size)] = cost_train
+    if budget != float('inf'):
+        sampler = Sampler(ids_train, X_train, y_train, latlon_train, rule=rule, loc_emb=loc_emb_train, costs=costs)
+        X_train, y_train, latlon_train = sampler.sample_with_budget(budget)
 
     #Plot coverage
     # print("Plotting coverage ...")
     # fig = plot_lat_lon(latlon_train[:,0], latlon_train[:,1], title="Coverage for {rule} with {num} samples".format(rule=rule, num=subset_size), color="orange", alpha=1)
     # fig.savefig("plots/Coverage for {rule} with {num} samples.png".format(rule=rule, num=subset_size))
 
+    n_samples = X_train.shape[0]
+    n_folds = 5
+
     #Range of alphas for ridge regression
     alphas = [1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]
+    
+    if n_samples >= n_folds:
+        # Perform Ridge regression with cross-validation
+        reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
+        print("Fitting regression...")
+        reg.fit(X_train, y_train)
 
-    # Perform Ridge regression with cross-validation
-    reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
-    print("Fitting regression...")
-    reg.fit(X_train, y_train)
-
-    # Optimal alpha
-    best_alpha = reg.alpha_
-    print(f"Best alpha: {best_alpha}")
-
+        # Optimal alpha
+        best_alpha = reg.alpha_
+        print(f"Best alpha: {best_alpha}")
+    else:
+        #Maybe change this alpha
+        reg = Ridge(alpha=10)
+        print("Fitting regression...")
+        reg.fit(X_train, y_train)
+    
     # Make predictions on the test set
     yhat_test = reg.predict(X_test)
 
     # Calculate R2 score
     r2 = r2_score(y_test, yhat_test)
     print(f"R2 score on test set: {r2}")
-    results[label + ";size" + str(subset_size)] = r2
+    results[label + ";budget" + str(budget)] = r2

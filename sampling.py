@@ -36,7 +36,7 @@ Only works for V-optimality as of 11/4
 def image_subset(X_train, Y_train, latlon_train, ids_train, costs, rule, size):
     print("Generating subset using {rule}...".format(rule='V Optimal Design'))
     scores_path = "data/scores/CONTUS_UAR_leverage_scores.pkl"
-    subset_idxs = sampling_with_scores(scores_path, ids_train, size, rule)
+    subset_idxs = sampling_with_scores(scores_path, ids_train, size)
 
     #Get costs of subset
     total_cost = cost_of_subset(costs, subset_idxs)
@@ -49,7 +49,7 @@ Takes an OED subset of training data using SatCLIP embeddings
 def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, ids_train, costs, rule, size):
     print("Generating subset using satclip embeddings...")
     scores_path = "data/scores/CONTUS_UAR_satclip_leverage_scores.pkl"
-    subset_idxs = sampling_with_scores(scores_path, ids_train, size, rule)
+    subset_idxs = sampling_with_scores(scores_path, ids_train, size)
 
     #Get costs of subset
     total_cost = cost_of_subset(costs, subset_idxs)
@@ -57,6 +57,7 @@ def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, ids_train, cos
 
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: linear with respect to distance to closest major cities
 '''
 def sample_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
     print("Generating subset using greedy cost algorithm...")
@@ -77,6 +78,7 @@ def sample_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
 
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: constant within radius of major cities, linear outside of radius
 '''
 def sample_by_lin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
     print("Generating subset using radius distance algorithm...")
@@ -94,6 +96,7 @@ def sample_by_lin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, s
 
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: constant within radius of major cities, larger constant outside of radius
 '''
 def sample_by_bin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
     print("Generating subset using binary radius algorithm...")

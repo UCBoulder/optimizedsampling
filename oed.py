@@ -40,10 +40,7 @@ def save_leverage_scores(X_train, X_test, latlons_train, latlons_test, ids_train
         )
 #Apply this to save leverage scores
 
-'''
-Samples subset according to highest scores
-'''
-def sampling_with_scores(scores_path, ids, size, rule):
+def scores_from_path(scores_path, ids):
     #scores_path = "data/scores/CONTUS_UAR_leverage_scores.pkl"
 
     with open(scores_path, "rb") as f:
@@ -55,6 +52,14 @@ def sampling_with_scores(scores_path, ids, size, rule):
     for i in range(len(ids)):
         scores[i] = scores_df.loc[ids[i], "scores"]
 
+    return scores
+
+'''
+Samples subset according to highest scores
+'''
+def sampling_with_scores(scores_path, ids, size):
+    scores = scores_from_path(scores_path, ids)
+    
     #Highest scores according to rule
     best_indices = np.argpartition(scores, -size)[-size:]
 
