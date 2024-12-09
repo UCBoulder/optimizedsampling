@@ -24,7 +24,7 @@ costs = {}
 '''
 Run regressions
 Parameters:
-    data_path: path to access data and splits
+    label: "population", "treecover", or "elevation
     rule: None (implies no subset is taken), "random", "image", or "satclip"
     subset_size: None (no subset is taken), int
 '''
@@ -71,17 +71,17 @@ def run_regression(label, rule=None, subset_size=None):
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "satclip", subset_size)
     if rule=="lowcost":
-        X_train, y_train, latlon_train, ids_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
-        costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
+        X_train, y_train, latlon_train, ids_train, total_cost = sampling_by_lin(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
+        costs[label + ";size" + str(subset_size)] = total_cost
 
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "lowcost", subset_size)
     if rule=="dist":
-        X_train, y_train, latlon_train, ids_train = sample_by_dist(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
+        X_train, y_train, latlon_train, ids_train = sample_by_lin_rad(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "dist", subset_size)
     if rule=="rad":
-        X_train, y_train, latlon_train, ids_train = sample_by_radius(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
+        X_train, y_train, latlon_train, ids_train = sample_by_bin_rad(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "rad", subset_size)
     

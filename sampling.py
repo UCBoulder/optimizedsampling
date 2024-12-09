@@ -58,7 +58,7 @@ def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, ids_train, cos
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
 '''
-def greedy_by_cost(X_train, Y_train, latlon_train, ids_train, costs, size):
+def sampling_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
     print("Generating subset using greedy cost algorithm...")
     lowest_cost_idxs = np.argpartition(costs, size)[:size]
     cost_subset = costs[lowest_cost_idxs]
@@ -78,7 +78,7 @@ def greedy_by_cost(X_train, Y_train, latlon_train, ids_train, costs, size):
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
 '''
-def sample_by_dist(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+def sample_by_lin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
     print("Generating subset using radius distance algorithm...")
     inside_r_idxs = np.where(distances <= r)[0]
     if (len(inside_r_idxs) >= size):
@@ -95,7 +95,7 @@ def sample_by_dist(X_train, Y_train, latlon_train, ids_train, distances, r, size
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
 '''
-def sample_by_radius(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+def sample_by_bin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
     print("Generating subset using binary radius algorithm...")
     inside_r_idxs = np.where(distances <= r)[0]
     outside_r_idxs = np.where(distances > r)[0]

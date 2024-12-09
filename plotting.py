@@ -72,17 +72,20 @@ def plot_r2_cost(methods, *dfs):
             df = df.set_index(['label', 'size_of_subset'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
-            #filtered_df = filtered_df[filtered_df["Cost"] <= cost_limit]
+            filtered_df['log_cost'] = filtered_df.apply(
+                lambda row: np.log10(row['Cost']+1),
+                axis=1
+            )
 
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='-', alpha=0.75, label=methods[j], color=colors[j])
+            axs[i].plot(filtered_df["log_cost"], filtered_df["Test R2"], marker='o', markersize=3, linestyle='-', label=methods[j], color=colors[j])
             j += 1
 
         # Customize the plot
-        axs[i].set_xlabel("Cost of Collection")
+        axs[i].set_xlabel("Log-Transformed Cost of Collection")
         axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":

@@ -21,7 +21,7 @@ def run(labels_to_run, rule):
         else:
             valid = 97876
 
-        size_of_subset = [0.005, 0.01, 0.05, 0.1, 0.20, 0.35, 0.5, 0.75]
+        size_of_subset = [0.6, 0.65]
         size_of_subset = [int(np.floor(valid*percent)) for percent in size_of_subset]
         size_of_subset = [n - (n%5) for n in size_of_subset]
 
@@ -54,7 +54,7 @@ labels_to_run = ["population", "treecover", "elevation"]
 #run(labels_to_run, rule='lowcost')
 
 #Run with greedy dist algorithm
-#run(labels_to_run, rule='dist')
+run(labels_to_run, rule='dist')
 
 #Run with binary rad algorithm
-run(labels_to_run, rule='rad')
+#run(labels_to_run, rule='rad')

@@ -95,7 +95,7 @@ def total_cost_from_latlon_file(label, rule, size, alpha, beta):
 
     return total_cost
 
-def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma, c):
+def total_cost_from_dist_file(label, rule, size, cost_func, *params):
     ids_path = "data/latlons_ids/{label}_sample_{rule}_{size}.pkl".format(label=label, rule=rule, size=size)
 
     #Note that for alpha*(dist to closest city) + beta all greedy lowcost functions will sample the same points
@@ -112,16 +112,16 @@ def total_cost_from_dist_file(label, rule, size, alpha, beta, gamma, c):
     dist_path = "data/cost/distance_to_closest_city.pkl"
 
     #Change depending on cost function
-    total_cost = cost_of_dist_subset_free_radius(dist_path, ids, alpha, beta, gamma, c)
+    total_cost = cost_func(dist_path, ids, *params)
 
     return total_cost
 
-def write_cost_to_csv(old_csv, new_csv, rule, alpha, beta, gamma, c):
+def write_cost_to_csv(old_csv, new_csv, rule, cost_func, *params):
     df = pd.read_csv(old_csv)
     df = df.set_index(['label', 'size_of_subset'])
 
     for (label, size_of_subset), row in df.iterrows():
-        new_cost = total_cost_from_dist_file(label, rule, int(size_of_subset), alpha, beta, gamma, c)
+        new_cost = total_cost_from_dist_file(label, rule, int(size_of_subset), cost_func, *params)
         df.at[(label, size_of_subset), 'Cost'] = new_cost
 
     df.index.name = "label"
@@ -195,17 +195,24 @@ def distance_of_subset(dist_path, ids):
 
     return dist_of_subset
 
-def cost_of_dist_subset(dist_path, ids, alpha, beta, gamma):
+def cost_lin(dist_path, ids, *params):
     dist_of_subset = distance_of_subset(dist_path, ids)
+    alpha = params[0]
+    beta = params[1]
+    gamma = params[2]
 
     #Subject to change
     cost_of_subset = (alpha*(dist_of_subset)**gamma + beta).sum()
 
     return cost_of_subset
 
-def cost_of_dist_subset_free_radius(dist_path, ids, alpha, beta, gamma, c):
+def cost_lin_with_r(dist_path, ids, *params):
     dist_of_subset = distance_of_subset(dist_path, ids)
 
+    alpha = params[0]
+    beta = params[1]
+    gamma = params[2]
+    c = params[3]
     cost_of_subset = 0
     #Subject to change
     for i in range(len(dist_of_subset)):
@@ -213,6 +220,19 @@ def cost_of_dist_subset_free_radius(dist_path, ids, alpha, beta, gamma, c):
             cost_of_subset += gamma
         if (dist_of_subset[i] > c):
             cost_of_subset += alpha*(dist_of_subset[i]) + beta
+
+    return cost_of_subset
+
+def cost_bin_r(dist_path, ids, *params):
+    dist_of_subset = distance_of_subset(dist_path, ids)
+
+    cost_of_subset = 0
+    #Subject to change
+    for i in range(len(dist_of_subset)):
+        if (dist_of_subset[i] <= c):
+            cost_of_subset += params[0]
+        if (dist_of_subset[i] > params[2]):
+            cost_of_subset += params[1]
 
     return cost_of_subset
 
