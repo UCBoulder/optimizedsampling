@@ -58,7 +58,7 @@ def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, ids_train, cos
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
 '''
-def sampling_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
+def sample_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
     print("Generating subset using greedy cost algorithm...")
     lowest_cost_idxs = np.argpartition(costs, size)[:size]
     cost_subset = costs[lowest_cost_idxs]

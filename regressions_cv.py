@@ -71,14 +71,14 @@ def run_regression_cv(label, rule=None, subset_size=None):
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "satclip", subset_size)
     if rule=="lowcost":
-        X_train, y_train, latlon_train, ids_train, total_cost = greedy_by_cost(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
+        X_train, y_train, latlon_train, ids_train, total_cost = sample_by_lin(X_train, y_train, latlon_train, ids_train, cost_train, subset_size)
         costs[label + ";size" + str(subset_size)] = total_cost #right now only works with random and lowcost
 
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "lowcost", subset_size)
 
     if rule=="dist":
-        X_train, y_train, latlon_train, ids_train = sample_by_dist(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
+        X_train, y_train, latlon_train, ids_train = sample_by_lin_rad(X_train, y_train, latlon_train, ids_train, dist_train, r, subset_size)
         #Record latlons used
         record_latlons_ids(label, latlon_train, ids_train, "dist", subset_size)
     
