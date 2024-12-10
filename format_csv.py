@@ -16,12 +16,12 @@ def format_dataframe(df):
 
     # Handle 'sizeNone' by assigning it a placeholder value (e.g., float('inf') for whole dataset)
     #change hardcoding
-    df['size_of_subset'] = df.apply(
-        lambda row: float(54340) if (row['size_with_prefix'] == 'sizeNone' and row['label'] == 'population') 
-        else (float(97875) if (row['size_with_prefix'] == 'sizeNone' and (row['label'] in ['elevation', 'treecover'] ))
-            else int(row['size_with_prefix'].replace('size', ''))),
-        axis=1
-    )
+    # df['size_of_subset'] = df.apply(
+    #     lambda row: float(54340) if (row['size_with_prefix'] == 'sizeNone' and row['label'] == 'population') 
+    #     else (float(97875) if (row['size_with_prefix'] == 'sizeNone' and (row['label'] in ['elevation', 'treecover'] ))
+    #         else int(row['size_with_prefix'].replace('size', ''))),
+    #     axis=1
+    # )
 
     # Set 'label' and 'size_of_subset' as a MultiIndex and drop the old index columns
     df.set_index(['label', 'size_of_subset'], inplace=True)
@@ -50,6 +50,6 @@ def format_cost(df):
 
     return df
 
-df = pd.read_csv("results/TestSetPerformancedistwithCost.csv", index_col=0)
-format_cost(df)
-df.to_csv("results/TestSetPerformancedistwithCost_formatted.csv", index=True)
+# df = pd.read_csv("results/TestSetPerformancerandomwithBudget.csv", index_col=0)
+# format_cost(df)
+# df.to_csv("results/TestSetPerformancerandomwithBudget_formatted.csv", index=True)

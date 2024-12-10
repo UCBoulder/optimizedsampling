@@ -51,7 +51,7 @@ def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'
         ids_train,
         ids_test
     ) = retrieve_splits(label)
-    
+
     dist_path = "data/cost/distance_to_closest_city.pkl"
     costs = cost_func(dist_path, ids_train, *params)
 
@@ -69,26 +69,28 @@ def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'
 
     #Range of alphas for ridge regression
     alphas = [1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]
-    
-    if n_samples >= n_folds:
-        # Perform Ridge regression with cross-validation
-        reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
-        print("Fitting regression...")
-        reg.fit(X_train, y_train)
 
-        # Optimal alpha
-        best_alpha = reg.alpha_
-        print(f"Best alpha: {best_alpha}")
-    else:
-        #Maybe change this alpha
-        reg = Ridge(alpha=10)
-        print("Fitting regression...")
-        reg.fit(X_train, y_train)
+    if n_samples < n_folds:
+        print("Not enough samples for cross-validation.")
+        return
+    
+    # Perform Ridge regression with cross-validation
+    reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
+    print("Fitting regression...")
+    reg.fit(X_train, y_train)
+
+    # Optimal alpha
+    best_alpha = reg.alpha_
+    print(f"Best alpha: {best_alpha}")
     
     # Make predictions on the test set
     yhat_test = reg.predict(X_test)
 
     # Calculate R2 score
     r2 = r2_score(y_test, yhat_test)
+
+    if abs(r2) > 1:
+        print("Warning: Severe overfitting. Add more samples.")
+    
     print(f"R2 score on test set: {r2}")
     results[label + ";budget" + str(budget)] = r2

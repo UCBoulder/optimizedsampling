@@ -6,8 +6,8 @@ import numpy as np
 
 from format_csv import *
 
-df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_edit.csv", index_col=0)
-df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_edit.csv", index_col=0)
+#df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_edit.csv", index_col=0)
+#df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_edit.csv", index_col=0)
 # df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
 # df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
 
@@ -69,11 +69,11 @@ def plot_r2_cost(methods, *dfs):
         colors = ["orangered", "black", "steelblue", "green"]
         for df in dfs:
             df = df.reset_index()
-            df = df.set_index(['label', 'size_of_subset'])
+            df = df.set_index(['label'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
-            filtered_df['log_cost'] = filtered_df.apply(
-                lambda row: np.log10(row['Cost']+1),
+            filtered_df['log_budget'] = filtered_df.apply(
+                lambda row: np.log10(row['Budget']+1),
                 axis=1
             )
 
@@ -81,11 +81,11 @@ def plot_r2_cost(methods, *dfs):
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df["log_cost"], filtered_df["Test R2"], marker='o', markersize=3, linestyle='-', label=methods[j], color=colors[j])
+            axs[i].plot(filtered_df["log_budget"], filtered_df["Test R2"], marker='o', linestyle='', label=methods[j], color=colors[j])
             j += 1
 
         # Customize the plot
-        axs[i].set_xlabel("Log-Transformed Cost of Collection")
+        axs[i].set_xlabel("Log-transformed Budget")
         axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":

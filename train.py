@@ -37,7 +37,7 @@ r = 500
 cost_func = cost_lin_with_r
 
 #Run Random
-run(labels_to_run, cost_func, alpha, beta, rule="random")
+#run(labels_to_run, cost_func, alpha, beta, c1, r, rule="random")
 
 #Run with V Optimal Design
 #run(labels_to_run, rule="image")
@@ -49,7 +49,7 @@ run(labels_to_run, cost_func, alpha, beta, rule="random")
 #run(labels_to_run, cost_lin, alpha, beta, rule='greedycost')
 
 #Run with linear outside of radius cost function greedy algorithm
-run(labels_to_run, cost_lin_with_r, alpha, beta, c1, r, rule='linradcost')
+run(labels_to_run, cost_lin_with_r, alpha, beta, c1, r, rule='greedycost')
 
 #Run with binary wrt radius cost function greedy algorithm
 #run(labels_to_run, rule='binradcost')
