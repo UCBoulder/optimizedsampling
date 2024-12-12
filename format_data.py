@@ -82,6 +82,8 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
             )
 
 def retrieve_splits(label):
+    print("Retrieving data splits...")
+
     data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
     with open(data_path, "rb") as f:
         arrs = dill.load(f)

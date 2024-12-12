@@ -19,7 +19,8 @@ from feasibility import *
 from sampler import Sampler
 from plot_coverage import plot_lat_lon
 
-results = {}
+avgr2 = {}
+stdr2 = {}
 budget = {}
 
 '''
@@ -51,29 +52,54 @@ def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'
         ids_train,
         ids_test
     ) = retrieve_splits(label)
-
     dist_path = "data/cost/distance_to_closest_city.pkl"
     costs = cost_func(dist_path, ids_train, *params)
 
-    if budget != float('inf'):
-        sampler = Sampler(ids_train, X_train, y_train, latlon_train, rule=rule, loc_emb=loc_emb_train, costs=costs)
-        X_train, y_train, latlon_train = sampler.sample_with_budget(budget)
-
-    #Plot coverage
-    # print("Plotting coverage ...")
-    # fig = plot_lat_lon(latlon_train[:,0], latlon_train[:,1], title="Coverage for {rule} with {num} samples".format(rule=rule, num=subset_size), color="orange", alpha=1)
-    # fig.savefig("plots/Coverage for {rule} with {num} samples.png".format(rule=rule, num=subset_size))
-
-    n_samples = X_train.shape[0]
     n_folds = 5
+    seeds = [42, 123, 456, 789, 1011]
+    r2_scores = []
 
-    #Range of alphas for ridge regression
-    alphas = [1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]
+    if budget != float('inf'):
+        sampler = Sampler(ids_train, X_train, y_train, rule=rule, loc_emb=loc_emb_train, costs=costs)
+
+        for seed in seeds:
+            print(f"Using Seed {seed} to sample...")
+            X_train_sampled, y_train_sampled = sampler.sample_with_budget(budget, seed)
+
+            r2 = ridge_regression(X_train_sampled, y_train_sampled, X_test, y_test, n_folds=n_folds)
+            if r2 is not None:
+                r2_scores.append(r2)
+
+                print(f"Seed {seed}: R2 score on test set: {r2}")
+    else:
+        r2 = ridge_regression(X_train, y_train, X_test, y_test, n_folds=n_folds)
+        if r2 is not None:
+            r2_scores.append(r2)
+
+            print(f"R2 score on test set: {r2}")
+    
+    #Add to results
+    if len(r2_scores) != 0:
+        avg_r2 = np.nanmean(r2_scores)
+        std_r2 = np.std(r2_scores)
+        print(f"Average R2 score across seeds: {avg_r2}")
+
+        avgr2[label + ";budget" + str(budget)] = avg_r2
+        stdr2[label + ";budget" + str(budget)] = std_r2
+    else:
+        avgr2[label + ";budget" + str(budget)] = None
+        stdr2[label + ";budget" + str(budget)] = None
+
+'''
+Run ridge regression and return R2 score
+'''
+def ridge_regression(X_train, y_train, X_test, y_test, n_folds=5, alphas=[1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]):
+    n_samples = X_train.shape[0]
 
     if n_samples < n_folds:
         print("Not enough samples for cross-validation.")
         return
-    
+     
     # Perform Ridge regression with cross-validation
     reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
     print("Fitting regression...")
@@ -82,7 +108,7 @@ def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'
     # Optimal alpha
     best_alpha = reg.alpha_
     print(f"Best alpha: {best_alpha}")
-    
+            
     # Make predictions on the test set
     yhat_test = reg.predict(X_test)
 
@@ -91,6 +117,5 @@ def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'
 
     if abs(r2) > 1:
         print("Warning: Severe overfitting. Add more samples.")
-    
-    print(f"R2 score on test set: {r2}")
-    results[label + ";budget" + str(budget)] = r2
+    return r2
+            

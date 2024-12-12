@@ -24,17 +24,13 @@ def v_optimal_design(X):
     
     return l 
 
-def save_leverage_scores(X_train, X_test, latlons_train, latlons_test, ids_train, ids_test, rule):
-    X = np.concatenate([X_train, X_test])
-    latlons = np.concatenate([latlons_train, latlons_test])
-    ids = np.concatenate([ids_train, ids_test])
-
-    scores = v_optimal_design(X)
-    out_fpath = "data/scores/CONTUS_UAR_{rule}_scores.pkl".format(rule=rule)
+def save_leverage_scores(X_train, latlons_train, ids_train, rule):
+    scores = v_optimal_design(X_train)
+    out_fpath = "data/scores/CONTUS_UAR_{rule}_train_scores.pkl".format(rule=rule)
 
     with open(out_fpath, "wb") as f:
         dill.dump(
-            {"X": X, "leverage_scores": scores, "ids_X": ids, "latlon": latlons},
+            {"X": X_train, "leverage_scores": scores, "ids_X": ids_train, "latlon": latlons_train},
             f,
             protocol=4,
         )
