@@ -3,6 +3,8 @@ from cvxopt import blas, lapack, solvers
 from cvxopt import matrix, spmatrix, spdiag, mul, cos, sin
 import  numpy as np
 import scipy.linalg
+import dill
+import pandas as pd
 
 '''Code from Esther Rolf'''
 
@@ -22,12 +24,38 @@ def v_optimal_design(X):
     
     return l 
 
+def save_leverage_scores(X_train, latlons_train, ids_train, rule):
+    scores = v_optimal_design(X_train)
+    out_fpath = "data/scores/CONTUS_UAR_{rule}_train_scores.pkl".format(rule=rule)
+
+    with open(out_fpath, "wb") as f:
+        dill.dump(
+            {"X": X_train, "leverage_scores": scores, "ids_X": ids_train, "latlon": latlons_train},
+            f,
+            protocol=4,
+        )
+#Apply this to save leverage scores
+
+def scores_from_path(scores_path, ids):
+    #scores_path = "data/scores/CONTUS_UAR_leverage_scores.pkl"
+
+    with open(scores_path, "rb") as f:
+        arrs = dill.load(f)
+
+    scores = np.empty((len(ids)), dtype=np.float32)
+    scores_df = pd.DataFrame(arrs["leverage_scores"], index=arrs["ids_X"], columns=["scores"])
+
+    for i in range(len(ids)):
+        scores[i] = scores_df.loc[ids[i], "scores"]
+
+    return scores
+
 '''
 Samples subset according to highest scores
 '''
-def sampling_with_scores(X, size, rule):
-    scores = rule(X)
-
+def sampling_with_scores(scores_path, ids, size):
+    scores = scores_from_path(scores_path, ids)
+    
     #Highest scores according to rule
     best_indices = np.argpartition(scores, -size)[-size:]
 

@@ -1,206 +1,121 @@
-""" 1. Decide train and tests splits of USAVars data (SRS, OED) with specified number of samples
-    2. Parse data so it corresponds with features
-    2. Train a ridge regression on train split
+""" 1. Write function to resave features with splits (train, val, test)
+    2. Use Scikit Learn Ridge over range of lambda
+    2. Make Sampler function
+    3. Make PCA function
     3. Plot regression residuals for each variable of interest """
 
-import os
-import pickle
-from pathlib import Path
-import numpy as np
+import dill
 import pandas as pd
-from os.path import basename, dirname, join
+import numpy as np
+import sklearn
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
-from plot_coverage import plot_lat_lon
-from pca import pca
+from sklearn.model_selection import KFold
+
+from oed import *
 from sampling import *
+from format_data import *
+from feasibility import *
+from sampler import Sampler
+from plot_coverage import plot_lat_lon
 
-from mosaiks.code.mosaiks.utils import *
-from mosaiks.code.mosaiks.utils import io
-from mosaiks.code.mosaiks.solve import data_parser as parse
-from mosaiks.code.mosaiks.solve import solve_functions as solve
-from mosaiks.code.mosaiks.solve import interpret_results as ir
+avgr2 = {}
+stdr2 = {}
+budget = {}
 
+'''
+Run regressions
+Parameters:
+    label: "population", "treecover", or "elevation
+    rule: None (implies no subset is taken), "random", "image", or "satclip"
+    subset_size: None (no subset is taken), int
+'''
+def run_regression(label, cost_func, *params, budget=float('inf'), rule='random'):
+    print("*** Running regressions for: {label} with ${budget} budget using {rule} rule".format(label=label, budget=budget, rule=rule))
 
-#To store results
-results_dict = {}
-results_dict_test = {}
-costs = {}
+    if cost_func == cost_lin:
+        cost_str = "linear wrt distance with alpha={alpha}, beta={beta}".format(alpha=params[0], beta=params[1])
+    elif cost_func == cost_lin_with_r:
+        cost_str = "linear outside or radius {r} km with alpha={alpha}, beta = {beta}, c={c}".format(r=params[3], alpha=params[0], beta=params[1], c=params[2])
 
-#Path to store results
-save_patt = join(
-        "{save_dir}",
-        "CONTUS_{{rule}}_{label}_{variable}_outcomes_{{reg_type}}_subset_{{subset_n}}.data"
-    )
-
-#Set solver to ridge regression
-solver = solve.ridge_regression
-
-#Run ridge regression on mosaiks features for label
-def train_and_test(c, label, X, latlons, subset_n=None, rule=None, loc_emb=None, costs=None):
-
-    if rule==v_optimal_design:
-        rule_str = 'v_optimal_design'
-    else: 
-        rule_str = ''
-
-    if loc_emb is not None:
-        satclip_str = "satclip embeddings"
-    else:
-        satclip_str = "no satclip embeddings"
-    print("*** Running regressions for: {label} with {num} samples using {rule} with {satclip_str}".format(label=label, num=subset_n, rule=rule_str, satclip_str=satclip_str))
-
-    #Test all lambdas (specified in config file)
-    this_lambdas = io.get_lambdas(c, label, best_lambda_fpath=None)
-
-    #Access config file and specific label parameters from config file
-    c = io.get_filepaths(c, label)
-    c_app = getattr(c, label)
-    sampling_type = c_app["sampling"]  # UAR 
-    this_save_patt = save_patt.format(
-        save_dir="/share/usavars/data/output",
-        label=label,
-        variable=c_app["variable"]
-    )
-
-    #Bounds from config file
-    if c_app["logged"]:
-        bounds = np.array([c_app["us_bounds_log_pred"]])
-    else:
-        bounds = np.array([c_app["us_bounds_pred"]])
-
-    ## Get save path
-    if subset_n is not None:
-        subset_str = f"_subset{subset_n}"
-    else:
-        subset_str = ""
-
-    save_path_validation = this_save_patt.format(reg_type="scatter", subset_n=subset_str, rule=rule_str)
-    save_path_test = this_save_patt.format(reg_type="testset", subset_n=subset_str, rule=rule_str)
+    print("Cost function is {cost_str}".format(cost_str=cost_str))
 
     (
-        this_X,
-        this_X_test,
-        this_Y,
-        this_Y_test,
-        this_latlons,
-        this_latlons_test,
-        this_emb,
-        this_emb_test
-    ) = parse.merge_dropna_transform_split_train_test(
-        c, label, X, latlons, loc_emb
-    )
-    
-    # Perform PCA
-    # this_X, this_X_test = pca(this_X, this_X_test)
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        latlon_train,
+        latlon_test,
+        loc_emb_train,
+        loc_emb_test,
+        ids_train,
+        ids_test
+    ) = retrieve_splits(label)
+    dist_path = "data/cost/distance_to_closest_city.pkl"
+    costs = cost_func(dist_path, ids_train, *params)
 
-    # Take a random subset of size n
-    if subset_n is not None:
-            if rule is None:
-                if costs is not None:
-                    this_X, this_Y, this_latlons, total_cost = random_subset_and_cost(this_X, this_Y, this_latlons, subset_n)
-                else:
-                    this_X, this_Y, this_latlons = random_subset(this_X, this_Y, this_latlons, subset_n)
-            elif loc_emb is None:
-                this_X, this_Y, this_latlons = image_subset(this_X, this_Y, this_latlons, rule, subset_n)
-            else:
-                this_X, this_Y, this_latlons = satclip_subset(this_X, this_Y, this_latlons, this_emb, rule, subset_n)
+    n_folds = 5
+    seeds = [42, 123, 456, 789, 1011]
+    r2_scores = []
+
+    if budget != float('inf'):
+        sampler = Sampler(ids_train, X_train, y_train, rule=rule, loc_emb=loc_emb_train, costs=costs)
+
+        for seed in seeds:
+            print(f"Using Seed {seed} to sample...")
+            X_train_sampled, y_train_sampled = sampler.sample_with_budget(budget, seed)
+
+            r2 = ridge_regression(X_train_sampled, y_train_sampled, X_test, y_test, n_folds=n_folds)
+            if r2 is not None:
+                r2_scores.append(r2)
+
+                print(f"Seed {seed}: R2 score on test set: {r2}")
     else:
-        while (this_X.shape[0]%5 != 0):
-            this_X = this_X[:-1]
-            this_latlons = this_latlons[:-1]
-            this_Y = this_Y[:-1]
+        r2 = ridge_regression(X_train, y_train, X_test, y_test, n_folds=n_folds)
+        if r2 is not None:
+            r2_scores.append(r2)
 
-    #Plot coverage
-    print("Plotting coverage ...")
-    fig = plot_lat_lon(this_latlons[:,0], this_latlons[:,1], title="Coverage for {satclip_str} with {num} samples".format(satclip_str=satclip_str, num=subset_n), color="green", alpha=1)
-    fig.savefig("plots/Coverage for {satclip_str} chosen with {rule} with {num} samples.png".format(satclip_str=satclip_str, num=subset_n, rule=rule_str))
+            print(f"R2 score on test set: {r2}")
+    
+    #Add to results
+    if len(r2_scores) != 0:
+        avg_r2 = np.nanmean(r2_scores)
+        std_r2 = np.std(r2_scores)
+        print(f"Average R2 score across seeds: {avg_r2}")
 
-    subset_n = this_X.shape[0]
-    print("Training model...")
-    import time
+        avgr2[label + ";budget" + str(budget)] = avg_r2
+        stdr2[label + ";budget" + str(budget)] = std_r2
+    else:
+        avgr2[label + ";budget" + str(budget)] = None
+        stdr2[label + ";budget" + str(budget)] = None
 
-    st_train = time.time()
-    kfold_results = solve.kfold_solve(
-        this_X,
-        this_Y,
-        solve_function=solver,
-        num_folds=c.ml_model["n_folds"],
-        return_model=True,
-        lambdas=this_lambdas,
-        return_preds=True,
-        svd_solve=False,
-        clip_bounds=bounds,
-    )
-    print("")
+'''
+Run ridge regression and return R2 score
+'''
+def ridge_regression(X_train, y_train, X_test, y_test, n_folds=5, alphas=[1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]):
+    n_samples = X_train.shape[0]
 
-    # get timing
-    training_time = time.time() - st_train
-    print("Training time:", training_time)
+    if n_samples < n_folds:
+        print("Not enough samples for cross-validation.")
+        return
+     
+    # Perform Ridge regression with cross-validation
+    reg = RidgeCV(alphas=alphas, scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42))  # 5-fold cross-validation
+    print("Fitting regression...")
+    reg.fit(X_train, y_train)
 
-    ## Store the metrics and the predictions from the best performing model
-    best_lambda_idx, best_metrics, best_preds = ir.interpret_kfold_results(
-        kfold_results, "r2_score", hps=[("lambdas", c_app["lambdas"])]
-    )
-    best_lambda = this_lambdas[best_lambda_idx][0]
+    # Optimal alpha
+    best_alpha = reg.alpha_
+    print(f"Best alpha: {best_alpha}")
+            
+    # Make predictions on the test set
+    yhat_test = reg.predict(X_test)
 
-    ## combine out-of-sample predictions over folds
-    preds = np.vstack([solve.y_to_matrix(i) for i in best_preds.squeeze()]).squeeze()
-    truth = np.vstack(
-        [solve.y_to_matrix(i) for i in kfold_results["y_true_test"].squeeze()]
-    ).squeeze()
+    # Calculate R2 score
+    r2 = r2_score(y_test, yhat_test)
 
-    # get latlons in same shuffled, cross-validated order
-    ll = this_latlons[
-        np.hstack([test for train, test in kfold_results["cv"].split(this_latlons)])
-    ]
-
-    data = {
-        "truth": truth,
-        "preds": preds,
-        "lon": ll[:, 1],
-        "lat": ll[:, 0],
-        "best_lambda": best_lambda,
-    }
-
-    # Save validation set predictions
-    print("Saving validation set results to {}".format(save_path_validation))
-    with open(save_path_validation, "wb") as f:
-        pickle.dump(data, f)
-    results_dict[label + ";size" + str(subset_n)] = r2_score(truth, preds)
-    costs[label + ";size" + str(subset_n)] = total_cost
-
-    # Get test set predictions
-    st_test = time.time()
-    holdout_results = solve.single_solve(
-        this_X,
-        this_X_test,
-        this_Y,
-        this_Y_test,
-        lambdas=best_lambda,
-        svd_solve=False,
-        return_preds=True,
-        return_model=False,
-        clip_bounds=bounds,
-    )
-
-    #Get timing
-    test_time = time.time() - st_test
-    print("Test set training time:", test_time)
-
-    #Save test set predictions
-    ll = this_latlons_test
-    data = {
-        "truth": holdout_results["y_true_test"],
-        "preds": holdout_results["y_pred_test"][0][0][0],
-        "lon": ll[:, 1],
-        "lat": ll[:, 0],
-    }
-
-    print("Saving test set results to {}".format(save_path_test))
-    with open(save_path_test, "wb") as f:
-        pickle.dump(data, f)
-
-    print("R^2 score: ", holdout_results["metrics_test"][0][0][0]["r2_score"])
-    ## Store the R2
-    results_dict_test[label + ";size" + str(subset_n)] = holdout_results["metrics_test"][0][0][0]["r2_score"]
-    print("Full reg time", time.time() - st_train)
+    if abs(r2) > 1:
+        print("Warning: Severe overfitting. Add more samples.")
+    return r2
+            

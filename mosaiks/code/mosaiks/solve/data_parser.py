@@ -270,6 +270,7 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, AC
     ## get labels
     print("Loading labels...")
     Y = mio.get_Y(c, c_app["colname"], ACS=ACS)
+    ids = Y.index.to_numpy()
 
     ## merge X and Y accounting for different ordering
     ## and the sampling type
@@ -280,7 +281,7 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, AC
         Y, X, latlons = merge(Y, X, latlons)
 
     ## drop obs and log transform if needed
-    X, Y, latlons, loc_emb = transforms.dropna_and_transform(X, Y, latlons, c_app, loc_emb)
+    X, Y, latlons, loc_emb, ids = transforms.dropna_and_transform(X, Y, latlons, c_app, loc_emb, ids)
 
     ## Split the data into the training/validation sample vs. test sample
     ## (discarding test set for now to keep memory low)
@@ -298,4 +299,7 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, AC
         loc_emb_train = None
         loc_emb_test = None
 
-    return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test
+    ids_train = ids[idxs_train]
+    ids_test = ids[idxs_test]
+
+    return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test

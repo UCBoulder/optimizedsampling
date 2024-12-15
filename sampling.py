@@ -7,37 +7,6 @@ from oed import *
 from feasibility import *
 
 '''
-Determine indices of valid entries in a set (not NaN or inf)
-'''
-def valid(set, *args):
-    valid = (~np.isnan(set) & ~np.isinf(set))[:,0]
-    for arg in args:
-        if len(arg.shape)==1:
-            valid = valid & ~np.isnan(arg) & ~np.isinf(arg)
-        else:
-            valid= valid & (~np.isnan(arg) & ~np.isinf(arg))[:,0]
-    return valid
-
-'''
-Determine number of data points that are not NaN
-'''
-def valid_num(c, label, X, latlons):
-    c = io.get_filepaths(c, label)
-    c_app = getattr(c, label)
-    Y = io.get_Y(c, c_app["colname"])
-
-    X = X.reindex(Y.index)
-    latlons = latlons.reindex(Y.index)
-
-    valid_rows = Y.notna() & (Y != -999)
-    valid_rows = valid_rows & (X.notna().all(axis=1) & latlons.notna().all(axis=1))
-    X = X[valid_rows]
-
-    size_of_valid = X.shape[0]
-    print(f"Size of valid set for {label}", size_of_valid)
-    return size_of_valid
-
-'''
 Spatial-only baseline
 Takes a random subset of training data
 '''
@@ -50,46 +19,101 @@ def random_subset(X_train, Y_train, latlon, size):
 Spatial-only baseline
 Takes a random subset of training data and records cost
 '''
-def random_subset_and_cost(X_train, Y_train, latlon, size, costs):
+def random_subset_and_cost(X_train, Y_train, latlon_train, ids_train, costs, size):
     print("Generating subset using SRS...")
     subset_idxs = np.random.choice(len(X_train), size=size, replace=False)
 
     #Get costs of subset
-    total_cost = total_cost(costs, subset_idxs)
+    total_cost = cost_of_subset(costs, subset_idxs)
 
-    return X_train[subset_idxs], Y_train[subset_idxs], latlon[subset_idxs], total_cost
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs], total_cost
 
 '''
 Image-only baseline
 Takes an OED subset of training data--Image-only baseline
 Only works for V-optimality as of 11/4
 '''
-def image_subset(X_train, Y_train, latlon_train, rule, size):
+def image_subset(X_train, Y_train, latlon_train, ids_train, costs, rule, size):
     print("Generating subset using {rule}...".format(rule='V Optimal Design'))
-    subset_idxs = sampling_with_prob(X_train, size, rule)
-    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
+    scores_path = "data/scores/CONTUS_UAR_leverage_scores.pkl"
+    subset_idxs = sampling_with_scores(scores_path, ids_train, size)
+
+    #Get costs of subset
+    total_cost = cost_of_subset(costs, subset_idxs)
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs], total_cost
 
 '''
 Image and Spatial based
 Takes an OED subset of training data using SatCLIP embeddings
 '''
-def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, rule, size):
+def satclip_subset(X_train, Y_train, latlon_train, loc_emb_train, ids_train, costs, rule, size):
     print("Generating subset using satclip embeddings...")
-    subset_idxs = sampling_with_prob(loc_emb_train, size, rule)
-    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
+    scores_path = "data/scores/CONTUS_UAR_satclip_leverage_scores.pkl"
+    subset_idxs = sampling_with_scores(scores_path, ids_train, size)
+
+    #Get costs of subset
+    total_cost = cost_of_subset(costs, subset_idxs)
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs], total_cost
 
 '''
 Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: linear with respect to distance to closest major cities
 '''
-def greedy_by_cost(X_train, Y_train, latlon_train, size):
-    costs = get_costs(c, X_train).values
+def sample_by_lin(X_train, Y_train, latlon_train, ids_train, costs, size):
+    print("Generating subset using greedy cost algorithm...")
     lowest_cost_idxs = np.argpartition(costs, size)[:size]
-    return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs]
+    cost_subset = costs[lowest_cost_idxs]
+
+    boundary_cost = max(cost_subset)
+    tied_idxs = np.where(costs == boundary_cost)[0]
+    idxs_in_cost_subset = lowest_cost_idxs[np.where(cost_subset == boundary_cost)[0]]
+
+    #Break ties randomly
+    if (len(tied_idxs)>len(idxs_in_cost_subset)):
+        lowest_cost_idxs = lowest_cost_idxs[lowest_cost_idxs != idxs_in_cost_subset]
+        lowest_cost_idxs = np.concatenate([lowest_cost_idxs, np.random.choice(tied_idxs, size=len(idxs_in_cost_subset), replace=False)])
+
+    total_cost = cost_of_subset(costs, lowest_cost_idxs)
+    return X_train[lowest_cost_idxs], Y_train[lowest_cost_idxs], latlon_train[lowest_cost_idxs], ids_train[lowest_cost_idxs], total_cost
+
+'''
+Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: constant within radius of major cities, linear outside of radius
+'''
+def sample_by_lin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+    print("Generating subset using radius distance algorithm...")
+    inside_r_idxs = np.where(distances <= r)[0]
+    if (len(inside_r_idxs) >= size):
+        subset_idxs = np.random.choice(inside_r_idxs, size=size, replace=False)
+    else:
+        new_size = size - len(inside_r_idxs)
+        new_distances = distances.copy()
+        new_distances[inside_r_idxs] = np.inf
+        lowest_cost_idxs = np.argpartition(new_distances, new_size)[:new_size]
+
+        subset_idxs = np.concatenate([inside_r_idxs, lowest_cost_idxs])
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs]
+
+'''
+Takes subsets greedily with lowest cost until number of samples is reached
+Cost function: constant within radius of major cities, larger constant outside of radius
+'''
+def sample_by_bin_rad(X_train, Y_train, latlon_train, ids_train, distances, r, size):
+    print("Generating subset using binary radius algorithm...")
+    inside_r_idxs = np.where(distances <= r)[0]
+    outside_r_idxs = np.where(distances > r)[0]
+    if (len(inside_r_idxs) >= size):
+        subset_idxs = np.random.choice(inside_r_idxs, size=size, replace=False)
+    else:
+        new_size = size - len(inside_r_idxs)
+        subset_idxs = np.concatenate([inside_r_idxs, np.random.choice(outside_r_idxs, size=new_size, replace=False)])
+    return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs], ids_train[subset_idxs]
+
 
 '''
 Takes a SRS subset of training data such that total cost does not exceed budget
 '''
-def constrained_random_subset(X_train, Y_train, latlon_train, budget):
+def constrained_random_subset(X_train, Y_train, latlon_train, cost_train, budget):
     cost = 0
     idxs = [i for i in range(len(X_train))]
     subset_idxs = []
@@ -97,5 +121,5 @@ def constrained_random_subset(X_train, Y_train, latlon_train, budget):
        sampled_idx = random.sample(idxs, 1)
        subset_idxs.append(sampled_idx)
        idxs = idxs[:sampled_idx] + idxs[sampled_idx + 1:]
-       cost += cost[sampled_idx]
+       cost += cost_train[sampled_idx]
     return X_train[subset_idxs], Y_train[subset_idxs], latlon_train[subset_idxs]
