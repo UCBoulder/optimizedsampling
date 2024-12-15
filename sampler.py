@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+import optuna
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from oed import *
@@ -149,6 +150,29 @@ class Sampler:
             yield dataset[subset_idxs]
             i += 1
 
+#--------------------------------------------------------------------------------------------------
+
+def optimize_k(data, min_k, max_k, n_trials=50):
+    
+    #Define objective
+    def objective(trial):
+        # Suggest hyperparameters
+        k = trial.suggest_int("k", min_k, max_k)  # Optimize k between min_val, max_val
+
+        # Fit KMeans with the suggested k
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10, max_iter=300)
+        labels = kmeans.fit_predict(data)
+
+        # Compute the silhouette score
+        score = silhouette_score(data, labels)
+
+        # Return the silhouette score [make sure to maximize]
+        return score
+
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+    
+    return study.best_params["k"]
 
 '''
 Use to determine clusters in featurized data
