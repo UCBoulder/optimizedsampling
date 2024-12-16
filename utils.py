@@ -195,47 +195,6 @@ def distance_of_subset(dist_path, ids):
 
     return dist_of_subset
 
-def cost_lin(dist_path, ids, *params):
-    dist_of_subset = distance_of_subset(dist_path, ids)
-    alpha = params[0]
-    beta = params[1]
-
-    costs = (alpha*(dist_of_subset) + beta)
-
-    return costs
-
-def cost_lin_with_r(dist_path, ids, *params):
-    dist_of_subset = distance_of_subset(dist_path, ids)
-    costs = np.empty(len(dist_of_subset), dtype=np.float32)
-
-    alpha = params[0]
-    beta = params[1]
-    c1 = params[2]
-    r = params[3]
-
-    for i in range(len(dist_of_subset)):
-        if (dist_of_subset[i] <= r):
-            costs[i] = c1
-        if (dist_of_subset[i] > r):
-            costs[i] = alpha*(dist_of_subset[i]) + beta
-
-    return costs
-
-def cost_bin_r(dist_path, ids, *params):
-    dist_of_subset = distance_of_subset(dist_path, ids)
-    costs = np.empty(len(dist_of_subset), dtype=np.float32)
-
-    c1 = params[0]
-    c2 = params[1]
-    r = params[3]
-
-    for i in range(len(dist_of_subset)):
-        if (dist_of_subset[i] <= r):
-            costs[i] = c1
-        if (dist_of_subset[i] > params[2]):
-            costs[i] = c2
-
-    return costs
 
 def plot_lat_lon_with_cost(lats, lons, costs, title):
     # Create a GeoDataFrame with costs

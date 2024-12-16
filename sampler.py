@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-import optuna
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from oed import *
 
 class Sampler:
@@ -57,12 +54,12 @@ class Sampler:
         elif self.rule == 'greedycost':
             self.scores = -self.costs #Highest score corresponds to lowest cost
     
-    '''
-    Set clusters from KMeans
-    '''
-    def set_clusters(self, feat_type):
-        cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
-        self.clusters = retrieve_clusters(self.ids, cluster_path)
+    # '''
+    # Set clusters from KMeans
+    # '''
+    # def set_clusters(self, feat_type):
+    #     cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
+    #     self.clusters = retrieve_clusters(self.ids, cluster_path)
 
     '''
     Determine indexes of subset to sample
@@ -149,74 +146,3 @@ class Sampler:
                 return
             yield dataset[subset_idxs]
             i += 1
-
-#--------------------------------------------------------------------------------------------------
-
-def optimize_k(data, min_k, max_k, n_trials=50):
-    
-    #Define objective
-    def objective(trial):
-        # Suggest hyperparameters
-        k = trial.suggest_int("k", min_k, max_k)  # Optimize k between min_val, max_val
-
-        # Fit KMeans with the suggested k
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10, max_iter=300)
-        labels = kmeans.fit_predict(data)
-
-        # Compute the silhouette score
-        score = silhouette_score(data, labels)
-
-        # Return the silhouette score [make sure to maximize]
-        return score
-
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=n_trials)
-    
-    return study.best_params["k"]
-
-'''
-Use to determine clusters in featurized data
-'''
-def cluster_labels(data):
-    best_score = -1
-    best_k = 0
-    best_labels = None
-
-    for k in range(2, 11):  # Test k from 2 to 10
-        kmeans = KMeans(n_clusters=k, random_state=0).fit(data)
-        score = silhouette_score(data, kmeans.labels_)
-
-        print(f"For k={k}, silhouette score={score}")
-        
-        if score > best_score:
-            best_score = score
-            best_k = k
-            best_labels = kmeans.labels_
-
-    print(f"Best k={best_k} with silhouette score={best_score}")
-
-    return best_labels
-
-def cluster_and_save(ids_train, featurized_data, feat_type):
-    cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
-
-    cluster_labels = cluster_labels(featurized_data)
-
-    with open(cluster_path, "wb") as f:
-        dill.dump(
-            {"ids": ids_train, "clusters": cluster_labels},
-            f,
-            protocol=4,
-        )
-
-def retrieve_clusters(ids, cluster_path):
-    with open(cluster_path, "rb") as f:
-        arrs = dill.load(f)
-
-    clusters_df = pd.DataFrame(arrs["clusters"], index=arrs["ids"], columns=["clusters"])
-    cluster_labels = np.empty((len(ids),), dtype=int)
-
-    for i in range(len(ids)):
-        cluster_labels[i] = clusters_df.loc[ids[i], "clusters"]
-
-    return cluster_labels

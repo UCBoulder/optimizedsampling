@@ -5,7 +5,7 @@ import numpy as np
 from mosaiks.code.mosaiks.solve import data_parser as parse
 from mosaiks.code.mosaiks import config as cfg
 
-def save_with_splits(c, label, feature_path, loc_emb_path=None):
+def save_with_splits(c, label, out_fpath, feature_path, loc_emb_path=None):
     with open(feature_path, "rb") as f:
         arrs = dill.load(f)
 
@@ -50,10 +50,10 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
         c, label, X, latlons, loc_emb
     )
 
-    out_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    out_fpath = out_fpath.format(label=label)
 
     if loc_emb is not None:
-        with open(out_path, "wb") as f:
+        with open(out_fpath, "wb") as f:
             dill.dump(
                 {"X_train": X_train, 
                 "latlons_train": latlons_train,
@@ -69,7 +69,7 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
                 protocol=4,
             )
     else:
-        with open(out_path, "wb") as f:
+        with open(out_fpath, "wb") as f:
             dill.dump(
                 {"X_train": X_train, 
                 "latlons_train": latlons_train,
@@ -82,9 +82,9 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
             )
 
 def retrieve_splits(label):
-    print("Retrieving data splits...")
+    print("Retrieving TorchGeo Feature splits...")
 
-    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
     with open(data_path, "rb") as f:
         arrs = dill.load(f)
 
@@ -101,8 +101,26 @@ def retrieve_splits(label):
 
     return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
 
+def retrieve_train_X(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    X_train = arrs["X_train"]
+
+    return X_train
+
+def retrieve_train_loc_emb(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    loc_emb_train = arrs["loc_emb_train"]
+
+    return loc_emb_train
+
 def retrieve_train_ids(label):
-    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
     with open(data_path, "rb") as f:
         arrs = dill.load(f)
 
