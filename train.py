@@ -6,7 +6,8 @@ import argparse
 from regressions import run_regression, avgr2, stdr2
 from cost import *
 
-budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
+#budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
+budgets = np.logspace(1,7, num = 25)
 
 #Run
 def run(labels_to_run, cost_func, rule='random', **kwargs):

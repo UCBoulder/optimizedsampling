@@ -83,10 +83,16 @@ class Sampler:
             # Randomly pick one of the indices with the maximum leverage score
             np.random.seed(seed)
             max_idx = np.random.choice(max_idxs)
+            cost = self.costs[max_idx]
+
+            #Don't choose points that are infinite cost
+            if cost == np.inf:
+                continue
+
             # Update cost
             total_cost += self.costs[max_idx]
 
-            if total_cost >= budget:
+            if total_cost > budget:
                 break
 
             # Add to the sampled set

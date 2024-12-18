@@ -7,11 +7,12 @@
 import dill
 import pandas as pd
 import numpy as np
+import warnings
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeCV
-from sklearn.metrics import r2_score
+from sklearn.linear_model import RidgeCV, Ridge
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import VarianceThreshold
 
 from oed import *
 from format_data import *
@@ -105,7 +106,7 @@ def ridge_regression(X_train,
                      X_test, 
                      y_test, 
                      n_folds=5, 
-                     alphas=[1e-8, 1e-6, 1e-4, 1e-2, 1, 10, 100]):
+                     alphas=np.logspace(-5, 5, 100)):
     n_samples = X_train.shape[0]
 
     if n_samples < 2*n_folds:
@@ -119,7 +120,8 @@ def ridge_regression(X_train,
     #Pipeline that scales and then fits ridge regression
     pipeline = Pipeline([
         ('scaler', StandardScaler()),     # Step 1: Standardize features
-        ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 2: RidgeCV with 5-fold CV
+        #('variance', VarianceThreshold(threshold=1e-5)), #Step 2: Eliminate low variance features
+        ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 3: RidgeCV with 5-fold CV
     ])
 
     #Fit the pipeline
