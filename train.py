@@ -6,7 +6,7 @@ import argparse
 from regressions import run_regression, avgr2, stdr2
 from cost import *
 
-budgets = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9]
+budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
 
 #Run
 def run(labels_to_run, cost_func, rule='random', **kwargs):
@@ -22,7 +22,20 @@ def run(labels_to_run, cost_func, rule='random', **kwargs):
     )
     results_df.index.name = "label"
 
-    results_df.to_csv(Path("results/TestSetPerformance{rule}withBudget_torchgeo4096.csv".format(rule=rule)), index=True)
+    if cost_func == compute_unif_cost:
+        cost_str = 'Unif'
+    elif cost_func == compute_lin_cost:
+        alpha = kwargs.get('alpha', 1)
+        beta = kwargs.get('beta', 1)
+        cost_str = f'Lin_alpha{alpha}_beta{beta}'
+    elif cost_func == compute_lin_w_r_cost:
+        alpha = kwargs.get('alpha', 1)
+        beta = kwargs.get('beta', 1)
+        gamma = kwargs.get('gamma', 1)
+        r = kwargs.get('r', 0)
+        cost_str = f'LinRad_alpha{alpha}_beta{beta}_gamma{gamma}_rad{r}'
+
+    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

@@ -20,7 +20,10 @@ def list_coords(dataset, coord):
     return coords
 
 def plot_lat_lon(lats, lons, title, color='orangered', markersize=1, alpha=0.5):
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
+    gdf = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
+    )
 
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
     exclude_states = ["Alaska", "Hawaii"]
@@ -47,7 +50,8 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
     # Create a GeoDataFrame with leverage scores
     gdf = gpd.GeoDataFrame(
         {'leverage_score': scores},
-        geometry=gpd.points_from_xy(lons, lats)
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
     )
     gdf['log_leverage_score'] = np.log10(gdf['leverage_score'] + 1e-10)
 
@@ -79,7 +83,10 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
     return fig
 
 def plot_lat_lon_with_rgb(lats, lons, loc_emb, title, markersize=1, alpha=0.5):
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
+    gdf = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
+    )
     colors = loc_emb
 
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")

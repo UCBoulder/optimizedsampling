@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from oed import *
+#from clusters import retrieve_clusters
 
 class Sampler:
     '''
@@ -35,6 +36,7 @@ class Sampler:
 
         self.scores = None
         self.set_scores()
+        # self.set_clusters()
 
     '''
     Sets scores according to rule
@@ -53,13 +55,15 @@ class Sampler:
 
         elif self.rule == 'greedycost':
             self.scores = -self.costs #Highest score corresponds to lowest cost
+
     
     # '''
     # Set clusters from KMeans
     # '''
     # def set_clusters(self, feat_type):
-    #     cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
-    #     self.clusters = retrieve_clusters(self.ids, cluster_path)
+    #     if self.rule == "stratclusters" or self.rule == 'probclusters':
+    #         cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
+    #         self.clusters = retrieve_clusters(self.ids, cluster_path)
 
     '''
     Determine indexes of subset to sample
@@ -131,13 +135,55 @@ class Sampler:
                 clusters[cluster_idx] = -1
 
         return subset_idxs
+
+    def stratified_by_cluster(self, budget, seed):
+        subset_idxs = []
+        total_cost = 0
+        clusters = self.clusters.copy()
+        unique_clusters  = np.unique(self.clusters)
+
+        while total_cost < budget:
+            for c in unique_clusters:
+                cluster_idxs = np.where(clusters == c)[0]
+
+                if len(cluster_idxs) == 0:
+                    continue
+
+                #Randomly pick index in cluster
+                np.random.seed(seed)
+                cluster_idx = np.random.choice(cluster_idxs)
+
+                # Update cost
+                total_cost += self.costs[cluster_idx]
+
+                if total_cost >= budget:
+                    break
+                
+                subset_idxs.append(cluster_idx)
+                
+                #Ensure this point is not chosen again
+                clusters[cluster_idx] = -1
+
+        return subset_idxs
+    
+    def prob_by_cluster(self, budget, seed):
+        subset_idxs = []
+        total_cost = 0
+        clusters = self.clusters.copy()
+        unique_clusters  = np.unique(self.clusters)
+        num_clusters = len(unique_clusters)
+
+        cluster_sizes = [np.sum(clusters == i) for i in range(num_clusters)]
+        #TODO
+        return
+
     
     '''
     Sample subset from each dataset
     '''
     def sample_with_budget(self, budget=0, seed=42):
         print(f"Sampling with respect to budget {budget}")
-        subset_idxs = self.subset_idxs_with_scores(budget, seed)
+        subset_idxs = self.subset_idxs_with_scores(budget, seed) #EDIT TO CALL CLUSTERS DEPENDING ON RULE
 
         i = 1
         while True:
