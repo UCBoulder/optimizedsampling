@@ -48,6 +48,9 @@ class Sampler:
         else:
             self.set_scores()
 
+        self.finite_idxs = np.where(self.costs != np.inf)[0]
+        self.total_valid = len(self.finite_idxs)
+
     '''
     Sets scores according to rule
     '''
@@ -123,8 +126,9 @@ class Sampler:
         total_cost = 0
         clusters = self.clusters.copy()
         unique_clusters  = np.unique(self.clusters)
-        finite_idxs = np.where(self.costs != np.inf)[0]
+        finite_idxs = self.finite_idxs.copy()
 
+        stop = False
         while total_cost < budget and len(finite_idxs) > 0:
             for c in unique_clusters:
                 cluster_idxs = finite_idxs[clusters[finite_idxs] == c]
@@ -139,13 +143,17 @@ class Sampler:
                 # Update cost
                 total_cost += self.costs[idx]
 
-                if total_cost >= budget:
+                if total_cost > budget:
+                    stop = True
                     break
                 
                 subset_idxs.append(idx)
                 
                 #Ensure this point is not chosen again
                 finite_idxs = finite_idxs[finite_idxs != idx]
+
+            if stop:
+                break
 
         return subset_idxs
     

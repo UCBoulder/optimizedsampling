@@ -4,6 +4,7 @@ import dill
 import argparse
 
 from regressions import run_regression, avgr2, stdr2
+import config as c
 from cost import *
 
 budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
@@ -12,8 +13,11 @@ budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
 #Run
 def run(labels_to_run, cost_func, rule='random', **kwargs):
     for label in labels_to_run:
+        c.used_all_samples = False
         for budget in budgets:
             run_regression(label, cost_func, rule=rule, budget=budget, **kwargs)
+            if c.used_all_samples:
+                break
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(

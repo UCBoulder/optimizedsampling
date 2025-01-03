@@ -19,10 +19,10 @@ from format_data import *
 from cost import *
 from sampler import Sampler
 from plot_coverage import plot_lat_lon
+import config as c
 
 avgr2 = {}
 stdr2 = {}
-budget = {}
 
 '''
 Run regressions
@@ -76,10 +76,15 @@ def run_regression(label,
             print(f"Using Seed {seed} to sample...")
             X_train_sampled, y_train_sampled, latlon_train_sampled = sampler.sample_with_budget(budget, seed)
 
-            #Plot Coverage
-            fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
-            fig.savefig(f"plots/Coverage with Budget {budget}.png")
+            num_samples = X_train_sampled.shape[0]
+            print("Number of samples: ", num_samples)
+            if num_samples == sampler.total_valid:
+                print("Used all samples.")
+                c.used_all_samples = True
 
+            #Plot Coverage
+            # fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
+            # fig.savefig(f"plots/c Coverage with Budget {budget}.png")
 
             r2 = ridge_regression(X_train_sampled, 
                                   y_train_sampled, 
