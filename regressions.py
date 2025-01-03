@@ -51,24 +51,35 @@ def run_regression(label,
         ids_train,
         ids_test
     ) = retrieve_splits(label)
-    dist_path = "data/cost/distance_to_closest_city.pkl"
-    costs = cost_func(dist_path, ids_train, **kwargs)
+
+    if cost_func == compute_state_cost:
+        states = kwargs.get('states', 1)
+        costs = cost_func(states, latlon_train)
+    else:
+        dist_path = "data/cost/distance_to_closest_city.pkl"
+        costs = cost_func(dist_path, ids_train, **kwargs)
 
     n_folds = 5
     seeds = [42, 123, 456, 789, 1011]
     r2_scores = []
 
     if budget != float('inf'):
-        sampler = Sampler(ids_train, 
+        for seed in seeds:
+            sampler = Sampler(ids_train, 
                           X_train, 
                           y_train, 
+                          latlon_train,
                           rule=rule, 
                           loc_emb=loc_emb_train, 
                           costs=costs)
-
-        for seed in seeds:
+            
             print(f"Using Seed {seed} to sample...")
-            X_train_sampled, y_train_sampled = sampler.sample_with_budget(budget, seed)
+            X_train_sampled, y_train_sampled, latlon_train_sampled = sampler.sample_with_budget(budget, seed)
+
+            #Plot Coverage
+            fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
+            fig.savefig(f"plots/Coverage with Budget {budget}.png")
+
 
             r2 = ridge_regression(X_train_sampled, 
                                   y_train_sampled, 
@@ -120,8 +131,7 @@ def ridge_regression(X_train,
     #Pipeline that scales and then fits ridge regression
     pipeline = Pipeline([
         ('scaler', StandardScaler()),     # Step 1: Standardize features
-        #('variance', VarianceThreshold(threshold=1e-5)), #Step 2: Eliminate low variance features
-        ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 3: RidgeCV with 5-fold CV
+        ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 2: RidgeCV with 5-fold CV
     ])
 
     #Fit the pipeline

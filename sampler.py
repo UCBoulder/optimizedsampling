@@ -2,13 +2,20 @@ import pandas as pd
 import numpy as np
 
 from oed import *
-#from clusters import retrieve_clusters
+from clusters import retrieve_clusters
 
 class Sampler:
     '''
     Class for sampling
     '''
-    def __init__(self, ids, *datasets, rule="random", loc_emb=None, costs=None):
+    def __init__(
+            self, 
+            ids, 
+            *datasets, 
+            rule="random", 
+            loc_emb=None, 
+            costs=None,
+            cluster_type="NLCD"):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -35,8 +42,11 @@ class Sampler:
             self.costs = costs
 
         self.scores = None
-        self.set_scores()
-        # self.set_clusters()
+
+        if rule == "clusters":
+            self.set_clusters(cluster_type)
+        else:
+            self.set_scores()
 
     '''
     Sets scores according to rule
@@ -57,13 +67,13 @@ class Sampler:
             self.scores = -self.costs #Highest score corresponds to lowest cost
 
     
-    # '''
-    # Set clusters from KMeans
-    # '''
-    # def set_clusters(self, feat_type):
-    #     if self.rule == "stratclusters" or self.rule == 'probclusters':
-    #         cluster_path = f"data/clusters/KMeans_{feat_type}_cluster_assignment.pkl"
-    #         self.clusters = retrieve_clusters(self.ids, cluster_path)
+    '''
+    Set clusters from cluster path
+        cluster_type: NLCD,
+    '''
+    def set_clusters(self, cluster_type):
+        cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
+        self.clusters = retrieve_clusters(self.ids, cluster_path)
 
     '''
     Determine indexes of subset to sample
@@ -75,19 +85,15 @@ class Sampler:
         subset_idxs = []
         total_cost = 0
         scores = self.scores.copy()
+        finite_idxs = np.where(self.costs != np.inf)[0]
 
-        while total_cost < budget:
-            max_score = np.max(scores)
-            max_idxs = np.where(scores == max_score)[0]
+        while total_cost < budget and len(finite_idxs) > 0:
+            max_score = np.max(scores[finite_idxs])
+            max_idxs = finite_idxs[scores[finite_idxs] == max_score]
 
-            # Randomly pick one of the indices with the maximum leverage score
+            # Randomly pick one of the indices with the maximum score
             np.random.seed(seed)
             max_idx = np.random.choice(max_idxs)
-            cost = self.costs[max_idx]
-
-            #Don't choose points that are infinite cost
-            if cost == np.inf:
-                continue
 
             # Update cost
             total_cost += self.costs[max_idx]
@@ -98,8 +104,8 @@ class Sampler:
             # Add to the sampled set
             subset_idxs.append(max_idx)
 
-            #Set this points score to -inf so it's not chosen again
-            scores[max_idx] = -np.inf
+            #Make sure the point is not chosen again
+            finite_idxs = finite_idxs[finite_idxs != max_idx]
 
             if len(subset_idxs) == len(self.dataset1):
                 break
@@ -117,71 +123,42 @@ class Sampler:
         total_cost = 0
         clusters = self.clusters.copy()
         unique_clusters  = np.unique(self.clusters)
+        finite_idxs = np.where(self.costs != np.inf)[0]
 
-        while total_cost < budget:
+        while total_cost < budget and len(finite_idxs) > 0:
             for c in unique_clusters:
-                cluster_idxs = np.where(clusters == c)[0]
+                cluster_idxs = finite_idxs[clusters[finite_idxs] == c]
 
                 if len(cluster_idxs) == 0:
                     continue
 
                 #Randomly pick index in cluster
                 np.random.seed(seed)
-                cluster_idx = np.random.choice(cluster_idxs)
+                idx = np.random.choice(cluster_idxs)
 
                 # Update cost
-                total_cost += self.costs[cluster_idx]
+                total_cost += self.costs[idx]
 
                 if total_cost >= budget:
                     break
                 
-                subset_idxs.append(cluster_idx)
+                subset_idxs.append(idx)
                 
                 #Ensure this point is not chosen again
-                clusters[cluster_idx] = -1
-
-        return subset_idxs
-
-    def stratified_by_cluster(self, budget, seed):
-        subset_idxs = []
-        total_cost = 0
-        clusters = self.clusters.copy()
-        unique_clusters  = np.unique(self.clusters)
-
-        while total_cost < budget:
-            for c in unique_clusters:
-                cluster_idxs = np.where(clusters == c)[0]
-
-                if len(cluster_idxs) == 0:
-                    continue
-
-                #Randomly pick index in cluster
-                np.random.seed(seed)
-                cluster_idx = np.random.choice(cluster_idxs)
-
-                # Update cost
-                total_cost += self.costs[cluster_idx]
-
-                if total_cost >= budget:
-                    break
-                
-                subset_idxs.append(cluster_idx)
-                
-                #Ensure this point is not chosen again
-                clusters[cluster_idx] = -1
+                finite_idxs = finite_idxs[finite_idxs != idx]
 
         return subset_idxs
     
-    def prob_by_cluster(self, budget, seed):
-        subset_idxs = []
-        total_cost = 0
-        clusters = self.clusters.copy()
-        unique_clusters  = np.unique(self.clusters)
-        num_clusters = len(unique_clusters)
+    # def prob_by_cluster(self, budget, seed):
+    #     subset_idxs = []
+    #     total_cost = 0
+    #     clusters = self.clusters.copy()
+    #     unique_clusters  = np.unique(self.clusters)
+    #     num_clusters = len(unique_clusters)
 
-        cluster_sizes = [np.sum(clusters == i) for i in range(num_clusters)]
-        #TODO
-        return
+    #     cluster_sizes = [np.sum(clusters == i) for i in range(num_clusters)]
+    #     #TODO
+    #     return
 
     
     '''
@@ -189,7 +166,11 @@ class Sampler:
     '''
     def sample_with_budget(self, budget=0, seed=42):
         print(f"Sampling with respect to budget {budget}")
-        subset_idxs = self.subset_idxs_with_scores(budget, seed) #EDIT TO CALL CLUSTERS DEPENDING ON RULE
+
+        if self.rule == 'clusters':
+            subset_idxs = self.subset_idxs_with_clusters(budget, seed)
+        else:
+            subset_idxs = self.subset_idxs_with_scores(budget, seed)
 
         i = 1
         while True:

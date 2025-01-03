@@ -6,8 +6,8 @@ import argparse
 from regressions import run_regression, avgr2, stdr2
 from cost import *
 
-#budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
-budgets = np.logspace(1,7, num = 25)
+budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
+#budgets = np.round(np.logspace(1,7, num = 25), decimals=0)
 
 #Run
 def run(labels_to_run, cost_func, rule='random', **kwargs):
@@ -35,7 +35,11 @@ def run(labels_to_run, cost_func, rule='random', **kwargs):
         gamma = kwargs.get('gamma', 1)
         r = kwargs.get('r', 0)
         cost_str = f'LinRad_alpha{alpha}_beta{beta}_gamma{gamma}_rad{r}'
+    elif cost_func == compute_state_cost:
+        state = kwargs.get('state', 1)
+        cost_str = f'State_{state}'
 
+    from IPython import embed; embed()
     results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
@@ -47,7 +51,7 @@ parser.add_argument(
 parser.add_argument(
     '--method',
     required=True,
-    help='Sampling method: random, image, satclip, greedycost'
+    help='Sampling method: random, image, satclip, greedycost, clusters'
 )
 parser.add_argument(
     '--cost',
@@ -78,6 +82,13 @@ parser.add_argument(
     type=int,
     help='Radius around city'
 )
+parser.add_argument(
+    '--states',
+    default=None,
+    nargs='+',
+    type=str,
+    help='States to sample from'
+)
 
 args = parser.parse_args()
 
@@ -88,6 +99,8 @@ elif cost_func == "lin":
     cost_func = compute_lin_cost
 elif cost_func == "lin+rad":
     cost_func = compute_lin_w_r_cost
+elif cost_func == "state":
+    cost_func = compute_state_cost
 
 run(
     args.labels, 
@@ -96,5 +109,6 @@ run(
     alpha=args.alpha, 
     beta=args.beta, 
     gamma=args.gamma, 
-    r=args.radius
+    r=args.radius,
+    states=args.states
     )
