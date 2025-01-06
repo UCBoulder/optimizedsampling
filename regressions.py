@@ -123,6 +123,7 @@ def ridge_regression(X_train,
                      y_test, 
                      n_folds=5, 
                      alphas=np.logspace(-5, 5, 100)):
+    
     n_samples = X_train.shape[0]
 
     if n_samples < 2*n_folds:

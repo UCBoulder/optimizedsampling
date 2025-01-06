@@ -40,8 +40,9 @@ def run(labels_to_run, cost_func, rule='random', **kwargs):
         r = kwargs.get('r', 0)
         cost_str = f'LinRad_alpha{alpha}_beta{beta}_gamma{gamma}_rad{r}'
     elif cost_func == compute_state_cost:
-        state = kwargs.get('state', 1)
-        cost_str = f'State_{state}'
+        state = kwargs.get('states', 0)
+        gamma = kwargs.get('gamma', 1)
+        cost_str = f'State_{state}_{gamma}'
 
     from IPython import embed; embed()
     results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)

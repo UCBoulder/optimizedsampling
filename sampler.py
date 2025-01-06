@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from oed import *
+import config as c
 from clusters import retrieve_clusters
 
 class Sampler:
