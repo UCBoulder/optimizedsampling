@@ -1,39 +1,13 @@
 import dill
 import pandas as pd
 import numpy as np
-import rasterio
-from pyproj import Transformer
+from nlcd import nlcd_land_cover_class
 
-def nlcd_land_cover_class(latlons):
-    nlcd_path = "land_cover/Annual_NLCD_LndCov_2016_CU_C1V0.tif"
-
-    # Open the NLCD TIFF file using rasterio
-    with rasterio.open(nlcd_path) as src:
-        # Get the CRS and transformation from the raster
-        crs = src.crs
-
-        # Convert lat/lon to NLCD CRS
-        transformer = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
-
-        # Extract lats and lons as separate arrays
-        lons, lats = latlons[:, 1], latlons[:, 0]
-
-        # Batch transform lat/lon coordinates
-        x, y = transformer.transform(lons, lats)
-
-        # Use the transform to convert x, y to row, col indices
-        rows, cols = src.index(x, y)
-
-        # Read the land cover classes for the batch of pixels in one go
-        land_cover_classes = src.read(1)  # Read the first band
-        labels = land_cover_classes[rows, cols]
-
-    return labels
 
 def cluster_and_save(ids, latlons, feat_type):
     cluster_path = f"data/clusters/{feat_type}_cluster_assignment.pkl"
 
-    labels = nlcd_land_cover_class(latlons)
+    labels = nlcd_land_cover_class(latlons) #Change depending on desired clustering
 
     with open(cluster_path, "wb") as f:
         dill.dump(
