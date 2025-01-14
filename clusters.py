@@ -1,13 +1,14 @@
 import dill
 import pandas as pd
 import numpy as np
-from nlcd import nlcd_land_cover_class
+from nlcd import nlcd_land_cover_class, nlcd_k_means
 
 
 def cluster_and_save(ids, latlons, feat_type):
     cluster_path = f"data/clusters/{feat_type}_cluster_assignment.pkl"
+    data_path = 'data/clusters/NLCD_percentages.pkl'
 
-    labels = nlcd_land_cover_class(latlons) #Change depending on desired clustering
+    labels = nlcd_k_means(data_path) #Change depending on desired clustering
 
     with open(cluster_path, "wb") as f:
         dill.dump(
@@ -28,10 +29,11 @@ def retrieve_clusters(ids, cluster_path):
 
     return cluster_labels
 
-with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
-    data = dill.load(f)
+if __name__ == '__main__':
+    with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+        data = dill.load(f)
 
-data_ids = data["ids_X"]
-data_latlons = data["latlon"]
+    data_ids = data["ids_X"]
+    data_latlons = data["latlon"]
 
-cluster_and_save(data_ids, data_latlons, "NLCD")
+    cluster_and_save(data_ids, data_latlons, "NLCD_percentages")

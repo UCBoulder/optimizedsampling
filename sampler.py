@@ -16,7 +16,7 @@ class Sampler:
             rule="random", 
             loc_emb=None, 
             costs=None,
-            cluster_type="NLCD"):
+            cluster_type="NLCD_percentages"):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -73,7 +73,7 @@ class Sampler:
     
     '''
     Set clusters from cluster path
-        cluster_type: NLCD,
+        cluster_type: NLCD, NLCD_percentages
     '''
     def set_clusters(self, cluster_type):
         cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
