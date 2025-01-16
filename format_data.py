@@ -5,6 +5,9 @@ import numpy as np
 from mosaiks.code.mosaiks.solve import data_parser as parse
 from mosaiks.code.mosaiks import config as cfg
 
+#IDs contain NaN in the metadata (transform, latlon,...) or latlon is outside US
+invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+
 def save_with_splits(c, label, out_fpath, feature_path, loc_emb_path=None):
     with open(feature_path, "rb") as f:
         arrs = dill.load(f)
@@ -98,6 +101,20 @@ def retrieve_splits(label):
     loc_emb_test = arrs["loc_emb_test"]
     ids_train = arrs["ids_train"]
     ids_test = arrs["ids_test"]
+
+    valid_train_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+    ids_train = ids_train[valid_train_idxs]
+    X_train = X_train[valid_train_idxs]
+    y_train = y_train[valid_train_idxs]
+    latlons_train = latlons_train[valid_train_idxs]
+    loc_emb_train = loc_emb_train[valid_train_idxs]
+
+    valid_test_idxs = np.where(~np.isin(ids_test, invalid_ids))[0]
+    ids_test = ids_test[valid_test_idxs]
+    X_test = X_test[valid_test_idxs]
+    y_test = y_test[valid_test_idxs]
+    latlons_test = latlons_test[valid_test_idxs]
+    loc_emb_test = loc_emb_test[valid_test_idxs]
 
     return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
 

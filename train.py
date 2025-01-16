@@ -7,9 +7,9 @@ from regressions import run_regression, avgr2, stdr2
 import config as c
 from cost import *
 
-#budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
+budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
 #budgets = np.round(np.logspace(1,7, num = 25), decimals=0)
-budgets = [1e4, 1e5, 1e6, 1e7, 1e8]
+#budgets = [1e4, 1e5, 1e6, 1e7, 1e8]
 
 #Run
 def run(labels_to_run, cost_func, rule='random', **kwargs):

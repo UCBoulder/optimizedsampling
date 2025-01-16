@@ -65,11 +65,9 @@ def nlcd_k_means(label_path):
     with open(label_path, 'rb') as f:
         arrs = dill.load(f)
         data = arrs['NLCD_percentages']
+        ids = arrs['ids']
 
-    #Eliminate samples with NaN values
-    data = data[ ~np.isnan(data).any(axis=1) & ~np.isinf(data).any(axis=1)]
-
-    for k in range(2, 48):  # Test k from 2 to 10
+    for k in range(2, 10):  # Test k from 2 to 10
         try:
             kmeans = KMeans(n_clusters=k, random_state=0).fit(data)
             score = silhouette_score(data, kmeans.labels_)
@@ -86,7 +84,7 @@ def nlcd_k_means(label_path):
 
     print(f"Best k={best_k} with silhouette score={best_score}")
 
-    return best_labels
+    return best_labels, ids
 
 if __name__ == "__main__":
     nlcd_path = "land_cover/Annual_NLCD_LndCov_2016_CU_C1V0.tif"
@@ -99,34 +97,39 @@ if __name__ == "__main__":
  
     ids = np.empty((file_count,), dtype='U{}'.format(15))
     nlcd_percentages = np.empty((file_count, 16), dtype=np.float32)
-    errors = []
 
     i = 0
     for file_name in os.listdir(root_dir):
         file_path = os.path.join(root_dir, file_name)
+        id = file_name.replace('tile_', '').replace('.tif', '')
+        ids[i] = id
         print(f"Processing Sample {i}")
 
         try:
             percentage_array = naip_img_nlcd_label_counts(file_path, land_cover_classes)
             nlcd_percentages[i] = percentage_array
 
-            id = file_name.replace('tile_', '').replace('.tif', '')
-            ids[i] = id
-            i += 1
+            #Make sure no NaNs
+            if ~np.any(np.isnan(percentage_array)):
+                successful = True
+            else:
+                successful = False
         
         except Exception as e:
-            print(f"The {i}th file processed is: {file_name}")
-            print(f"Full path: {file_path}")
-            errors.append(file_path)
             print(f"Skipping sample {i} due to error: {e}")
-            i += 1
-
-    print(errors)
+            successful = False
     
-    # out_fpath = 'data/clusters/NLCD_percentages.pkl'
-    # with open(out_fpath, "wb") as f:
-    #     dill.dump(
-    #         {"NLCD_percentages": nlcd_percentages, "ids": ids},
-    #         f,
-    #         protocol=4,
-    #     )
+        if successful:
+            print(f"Adding sample {id}")
+            i += 1
+        else:
+            print(f"Error in sample {id}")
+            
+
+    out_fpath = 'data/clusters/NLCD_percentages.pkl'
+    with open(out_fpath, "wb") as f:
+        dill.dump(
+            {"NLCD_percentages": nlcd_percentages, "ids": ids},
+            f,
+            protocol=4,
+        )
