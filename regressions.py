@@ -51,7 +51,7 @@ def run_regression(label,
         ids_train,
         ids_test
     ) = retrieve_splits(label)
-
+    
     if cost_func == compute_state_cost:
         states = kwargs.get('states', 1)
         costs = cost_func(states, latlon_train)
