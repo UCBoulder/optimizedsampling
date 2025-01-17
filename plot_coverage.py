@@ -1,3 +1,6 @@
+import dill
+import rasterio
+
 #to plot lat lon on a map
 import geopandas as gpd
 from geopandas import GeoDataFrame
@@ -6,12 +9,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-#from USAVars import USAVars
-
-# train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-# test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-# val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
+from matplotlib.lines import Line2D
 
 def list_coords(dataset, coord):
     coords = []
@@ -20,7 +18,10 @@ def list_coords(dataset, coord):
     return coords
 
 def plot_lat_lon(lats, lons, title, color='orangered', markersize=1, alpha=0.5):
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
+    gdf = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
+    )
 
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
     exclude_states = ["Alaska", "Hawaii"]
@@ -47,7 +48,8 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
     # Create a GeoDataFrame with leverage scores
     gdf = gpd.GeoDataFrame(
         {'leverage_score': scores},
-        geometry=gpd.points_from_xy(lons, lats)
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
     )
     gdf['log_leverage_score'] = np.log10(gdf['leverage_score'] + 1e-10)
 
@@ -79,7 +81,10 @@ def plot_lat_lon_with_scores(lats, lons, scores, title):
     return fig
 
 def plot_lat_lon_with_rgb(lats, lons, loc_emb, title, markersize=1, alpha=0.5):
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lons, lats))
+    gdf = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:26914'
+    )
     colors = loc_emb
 
     world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine = "pyogrio")
@@ -96,6 +101,73 @@ def plot_lat_lon_with_rgb(lats, lons, loc_emb, title, markersize=1, alpha=0.5):
     ax.axis("off")
     return fig
 
-# plot_lat_lon(train, "Train")
-# plot_coverage(test, "Test")
-# plot_coverage(val, "Val")
+def plot_lat_lon_cluster(lats, lons, clusters, title, markersize=1, alpha=0.5):
+        # Create a GeoDataFrame with leverage scores
+    gdf = gpd.GeoDataFrame(
+        {'cluster': clusters},
+        geometry=gpd.points_from_xy(lons, lats),
+        crs = 'EPSG:4326' #FIX MAYBE
+    )
+
+    # Load and prepare the US boundaries
+    world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
+    exclude_states = ["Alaska", "Hawaii"]
+    contiguous_us = world[~world['name'].isin(exclude_states)]
+    contiguous_outline = contiguous_us.dissolve()
+
+    # Plot with color map
+    fig, ax = plt.subplots(figsize=(12, 12))
+    fig.tight_layout(pad=3.0)
+    contiguous_outline.boundary.plot(ax=ax, color='black')
+
+    # Define colors for clusters using a colormap
+    cmap = plt.get_cmap('tab10')
+    unique_clusters = sorted(gdf['cluster'].unique())  # Ensure clusters are sorted
+    cluster_colors = [cmap(i % 10) for i in unique_clusters]
+
+    # Plot each cluster with its assigned color
+    for cluster_id, color in zip(unique_clusters, cluster_colors):
+        cluster_points = gdf[gdf['cluster'] == cluster_id]
+        cluster_points.plot(ax=ax, color=color, markersize=markersize, alpha=alpha, label=f'Cluster {cluster_id}')
+
+    # Create a sorted custom legend
+    legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=f'Cluster {i}')
+                    for i, color in zip(unique_clusters, cluster_colors)]
+
+    ax.legend(handles=legend_elements, title="Clusters", loc='lower right')
+    ax.set_title(title)
+    ax.axis("off")
+
+    return fig
+
+def plot_cluster_sample(cluster_num):
+    with open('data/clusters/NLCD_percentages_cluster_assignment.pkl', 'rb') as f:
+        arrs = dill.load(f)
+
+    clusters = arrs['clusters']
+    ids = arrs['ids']
+
+    cluster_idxs = np.where(clusters == cluster_num)[0]
+    random_idxs = np.random.choice(cluster_idxs, size=6, replace=False)
+
+    chosen_ids = ids[random_idxs]
+    file_paths = [f'/share/usavars/uar/tile_{id}.tif' for id in chosen_ids]
+
+    fig, axs = plt.subplots(2, 3, figsize=(15, 10))  # 2 rows, 3 columns
+    axs = axs.flatten()  # Flatten the 2D array of axes to make it easy to iterate
+
+    for i, (file_path, ax) in enumerate(zip(file_paths, axs)):
+        # Open the GeoTIFF file using rasterio
+        with rasterio.open(file_path) as src:
+            # Read the data from the first band
+            data = src.read([1,2,3])
+            rgb_image = data.transpose(1, 2, 0)
+
+            # Plot the data without a colorbar
+            ax.imshow(rgb_image)  # You can change the cmap as per your preference
+            ax.set_title(f'GeoTIFF {i+1}')  # Title of the plot
+            ax.axis('off')  # Hide axes for cleaner display
+
+    fig.suptitle(f'GeoTIFFS from Cluster {cluster_num}', fontsize=16)
+    plt.tight_layout()  # Adjust layout to avoid overlap
+    return fig  # Return the figure object

@@ -5,7 +5,10 @@ import numpy as np
 from mosaiks.code.mosaiks.solve import data_parser as parse
 from mosaiks.code.mosaiks import config as cfg
 
-def save_with_splits(c, label, feature_path, loc_emb_path=None):
+#IDs contain NaN in the metadata (transform, latlon,...) or latlon is outside US
+invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+
+def save_with_splits(c, label, out_fpath, feature_path, loc_emb_path=None):
     with open(feature_path, "rb") as f:
         arrs = dill.load(f)
 
@@ -50,10 +53,10 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
         c, label, X, latlons, loc_emb
     )
 
-    out_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    out_fpath = out_fpath.format(label=label)
 
     if loc_emb is not None:
-        with open(out_path, "wb") as f:
+        with open(out_fpath, "wb") as f:
             dill.dump(
                 {"X_train": X_train, 
                 "latlons_train": latlons_train,
@@ -69,7 +72,7 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
                 protocol=4,
             )
     else:
-        with open(out_path, "wb") as f:
+        with open(out_fpath, "wb") as f:
             dill.dump(
                 {"X_train": X_train, 
                 "latlons_train": latlons_train,
@@ -82,9 +85,9 @@ def save_with_splits(c, label, feature_path, loc_emb_path=None):
             )
 
 def retrieve_splits(label):
-    print("Retrieving data splits...")
+    print("Retrieving TorchGeo Feature splits...")
 
-    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
     with open(data_path, "rb") as f:
         arrs = dill.load(f)
 
@@ -99,10 +102,42 @@ def retrieve_splits(label):
     ids_train = arrs["ids_train"]
     ids_test = arrs["ids_test"]
 
+    valid_train_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+    ids_train = ids_train[valid_train_idxs]
+    X_train = X_train[valid_train_idxs]
+    y_train = y_train[valid_train_idxs]
+    latlons_train = latlons_train[valid_train_idxs]
+    loc_emb_train = loc_emb_train[valid_train_idxs]
+
+    valid_test_idxs = np.where(~np.isin(ids_test, invalid_ids))[0]
+    ids_test = ids_test[valid_test_idxs]
+    X_test = X_test[valid_test_idxs]
+    y_test = y_test[valid_test_idxs]
+    latlons_test = latlons_test[valid_test_idxs]
+    loc_emb_test = loc_emb_test[valid_test_idxs]
+
     return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
 
+def retrieve_train_X(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    X_train = arrs["X_train"]
+
+    return X_train
+
+def retrieve_train_loc_emb(label):
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    loc_emb_train = arrs["loc_emb_train"]
+
+    return loc_emb_train
+
 def retrieve_train_ids(label):
-    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits.pkl".format(label=label)
+    data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
     with open(data_path, "rb") as f:
         arrs = dill.load(f)
 

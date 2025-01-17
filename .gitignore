@@ -3,3 +3,4 @@ __pycache__
 data/*
 test_image/*
 satclip_files/*
+land_cover/*

@@ -1,23 +1,24 @@
 from pathlib import Path
 import pandas as pd
 import dill
+import argparse
 
 from regressions import run_regression, avgr2, stdr2
-from oed import *
-from pca import *
-from satclip import get_satclip
-from feasibility import *
+import config as c
+from cost import *
 
-from mosaiks.code.mosaiks import config as cfg
-from mosaiks.code.mosaiks.utils import io
+budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
+#budgets = np.round(np.logspace(1,7, num = 25), decimals=0)
+#budgets = [1e4, 1e5, 1e6, 1e7, 1e8]
 
 #Run
-def run(labels_to_run, cost_func, *params, rule='random'):
+def run(labels_to_run, cost_func, rule='random', **kwargs):
     for label in labels_to_run:
-        budgets = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9]
-
+        c.used_all_samples = False
         for budget in budgets:
-            run_regression(label, cost_func, *params, budget=budget, rule=rule)
+            run_regression(label, cost_func, rule=rule, budget=budget, **kwargs)
+            if c.used_all_samples:
+                break
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
@@ -27,30 +28,93 @@ def run(labels_to_run, cost_func, *params, rule='random'):
     )
     results_df.index.name = "label"
 
-    results_df.to_csv(Path("results/TestSetPerformance{rule}withBudget.csv".format(rule=rule)), index=True)
+    if cost_func == compute_unif_cost:
+        cost_str = 'Unif'
+    elif cost_func == compute_lin_cost:
+        alpha = kwargs.get('alpha', 1)
+        beta = kwargs.get('beta', 1)
+        cost_str = f'Lin_alpha{alpha}_beta{beta}'
+    elif cost_func == compute_lin_w_r_cost:
+        alpha = kwargs.get('alpha', 1)
+        beta = kwargs.get('beta', 1)
+        gamma = kwargs.get('gamma', 1)
+        r = kwargs.get('r', 0)
+        cost_str = f'LinRad_alpha{alpha}_beta{beta}_gamma{gamma}_rad{r}'
+    elif cost_func == compute_state_cost:
+        state = kwargs.get('states', 0)
+        gamma = kwargs.get('gamma', 1)
+        cost_str = f'State_{state}_{gamma}'
 
-labels_to_run = ["population", "treecover", "elevation"]
-alpha = 1
-c1 = 100
-r = 500
-beta = 100 - alpha*r
+    from IPython import embed; embed()
+    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
-cost_func = cost_lin_with_r
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--labels', 
+    nargs='+', 
+    default = ['population', 'elevation', 'treecover'],
+    help='Labels to run')
+parser.add_argument(
+    '--method',
+    required=True,
+    help='Sampling method: random, image, satclip, greedycost, clusters'
+)
+parser.add_argument(
+    '--cost',
+    default = 'unif',
+    help='Cost function: unif, lin, lin+rad'
+)
+parser.add_argument(
+    '-a', '--alpha',
+    default=1,
+    type=int,
+    help='Value of alpha in alpha*dist+beta'
+)
+parser.add_argument(
+    '-b', '--beta',
+    default=1,
+    type=int,
+    help='Value of beta in alpha*dist+beta'
+)
+parser.add_argument(
+    '--gamma',
+    default=1,
+    type=int,
+    help='Value of constant valued in rad or unif'
+)
+parser.add_argument(
+    '--radius',
+    default=500,
+    type=int,
+    help='Radius around city'
+)
+parser.add_argument(
+    '--states',
+    default=None,
+    nargs='+',
+    type=str,
+    help='States to sample from'
+)
 
-#Run Random
-run(labels_to_run, cost_func, alpha, beta, c1, r, rule="random")
+args = parser.parse_args()
 
-#Run with V Optimal Design
-#run(labels_to_run, rule="image")
+cost_func = args.cost
+if cost_func == "unif":
+    cost_func = compute_unif_cost
+elif cost_func == "lin":
+    cost_func = compute_lin_cost
+elif cost_func == "lin+rad":
+    cost_func = compute_lin_w_r_cost
+elif cost_func == "state":
+    cost_func = compute_state_cost
 
-#Run with SatCLIP embeddings
-#run(labels_to_run, rule="satclip")
-
-#Run with linear cost function greedy algorithm
-#run(labels_to_run, cost_lin, alpha, beta, rule='greedycost')
-
-#Run with linear outside of radius cost function greedy algorithm
-run(labels_to_run, cost_lin_with_r, alpha, beta, c1, r, rule='greedycost')
-
-#Run with binary wrt radius cost function greedy algorithm
-#run(labels_to_run, rule='binradcost')
+run(
+    args.labels, 
+    cost_func, 
+    rule=args.method, 
+    alpha=args.alpha, 
+    beta=args.beta, 
+    gamma=args.gamma, 
+    r=args.radius,
+    states=args.states
+    )
