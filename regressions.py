@@ -55,6 +55,8 @@ def run_regression(label,
     if cost_func == compute_state_cost:
         states = kwargs.get('states', 1)
         costs = cost_func(states, latlon_train)
+    elif cost_func == compute_unif_cost
+        costs = cost_func(ids_train)
     else:
         dist_path = "data/cost/distance_to_closest_city.pkl"
         costs = cost_func(dist_path, ids_train, **kwargs)

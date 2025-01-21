@@ -1,3 +1,4 @@
+import dill
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
@@ -15,7 +16,7 @@ contus_states = [
 
 gdf_states = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp")
 
-def compute_unif_cost(dist_path, ids, **kwargs):
+def compute_unif_cost(ids, **kwargs):
     gamma = kwargs.get('gamma', 1)
 
     return np.full(len(ids), gamma)
