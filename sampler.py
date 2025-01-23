@@ -13,7 +13,8 @@ class Sampler:
             self, 
             ids, 
             *datasets, 
-            rule="random", 
+            rule="random",
+            prob_dist=None, 
             loc_emb=None, 
             costs=None,
             cluster_type="NLCD_percentages"):
@@ -33,6 +34,9 @@ class Sampler:
         
         self.ids = ids
         self.rule = rule
+
+        if prob_dist is not None:
+            self.prob_dist = prob_dist
 
         if loc_emb is not None:
             self.loc_emb = loc_emb
@@ -69,6 +73,9 @@ class Sampler:
 
         elif self.rule == 'greedycost':
             self.scores = -self.costs #Highest score corresponds to lowest cost
+
+        elif self.rule == 'prob':
+            self.scores = self.prob_dist
 
     
     '''
@@ -157,17 +164,6 @@ class Sampler:
                 break
 
         return subset_idxs
-    
-    # def prob_by_cluster(self, budget, seed):
-    #     subset_idxs = []
-    #     total_cost = 0
-    #     clusters = self.clusters.copy()
-    #     unique_clusters  = np.unique(self.clusters)
-    #     num_clusters = len(unique_clusters)
-
-    #     cluster_sizes = [np.sum(clusters == i) for i in range(num_clusters)]
-    #     #TODO
-    #     return
 
     
     '''

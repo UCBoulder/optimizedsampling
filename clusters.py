@@ -33,7 +33,7 @@ def retrieve_all_clusters(cluster_path):
     with open(cluster_path, "rb") as f:
         arrs = dill.load(f)
 
-    return arrs['clusters'], arrs['ids']
+    return arrs['clusters']
 
 if __name__ == '__main__':
     cluster_and_save("NLCD_percentages")

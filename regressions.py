@@ -55,7 +55,7 @@ def run_regression(label,
     if cost_func == compute_state_cost:
         states = kwargs.get('states', 1)
         costs = cost_func(states, latlon_train)
-    elif cost_func == compute_unif_cost
+    elif cost_func == compute_unif_cost:
         costs = cost_func(ids_train)
     else:
         dist_path = "data/cost/distance_to_closest_city.pkl"
@@ -67,6 +67,7 @@ def run_regression(label,
 
     if budget != float('inf'):
         for seed in seeds:
+            from IPython import embed; embed()
             sampler = Sampler(ids_train, 
                           X_train, 
                           y_train, 

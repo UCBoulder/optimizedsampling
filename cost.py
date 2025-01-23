@@ -53,7 +53,17 @@ def compute_lin_w_r_cost(dist_path, ids, **kwargs):
 
     return costs
 
-def compute_state_cost(states, latlons):
+def compute_state_cost(states, latlons=None, ids=None):
+    if latlons is None:
+        with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+            arrs = dill.load(f)
+
+        latlon_array = arrs['latlon']
+        id_array = arrs['ids_X']
+
+        id_to_latlon = {id_: latlon for id_, latlon in zip(id_array, latlon_array)}
+        latlons = [id_to_latlon.get(id_, None) for id_ in ids]
+
     points = [Point(lon, lat) for lat, lon in latlons]
     gdf_points = gpd.GeoDataFrame(
         {'geometry': points},
@@ -63,6 +73,6 @@ def compute_state_cost(states, latlons):
     state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
     gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
 
-    costs = gdf_points['in_state'].apply(lambda x: 1 if x else np.inf).to_numpy()
+    costs = gdf_points['in_state'].apply(lambda x: 1 if x else 1e6).to_numpy() #change back to inf
 
     return costs
