@@ -15,6 +15,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import VarianceThreshold
 
 from oed import *
+import opt
 from format_data import *
 from cost import *
 from sampler import Sampler
@@ -61,18 +62,23 @@ def run_regression(label,
         dist_path = "data/cost/distance_to_closest_city.pkl"
         costs = cost_func(dist_path, ids_train, **kwargs)
 
+    if rule == 'jointobj':
+        probs = opt.solve(ids_train, costs, budget, kwargs.get('l', 0.5))
+    else:
+        probs = None
+
     n_folds = 5
     seeds = [42, 123, 456, 789, 1011]
     r2_scores = []
 
     if budget != float('inf'):
         for seed in seeds:
-            from IPython import embed; embed()
             sampler = Sampler(ids_train, 
                           X_train, 
                           y_train, 
                           latlon_train,
-                          rule=rule, 
+                          rule=rule,
+                          probs=probs,
                           loc_emb=loc_emb_train, 
                           costs=costs)
             

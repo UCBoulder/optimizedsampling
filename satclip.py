@@ -4,6 +4,8 @@ import dill
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 def get_satclip(c, X):
     """Get random features matrices for the main (CONTUS) analysis.
@@ -35,6 +37,35 @@ def get_satclip(c, X):
 
     return emb
 
+def satclip_k_means(emb_path):
+    best_score = -1
+    best_k = 0
+    best_labels = None
+
+    with open(emb_path, 'rb') as f:
+        arrs = dill.load(f)
+        data = arrs['emb']
+        ids = arrs['ids']
+
+    for k in range(2, 50):  # Test k from 2 to 50
+        try:
+            kmeans = KMeans(n_clusters=k, random_state=0).fit(data)
+            score = silhouette_score(data, kmeans.labels_)
+
+            print(f"For k={k}, silhouette score={score}")
+            
+            if score > best_score:
+                best_score = score
+                best_k = k
+                best_labels = kmeans.labels_
+
+        except ValueError as e:
+            print(f"Skipping k={k} due to error: {e}")
+
+    print(f"Best k={best_k} with silhouette score={best_score}")
+
+    return best_labels, ids
+
 def satclip_pca(emb):
     """Get satclip embeddings and perform pca.
 
@@ -58,3 +89,5 @@ def satclip_pca(emb):
     scaled_emb_pca = (emb_pca - min_vals)/(range_vals)
 
     return scaled_emb_pca
+
+

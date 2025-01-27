@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from oed import *
+import opt
 import config as c
 from clusters import retrieve_clusters
 
@@ -14,7 +15,7 @@ class Sampler:
             ids, 
             *datasets, 
             rule="random",
-            prob_dist=None, 
+            probs = None,
             loc_emb=None, 
             costs=None,
             cluster_type="NLCD_percentages"):
@@ -35,9 +36,6 @@ class Sampler:
         self.ids = ids
         self.rule = rule
 
-        if prob_dist is not None:
-            self.prob_dist = prob_dist
-
         if loc_emb is not None:
             self.loc_emb = loc_emb
         
@@ -45,6 +43,9 @@ class Sampler:
             self.costs = np.ones(len(datasets[0]))
         else:
             self.costs = costs
+        
+        if probs is not None:
+            self.probs = probs
 
         self.scores = None
 
@@ -74,8 +75,8 @@ class Sampler:
         elif self.rule == 'greedycost':
             self.scores = -self.costs #Highest score corresponds to lowest cost
 
-        elif self.rule == 'prob':
-            self.scores = self.prob_dist
+        elif self.rule == 'jointobj':
+            self.scores = self.probs
 
     
     '''

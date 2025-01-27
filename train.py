@@ -45,8 +45,8 @@ def run(labels_to_run, cost_func, rule='random', **kwargs):
         gamma = kwargs.get('gamma', 1)
         cost_str = f'State_{state}_{gamma}'
 
-    from IPython import embed; embed()
-    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
+    lambda_str = kwargs.get('l',0.5)
+    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}_lambda_{lambda_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -95,6 +95,12 @@ parser.add_argument(
     type=str,
     help='States to sample from'
 )
+parser.add_argument(
+    '--l',
+    default=0.5,
+    type=float,
+    help="Parameter in joint objective"
+)
 
 args = parser.parse_args()
 
@@ -116,5 +122,6 @@ run(
     beta=args.beta, 
     gamma=args.gamma, 
     r=args.radius,
-    states=args.states
+    states=args.states,
+    l=args.l
     )
