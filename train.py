@@ -3,16 +3,17 @@ import pandas as pd
 import dill
 import argparse
 
-from regressions import run_regression, avgr2, stdr2
+from regressions import run_regression, r2_dict
 import config as c
 from cost import *
 
-budgets = [10, 100, 1e3, 1e4, 1e5, 1e6]
-#budgets = np.round(np.logspace(1,7, num = 25), decimals=0)
-#budgets = [1e4, 1e5, 1e6, 1e7, 1e8]
-
 #Run
-def run(labels_to_run, cost_func, rule='random', **kwargs):
+def run(labels_to_run, 
+        cost_func, 
+        budgets=[10, 100, 1e3, 1e4, 1e5, 1e6], 
+        rule='random', 
+        **kwargs):
+
     for label in labels_to_run:
         c.used_all_samples = False
         for budget in budgets:
@@ -22,8 +23,7 @@ def run(labels_to_run, cost_func, rule='random', **kwargs):
 
     #Save results (R2 score) in csv
     results_df = pd.DataFrame(
-        {"Test Avg R2": avgr2,
-         "Test Std R2": stdr2
+        {"Test R2": r2_dict
         }
     )
     results_df.index.name = "label"
@@ -65,6 +65,13 @@ parser.add_argument(
     help='Cost function: unif, lin, lin+rad'
 )
 parser.add_argument(
+    '--budgets',
+    default=[10, 100, 1e3, 1e4, 1e5, 1e6],
+    nargs='+',
+    type=float,
+    help='Budget'
+)
+parser.add_argument(
     '-a', '--alpha',
     default=1,
     type=int,
@@ -98,6 +105,7 @@ parser.add_argument(
 parser.add_argument(
     '--l',
     default=0.5,
+    nargs='+',
     type=float,
     help="Parameter in joint objective"
 )
@@ -114,14 +122,16 @@ elif cost_func == "lin+rad":
 elif cost_func == "state":
     cost_func = compute_state_cost
 
-run(
-    args.labels, 
-    cost_func, 
-    rule=args.method, 
-    alpha=args.alpha, 
-    beta=args.beta, 
-    gamma=args.gamma, 
-    r=args.radius,
-    states=args.states,
-    l=args.l
-    )
+for l in args.l:
+    run(
+        args.labels, 
+        cost_func, 
+        budgets=args.budgets,
+        rule=args.method, 
+        alpha=args.alpha, 
+        beta=args.beta, 
+        gamma=args.gamma, 
+        r=args.radius,
+        states=args.states,
+        l=l
+        )

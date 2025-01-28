@@ -49,17 +49,16 @@ def distribution_similarity(p, q):
 Combines representativeness and sample size
 l: parameter controlling influence of expected sample size
 '''
-def joint_objective(x, l1, l2, clusters, p_target):
+def joint_objective(x, l, clusters, p_target):
     p_sample = cluster_distribution(x, clusters)
-    return cp.multiply(l1, distribution_similarity(p_target, p_sample)) + cp.multiply(l2, expected_sample_size(x))
+    return cp.multiply(l, distribution_similarity(p_target, p_sample)) + cp.multiply(1-l, expected_sample_size(x))
 
 '''
 Sets up cvxpy problem and solves
 '''
-def solve(ids, costs, budget, l1, l2):
+def solve(ids, costs, budget, l):
     x = cp.Variable(len(ids), nonneg=True)
-    l1 = cp.Parameter(nonneg=True, value=l1)
-    l2 = cp.Parameter(nonneg=True, value=l2)
+    l = cp.Parameter(nonneg=True, value=l)
 
     clusters = retrieve_clusters(ids, "data/clusters/NLCD_percentages_cluster_assignment.pkl")
     
@@ -67,19 +66,18 @@ def solve(ids, costs, budget, l1, l2):
     p_target = cluster_distribution(np.ones((len(ids),), dtype=int), clusters)
 
     #cvxpy Problem setup
-    objective = joint_objective(x, l1, l2, clusters, p_target)
+    objective = joint_objective(x, l, clusters, p_target)
     constraints = [0 <= x, x <= 1, x.T@costs <= budget]
     prob = cp.Problem(cp.Maximize(objective), constraints)
 
     prob.solve(verbose=True, max_iter=100000)
 
-    print("For lambda1=", l1.value, " and lambda2=", l2.value, ":")
+    print("For lambda=", l.value, ":")
     print("Optimal x is: ", x.value)
     return x.value
 
 if __name__ == '__main__':
-    l1 = 1
-    l2 = 1
+    l=0.5
     budget = 1000
     with open("data/int/feature_matrices/CONTUS_UAR_population_with_splits.pkl", "rb") as f:
         arrs = dill.load(f)
@@ -87,7 +85,7 @@ if __name__ == '__main__':
 
     costs = compute_unif_cost(ids)
 
-    solve(ids, costs, budget, l1, l2)
+    solve(ids, costs, budget, l)
 
 
 

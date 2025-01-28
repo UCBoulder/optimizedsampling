@@ -22,8 +22,7 @@ from sampler import Sampler
 from plot_coverage import plot_lat_lon
 import config as c
 
-avgr2 = {}
-stdr2 = {}
+r2_dict = {}
 
 '''
 Run regressions
@@ -62,28 +61,30 @@ def run_regression(label,
         dist_path = "data/cost/distance_to_closest_city.pkl"
         costs = cost_func(dist_path, ids_train, **kwargs)
 
-    if rule == 'jointobj':
-        probs = opt.solve(ids_train, costs, budget, kwargs.get('l', 0.5))
-    else:
-        probs = None
-
     n_folds = 5
     seeds = [42, 123, 456, 789, 1011]
     r2_scores = []
+    sample_costs = []
 
     if budget != float('inf'):
-        for seed in seeds:
-            sampler = Sampler(ids_train, 
+        sampler = Sampler(ids_train, 
                           X_train, 
                           y_train, 
                           latlon_train,
                           rule=rule,
-                          probs=probs,
                           loc_emb=loc_emb_train, 
                           costs=costs)
-            
+        
+        if rule == 'jointobj':
+            probs = sampler.compute_probs(budget, kwargs.get('l', 0.5))
+
+        for seed in seeds:
             print(f"Using Seed {seed} to sample...")
-            X_train_sampled, y_train_sampled, latlon_train_sampled = sampler.sample_with_budget(budget, seed)
+
+            if rule == 'jointobj':
+                X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_prob(probs, seed)
+            else:
+                X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_budget(budget, seed)
 
             num_samples = X_train_sampled.shape[0]
             print("Number of samples: ", num_samples)
@@ -101,7 +102,7 @@ def run_regression(label,
                                   y_test, 
                                   n_folds=n_folds)
             if r2 is not None:
-                r2_scores.append(r2)
+                r2_dict[label + ";cost" + str(sample_cost)] = r2
 
                 print(f"Seed {seed}: R2 score on test set: {r2}")
     else:
@@ -110,18 +111,6 @@ def run_regression(label,
             r2_scores.append(r2)
 
             print(f"R2 score on test set: {r2}")
-    
-    #Add to results
-    if len(r2_scores) != 0:
-        avg_r2 = np.nanmean(r2_scores)
-        std_r2 = np.std(r2_scores)
-        print(f"Average R2 score across seeds: {avg_r2}")
-
-        avgr2[label + ";budget" + str(budget)] = avg_r2
-        stdr2[label + ";budget" + str(budget)] = std_r2
-    else:
-        avgr2[label + ";budget" + str(budget)] = None
-        stdr2[label + ";budget" + str(budget)] = None
 
 '''
 Run ridge regression and return R2 score

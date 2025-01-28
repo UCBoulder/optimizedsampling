@@ -10,24 +10,22 @@ from format_data import *
 '''
 def format_dataframe(df):
     # Split the index into 'label' and 'size_with_prefix' parts
-    split = pd.DataFrame(df.index.str.split(';').tolist(), index=df.index, columns=['label', 'budget_with_prefix'])
+    split = pd.DataFrame(df.index.str.split(';').tolist(), index=df.index, columns=['label', 'cost_with_prefix'])
     df['label'] = split['label']
-    df['budget_with_prefix'] = split['budget_with_prefix']
+    df['cost_with_prefix'] = split['cost_with_prefix']
 
-    # Handle 'sizeNone' by assigning it a placeholder value (e.g., float('inf') for whole dataset)
-    #change hardcoding
-    df['Budget'] = df.apply(
-        lambda row: row['budget_with_prefix'].replace('budget', ''),
+    df['Cost'] = df.apply(
+        lambda row: row['cost_with_prefix'].replace('cost', ''),
         axis=1
     )
 
     # Set 'label' and 'size_of_subset' as a MultiIndex and drop the old index columns
-    df.set_index(['label', 'Budget'], inplace=True)
+    df.set_index(['label', 'Cost'], inplace=True)
 
-    df.drop(columns='budget_with_prefix', inplace=True)
+    df.drop(columns='cost_with_prefix', inplace=True)
 
     df = df.reset_index()
-    df = df.set_index(['label', 'Budget'])
+    df = df.set_index(['label', 'Cost'])
 
 '''
     Formats cost of dataframe
@@ -48,6 +46,8 @@ def format_cost(df):
 
     return df
 
-df = pd.read_csv("results/TestSetPerformancegreedycostwithBudget.csv", index_col=0)
-format_cost(df)
-df.to_csv("results/TestSetPerformancegreedycostwithBudget_formatted.csv", index=True)
+if __name__ == '__main__':
+    for val in [0.25]:
+        df = pd.read_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}.csv", index_col=0)
+        format_cost(df)
+        df.to_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}_formatted.csv", index=True)

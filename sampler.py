@@ -15,7 +15,6 @@ class Sampler:
             ids, 
             *datasets, 
             rule="random",
-            probs = None,
             loc_emb=None, 
             costs=None,
             cluster_type="NLCD_percentages"):
@@ -43,9 +42,6 @@ class Sampler:
             self.costs = np.ones(len(datasets[0]))
         else:
             self.costs = costs
-        
-        if probs is not None:
-            self.probs = probs
 
         self.scores = None
 
@@ -74,9 +70,6 @@ class Sampler:
 
         elif self.rule == 'greedycost':
             self.scores = -self.costs #Highest score corresponds to lowest cost
-
-        elif self.rule == 'jointobj':
-            self.scores = self.probs
 
     
     '''
@@ -182,6 +175,36 @@ class Sampler:
         while True:
             dataset = getattr(self, f"dataset{i}", None)
             if dataset is None:
-                return
+                yield np.sum(self.costs[subset_idxs])
+                return 
+            yield dataset[subset_idxs]
+            i += 1
+
+    def compute_probs(self, budget, l):
+        print(f"Computing probabilities for budget {budget}")
+        probs = opt.solve(self.ids, self.costs, budget, l)
+        return probs
+
+    '''
+    Sample according to a probability distribution
+    '''
+    def sample_with_prob(self, probs, seed=42):
+        print(f"Sampling using probabilities")
+
+        assert len(probs) == len(self.ids), "Distribution does not align"
+        subset_idxs = []
+
+        np.random.seed(seed)
+        for i in range(len(self.ids)):
+            draw = np.random.choice([0,1], p=[1-probs[i], probs[i]])
+            if draw == 1:
+                subset_idxs.append(i)
+
+        i = 1
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                yield np.sum(self.costs[subset_idxs])
+                return 
             yield dataset[subset_idxs]
             i += 1
