@@ -46,8 +46,6 @@ def run_regression(label,
         y_test,
         latlon_train,
         latlon_test,
-        loc_emb_train,
-        loc_emb_test,
         ids_train,
         ids_test
     ) = retrieve_splits(label)
@@ -72,11 +70,13 @@ def run_regression(label,
                           y_train, 
                           latlon_train,
                           rule=rule,
-                          loc_emb=loc_emb_train, 
                           costs=costs)
         
         if rule == 'jointobj':
             probs = sampler.compute_probs(budget, kwargs.get('l', 0.5))
+
+            #Ensure probs are not slightly more or less than 1 or 0
+            probs = np.clip(probs, 0, 1)
 
         for seed in seeds:
             print(f"Using Seed {seed} to sample...")

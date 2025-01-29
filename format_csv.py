@@ -47,7 +47,7 @@ def format_cost(df):
     return df
 
 if __name__ == '__main__':
-    for val in [0.25]:
+    for val in [0.5]:
         df = pd.read_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}.csv", index_col=0)
-        format_cost(df)
+        format_dataframe(df)
         df.to_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}_formatted.csv", index=True)

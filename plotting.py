@@ -3,6 +3,7 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
+from scipy.optimize import curve_fit
 
 from format_csv import *
 
@@ -55,10 +56,7 @@ def plot_r2_num_samples(methods, *dfs):
 
     return fig
 
-def plot_r2_cost(methods, *dfs):
-    # for df in dfs:
-    #     format_dataframe(df)
-
+def plot_r2_cost(methods, dfs):
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
@@ -72,20 +70,16 @@ def plot_r2_cost(methods, *dfs):
             df = df.set_index(['label'])
             # Filter rows for the specific label (e.g., "population")
             filtered_df = df.loc[label]
-            # filtered_df['log_budget'] = filtered_df.apply(
-            #     lambda row: np.log10(row['Budget']+1),
-            #     axis=1
-            # )
 
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
             filtered_df = filtered_df.sort_index()
 
             # Plot
-            axs[i].plot(filtered_df["Budget"], filtered_df["Test Avg R2"], marker='o', linestyle='-', label=methods[j], color=colors[j])
+            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='', label=methods[j], color=colors[j], markersize=5, alpha=0.5)
             j += 1
 
         # Customize the plot
-        axs[i].set_xlabel("Log-transformed Budget")
+        axs[i].set_xlabel("Cost")
         axs[i].set_ylabel("$R^2$")
         axs[i].set_ylim(0,1)
         if label=="population":
@@ -163,3 +157,13 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
     fig.suptitle('Number of samples vs $R^2$ with cost')
     #fig.savefig("Num of samples vs R^2 with cost.png")
     return fig
+
+if __name__ == '__main__':
+    dfs = []
+    lambdas = [0.0, 0.01, 0.1, 0.25]
+    lambda_str = [str(val) for val in lambdas]
+    for val in lambdas:
+        df = pd.read_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}_formatted.csv", index_col=0)
+        dfs.append(df)
+    fig = plot_r2_cost(lambda_str, dfs)
+    fig.savefig("test.png")
