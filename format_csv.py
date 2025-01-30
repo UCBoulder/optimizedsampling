@@ -5,11 +5,35 @@ from utils import *
 from format_data import *
 import ast
 
+'''
+    After reading from csv file, formats dataframe with multi-index label and subset
+'''
+def format_dataframe_with_budget(df):
+    # Split the index into 'label' and 'size_with_prefix' parts
+    split = pd.DataFrame(df.index.str.split(';').tolist(), index=df.index, columns=['label', 'budget_with_prefix'])
+    df['label'] = split['label']
+    df['budget_with_prefix'] = split['budget_with_prefix']
+
+    # Handle 'sizeNone' by assigning it a placeholder value (e.g., float('inf') for whole dataset)
+    #change hardcoding
+    df['Budget'] = df.apply(
+        lambda row: row['budget_with_prefix'].replace('budget', ''),
+        axis=1
+    )
+
+    # Set 'label' and 'size_of_subset' as a MultiIndex and drop the old index columns
+    df.set_index(['label', 'Budget'], inplace=True)
+
+    df.drop(columns='budget_with_prefix', inplace=True)
+
+    df = df.reset_index()
+    df = df.set_index(['label', 'Budget'])
+    return df
 
 '''
     After reading from csv file, formats dataframe with multi-index label and subset
 '''
-def format_dataframe(df):
+def format_dataframe_with_cost(df):
     # Split the index into 'label' and 'size_with_prefix' parts
     split = pd.DataFrame(df.index.str.split(';').tolist(), index=df.index, columns=['label', 'cost_with_prefix'])
     df['label'] = split['label']
@@ -53,19 +77,10 @@ def format_cost(df):
 
 if __name__ == '__main__':
     #Jointobj
-    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Colorado']_1.csv", index_col=0)
-    df = format_dataframe(df)
-    df.to_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Colorado']_formatted.csv", index=True)
-
-    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
-    df = format_dataframe(df)
-    df.to_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
-
-    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['Colorado']_1.csv", index_col=0)
-    df = format_dataframe(df)
-    df.to_csv(f"results/Torchgeo4096_jointobj_State_['Colorado']_formatted.csv", index=True)
-
+    df = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
+    df = format_dataframe_with_cost(df)
+    df.to_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
     #Random
-    df = pd.read_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
-    df = format_dataframe(df)
-    df.to_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
+    df = pd.read_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all.csv", index_col=0)
+    df = format_dataframe_with_cost(df)
+    df.to_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all_formatted.csv", index=True)

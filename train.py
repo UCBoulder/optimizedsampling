@@ -3,7 +3,7 @@ import pandas as pd
 import dill
 import argparse
 
-from regressions import run_regression, r2_dict
+from regressions import run_regression, r2_dict, avgr2, stdr2
 import config as c
 from cost import *
 
@@ -12,20 +12,28 @@ def run(labels_to_run,
         cost_func, 
         budgets=[10, 100, 1e3, 1e4, 1e5, 1e6], 
         rule='random', 
+        avg_results = False,
         **kwargs):
 
     for label in labels_to_run:
         c.used_all_samples = False
         for budget in budgets:
-            run_regression(label, cost_func, rule=rule, budget=budget, **kwargs)
+            run_regression(label, cost_func, rule=rule, budget=budget, avg_results=avg_results, **kwargs)
             if c.used_all_samples:
                 break
 
     #Save results (R2 score) in csv
-    results_df = pd.DataFrame(
-        {"Test R2": r2_dict
-        }
-    )
+    if avg_results:
+        results_df = pd.DataFrame(
+            {"Test Avg R2": avgr2,
+            "Test Std R2": stdr2
+            }
+        )
+    else:
+        results_df = pd.DataFrame(
+            {"Test R2": r2_dict
+            }
+        )
     results_df.index.name = "label"
 
     if cost_func == compute_unif_cost:
@@ -101,6 +109,12 @@ parser.add_argument(
     type=str,
     help='States to sample from'
 )
+parser.add_argument(
+    '--avg',
+    default=False,
+    type=str,
+    help='Average results'
+)
 
 args = parser.parse_args()
 
@@ -118,7 +132,8 @@ run(
     args.labels, 
     cost_func, 
     budgets=args.budgets,
-    rule=args.method, 
+    rule=args.method,
+    avg_results=args.avg, 
     alpha=args.alpha, 
     beta=args.beta, 
     gamma=args.gamma, 

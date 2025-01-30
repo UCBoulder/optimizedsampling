@@ -7,15 +7,7 @@ from scipy.optimize import curve_fit
 
 from format_csv import *
 
-#df_srs = pd.read_csv("results/TestSetPerformanceRandomWithCost_edit.csv", index_col=0)
-#df_lowcost = pd.read_csv("results/TestSetPerformancelowcostwithCost_edit.csv", index_col=0)
-# df_img = pd.read_csv("results/TestSetPerformanceImage.csv", index_col=0)
-# df_satclip = pd.read_csv("results/TestSetPerformanceSatCLIP.csv", index_col=0)
-
 def plot_r2_num_samples(methods, *dfs):
-    # for df in dfs:
-    #     format_dataframe(df)
-
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
@@ -52,17 +44,15 @@ def plot_r2_num_samples(methods, *dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('$R^2$ of ridge regression trained on subsets of fixed size')
-    #fig.savefig("Num of samples vs R^2.png")
-
     return fig
 
 def plot_r2_cost(methods, dfs):
     #Plot on the same plot:
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
+    fig, axs = plt.subplots(1, 2, figsize=(15, 5))  # 1 row, 3 columns
 
     i=0
     labels = dfs[0].index.get_level_values('label').unique().tolist()
-    for label in labels:
+    for label in ["population", "treecover"]:
         j = 0
         colors = ["orangered", "black", "steelblue", "green"]
         for df in dfs:
@@ -74,8 +64,28 @@ def plot_r2_cost(methods, dfs):
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
             filtered_df = filtered_df.sort_index()
 
-            # Plot
-            axs[i].plot(filtered_df["Cost"], filtered_df["Test R2"], marker='o', linestyle='', label=methods[j], color=colors[j], markersize=5, alpha=0.5)
+            #If R2 is averaged, plot error bars
+            if filtered_df.get('Test Avg R2.') is not None:
+                if filtered_df.get('Test Std R2') is not None:
+                    axs[i].errorbar(filtered_df["Budget"], 
+                                    filtered_df["Test Avg R2"], 
+                                    yerr=filtered_df['Test Std R2'], 
+                                    fmt='o', 
+                                    linestyle='', 
+                                    label=methods[j], 
+                                    color=colors[j], 
+                                    markersize=5,
+                                    capsize=5, 
+                                    alpha=0.6)
+            else:
+                axs[i].plot(filtered_df["Cost"], 
+                            filtered_df["Test R2"], 
+                            marker='o', 
+                            linestyle='', 
+                            label=methods[j], 
+                            color=colors[j], 
+                            markersize=5, 
+                            alpha=0.5)
             j += 1
 
         # Customize the plot
@@ -93,7 +103,6 @@ def plot_r2_cost(methods, dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('$R^2$ vs Cost of Collection')
-    #fig.savefig("Cost of collection vs R^2.png")
     return fig
 
 def plot_r2_num_samples_with_cost(methods, *dfs):
@@ -155,16 +164,15 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
     fig.subplots_adjust(wspace=0.4)   
     fig.suptitle('Number of samples vs $R^2$ with cost')
-    #fig.savefig("Num of samples vs R^2 with cost.png")
     return fig
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
+    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all_formatted.csv", index_col=0)
     dfs.append(df_random)
 
-    df_jointobj = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
+    df_jointobj = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
     dfs.append(df_jointobj)
 
     fig = plot_r2_cost(["srs", "jointobj"], dfs)
-    fig.savefig("test.png")
+    fig.savefig("test2.png")
