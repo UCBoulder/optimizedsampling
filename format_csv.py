@@ -30,6 +30,7 @@ def format_dataframe(df):
 
     df = df.reset_index()
     df = df.set_index(['label', 'Cost'])
+    return df
 
 '''
     Formats cost of dataframe
@@ -51,7 +52,20 @@ def format_cost(df):
     return df
 
 if __name__ == '__main__':
-    for val in [0.5]:
-        df = pd.read_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}.csv", index_col=0)
-        format_dataframe(df)
-        df.to_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}_formatted.csv", index=True)
+    #Jointobj
+    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Colorado']_1.csv", index_col=0)
+    df = format_dataframe(df)
+    df.to_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Colorado']_formatted.csv", index=True)
+
+    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
+    df = format_dataframe(df)
+    df.to_csv(f"results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
+
+    df = pd.read_csv(f"results/Torchgeo4096_jointobj_State_['Colorado']_1.csv", index_col=0)
+    df = format_dataframe(df)
+    df.to_csv(f"results/Torchgeo4096_jointobj_State_['Colorado']_formatted.csv", index=True)
+
+    #Random
+    df = pd.read_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
+    df = format_dataframe(df)
+    df.to_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)

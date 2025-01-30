@@ -160,10 +160,11 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    lambdas = [0.0, 0.01, 0.1, 0.25]
-    lambda_str = [str(val) for val in lambdas]
-    for val in lambdas:
-        df = pd.read_csv(f"results/Torchgeo4096_jointobj_Unif_lambda_{val}_formatted.csv", index_col=0)
-        dfs.append(df)
-    fig = plot_r2_cost(lambda_str, dfs)
+    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
+    dfs.append(df_random)
+
+    df_jointobj = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
+    dfs.append(df_jointobj)
+
+    fig = plot_r2_cost(["srs", "jointobj"], dfs)
     fig.savefig("test.png")
