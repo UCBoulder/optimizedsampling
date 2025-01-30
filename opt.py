@@ -6,92 +6,68 @@ from clusters import retrieve_all_clusters, retrieve_clusters
 import cvxpy as cp
 import numpy as np
 
-'''
-Calculates expect number of samples in each cluster
-'''
-def cluster_distribution(x, clusters):
-    print("Calculating cluster_distribution...")
-    num_clusters = len(np.unique(clusters))
+def group_size(x, groups, g):
+    return cp.sum(x[groups == g])
 
-    #If x is a Variable, need to us cvxpy methods
-    #If x is an array of expressions, do the above but element-wise
-    if isinstance(x, cp.Variable):
-        cluster_distribution = [cp.sum(cp.multiply(x, clusters == c)) for c in range(num_clusters)]
-    else:
-        cluster_distribution = np.zeros((num_clusters,), dtype=float)
-        for i in range(x.shape[0]):
-            c = clusters[i]
-            cluster_distribution[c] += x[i]
-    return cluster_distribution
+def pop_size(x):
+    return cp.sum(x)
 
-'''
-Calculates expected sample size
-'''
-def expected_sample_size(x):
-    print("Calculating cost distribution...")
+def group_risk(nj, n, sigmaj_sq, tauj_sq, pj, qj, deltaj):
+    return deltaj + sigmaj_sq * cp.exp(-pj*cp.log(nj)) + tauj_sq * cp.exp(-qj*cp.log(n))
 
-    #If x is a Variable, need to use cvxpy methods
-    if isinstance(x, cp.Variable):
-        return cp.sum(x)
-    else:
-        return np.sum(x)
+def pop_risk(njs, n, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs):
+    group_risks = [group_risk(njs[i], n, sigmaj_sqs[i], tauj_sqs[i], pjs[i], qjs[i], deltajs[i]) for i in range(len(njs))]
+    weighted_group_risks = [gammajs[i]*group_risks[i] for i in range(len(njs))]
+    return cp.sum(weighted_group_risks)
 
-'''
-Calculates negated L2 norm
-'''
-def distribution_similarity(p, q):
-    print("Calculating distribution similarity...")
-    p = cp.vstack(p)
-    q = cp.vstack(q)
-    if q.shape != p.shape:
-        q = cp.reshape(q, p.shape, order = 'C')
-    return -cp.norm(p-q)**2
-
-'''
-Combines representativeness and sample size
-l: parameter controlling influence of expected sample size
-'''
-def joint_objective(x, l, clusters, p_target):
-    p_sample = cluster_distribution(x, clusters)
-    return cp.multiply(l, distribution_similarity(p_target, p_sample)) + cp.multiply(1-l, expected_sample_size(x))
+def risk_by_prob(x, groups, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs):
+    njs = [group_size(x, groups, g) for g in np.unique(groups)]
+    n = pop_size(x)
+    return pop_risk(njs, n, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs)
 
 '''
 Sets up cvxpy problem and solves
 '''
-def solve(ids, costs, budget, l):
-    x = cp.Variable(len(ids), nonneg=True)
-    l = cp.Parameter(nonneg=True, value=l)
+def solve(ids, 
+          costs, 
+          budget, 
+          sigmaj_sqs=np.ones((8,)), 
+          tauj_sqs=np.ones((8,)), 
+          pjs=np.ones((8,)), 
+          qjs=np.ones((8,)), 
+          deltajs=np.ones((8,))):
+
+    n = len(ids)
+    x = cp.Variable(n, nonneg=True)
 
     clusters = retrieve_clusters(ids, "data/clusters/NLCD_percentages_cluster_assignment.pkl")
+    gammajs = [np.sum(clusters == c)/len(ids) for c in np.unique(clusters)]
 
-    #Estimation for target distribution:
-    finite_costs = [c for c in costs if c<1e6]
-    avg_cost = np.mean(finite_costs)
-    est_sample_size = budget/avg_cost
-    p = est_sample_size/len(ids)
-    p_target = cluster_distribution(np.full((len(ids),), p), clusters)
+    #Need to set values to finite, large value instead
+    if len(np.where(costs == np.inf)[0])>0:
+        costs = np.array([np.min([1e6, c]) for c in costs]).reshape(-1,1)
 
     #cvxpy Problem setup
-    objective = joint_objective(x, l, clusters, p_target)
-    constraints = [0 <= x, x <= 1, x.T@costs <= budget]
-    prob = cp.Problem(cp.Maximize(objective), constraints)
+    objective = risk_by_prob(x, clusters, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs)
+    constraints = [0 <= x, x <= 1, costs.T@x <= budget]
+    prob = cp.Problem(cp.Minimize(objective), constraints)
 
-    prob.solve(verbose=True, max_iter=100000)
+    prob.solve(solver=cp.MOSEK, verbose=True)
 
-    print("For lambda=", l.value, ":")
     print("Optimal x is: ", x.value)
-    return prob, x.value
+    return x.value
 
 if __name__ == '__main__':
-    l=0.9
-    budget = 100
+    budget = 1000
     with open("data/int/feature_matrices/CONTUS_UAR_population_with_splits.pkl", "rb") as f:
         arrs = dill.load(f)
     ids = arrs['ids_train']
 
-    costs = compute_state_cost(['California', 'Colorado'], arrs['latlons_train'])
+    dist_path = "data/cost/distance_to_closest_city.pkl"
 
-    solve(ids, costs, budget, l)
+    costs = compute_lin_cost(dist_path, ids, alpha=1, beta=1)
+
+    solve(ids, costs, budget)
 
 
 

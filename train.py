@@ -45,8 +45,7 @@ def run(labels_to_run,
         gamma = kwargs.get('gamma', 1)
         cost_str = f'State_{state}_{gamma}'
 
-    lambda_str = kwargs.get('l',0.5)
-    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}_lambda_{lambda_str}.csv"), index=True)
+    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -102,13 +101,6 @@ parser.add_argument(
     type=str,
     help='States to sample from'
 )
-parser.add_argument(
-    '--l',
-    default=0.5,
-    nargs='+',
-    type=float,
-    help="Parameter in joint objective"
-)
 
 args = parser.parse_args()
 
@@ -122,16 +114,14 @@ elif cost_func == "lin+rad":
 elif cost_func == "state":
     cost_func = compute_state_cost
 
-for l in args.l:
-    run(
-        args.labels, 
-        cost_func, 
-        budgets=args.budgets,
-        rule=args.method, 
-        alpha=args.alpha, 
-        beta=args.beta, 
-        gamma=args.gamma, 
-        r=args.radius,
-        states=args.states,
-        l=l
-        )
+run(
+    args.labels, 
+    cost_func, 
+    budgets=args.budgets,
+    rule=args.method, 
+    alpha=args.alpha, 
+    beta=args.beta, 
+    gamma=args.gamma, 
+    r=args.radius,
+    states=args.states
+    )

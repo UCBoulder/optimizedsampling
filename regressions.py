@@ -73,7 +73,7 @@ def run_regression(label,
                           costs=costs)
         
         if rule == 'jointobj':
-            probs = sampler.compute_probs(budget, kwargs.get('l', 0.5))
+            probs = sampler.compute_probs(budget)
 
             #Ensure probs are not slightly more or less than 1 or 0
             probs = np.clip(probs, 0, 1)
@@ -102,7 +102,10 @@ def run_regression(label,
                                   y_test, 
                                   n_folds=n_folds)
             if r2 is not None:
-                r2_dict[label + ";cost" + str(sample_cost)] = r2
+                key = label + ";cost" + str(sample_cost)
+                if key not in r2_dict:
+                    r2_dict[key] = []
+                r2_dict[key].append(r2)
 
                 print(f"Seed {seed}: R2 score on test set: {r2}")
     else:

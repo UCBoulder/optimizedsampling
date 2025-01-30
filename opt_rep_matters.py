@@ -1,16 +1,17 @@
 #Code adapted from github.com/estherrolf/representation-matters
 
 import numpy as np
+import dill
 from scipy.optimize import curve_fit
-
-from format_data import retrieve_splits
-from clusters import retrieve_clusters
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import RidgeCV, Ridge
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
+
+from format_data import retrieve_splits
+from clusters import retrieve_clusters
 
 '''
 Take subset with subset idxs of (multiple) dataset(s)
@@ -29,8 +30,15 @@ def take_group_subset(seed, group, group_ids, size, *datasets):
     shuffled_idxs = rs.choice(len(idxs_this_group), 
                                 len(idxs_this_group),
                                 replace = False)
-    subset_indices = shuffled_idxs[:size]
+    subset_idxs = shuffled_idxs[:size]
     return take_subset(subset_idxs, *datasets)
+
+'''
+Take subset of all instances of group
+'''
+def take_all_group(group, group_ids, *datasets):
+    idxs_this_group = np.where(group_ids == group)[0]
+    return take_subset(idxs_this_group, *datasets)
 
 '''
 Append new data to data in a dict
@@ -49,6 +57,9 @@ def add_new_data(data_dict, keys, new_data):
                 data_dict[key] = np.vstack([data_dict[key], data])
     return data_dict
 
+'''
+Split into pilot, additional train, and test data
+'''
 def split_pilot_additional(seed,
                            label,
                            group_sizes_pilot, #int, assumes all groups are same size
@@ -70,8 +81,8 @@ def split_pilot_additional(seed,
     
     rs = np.random.RandomState(seed)
 
-    pilot_data = {key: None for key in ['X', 'y', 'latlon', 'ids']}
-    add_data = {key: None for key in ['X', 'y', 'latlon', 'ids']}
+    pilot_data = {key: None for key in ['X', 'y', 'latlon', 'ids', 'clusters']}
+    add_data = {key: None for key in ['X', 'y', 'latlon', 'ids', 'clusters']}
     test_data = {
         'X': X_test,
         'y': y_test,
@@ -90,16 +101,26 @@ def split_pilot_additional(seed,
         additional_idxs_this = shuffled_idxs[group_sizes_pilot:]
         
         #Pilot data
-        X_pilot, y_pilot, latlon_pilot, ids_pilot = take_subset(pilot_idxs_this, X_train, y_train, latlon_train, ids_train)
+        X_pilot, y_pilot, latlon_pilot, ids_pilot, clusters_pilot = take_subset(pilot_idxs_this, 
+                                                                X_train, 
+                                                                y_train, 
+                                                                latlon_train, 
+                                                                ids_train,
+                                                                groups)
         pilot_data = add_new_data(pilot_data, 
-                                  ['X', 'y', 'latlon', 'ids'], 
-                                  [X_pilot, y_pilot, latlon_pilot, ids_pilot] )
+                                  ['X', 'y', 'latlon', 'ids', 'clusters'], 
+                                  [X_pilot, y_pilot, latlon_pilot, ids_pilot, clusters_pilot] )
         
         #Additional data
-        X_add, y_add, latlon_add, ids_add = take_subset(additional_idxs_this, X_train, y_train, latlon_train, ids_train)
+        X_add, y_add, latlon_add, ids_add, clusters_add = take_subset(additional_idxs_this, 
+                                                        X_train, 
+                                                        y_train, 
+                                                        latlon_train, 
+                                                        ids_train,
+                                                        groups)
         add_data = add_new_data(add_data, 
-                                ['X', 'y', 'latlon', 'ids'], 
-                                [X_add, y_add, latlon_add, ids_add] )
+                                ['X', 'y', 'latlon', 'ids', 'clusters'], 
+                                [X_add, y_add, latlon_add, ids_add, clusters_add] )
 
     # shuffle the data so it isn't sorted by group
     size_of_pilot = pilot_data['X'].shape[0]
@@ -125,7 +146,14 @@ def modified_ipl(ns_stacked, sigmaj_sq, pj, tauj_sq, qj, deltaj):
     nj = ns_stacked[0]
     n = ns_stacked[1]
     
-    return deltaj + sigmaj_sq * np.exp(-pj*np.log(nj)) + tauj_sq * np.exp(-qj*np.log(n)) 
+    return deltaj + sigmaj_sq * np.exp(-pj*np.log(nj)) + tauj_sq * np.exp(-qj*np.log(n))
+
+def modified_ipl_logged(ns_stacked, sigmaj_sq, pj, tauj_sq, qj, deltaj):
+    nj = ns_stacked[0]
+    n = ns_stacked[1]
+    
+    
+    return np.log(deltaj + sigmaj_sq * np.exp(-pj*np.log(nj)) + tauj_sq * np.exp(-qj*np.log(n)))
 
 '''
 Fit scaling law from Representation Matters
@@ -176,22 +204,14 @@ def get_group_fits(groups,
                    min_pts = 1,
                    delta_bounds = [0,np.inf],
                    verbose=True, 
-                   fit_logged=True,
-                   need_to_tile_data=True):
+                   fit_logged=True):
 
     popts = []
     pcovs = []
     for g, group in enumerate(groups):
-        if need_to_tile_data:
-            ns, y = tile_data(subset_sizes.sum(axis=0), 
-                              accs_by_group[g])
-
-            njs, _ = tile_data(subset_sizes[g], 
-                              accs_by_group[g])
-        else:
-            ns = subset_sizes.sum(axis=0)
-            njs = subset_sizes[g]
-            y = accs_by_group[g]
+        ns = subset_sizes.sum(axis=0)
+        njs = subset_sizes[g]
+        y = accs_by_group[g]
 
         ns_input = np.vstack((njs, ns))
         popt, pcov = fit_scaling_law(ns_input, y, 
@@ -210,21 +230,24 @@ def get_group_fits(groups,
             print()
     return popts, pcovs
 
-if __name__ == '__main__':
-    for label in ["population", "elevation", "treecover"]:
-        pilot_data, add_data, test_data = split_pilot_additional(42,
-                                                                "population",
-                                                                1000,
+def group_loss_on_pilot(seed,
+                        labels,
+                        group_sizes_pilot):
+    for label in labels:
+        pilot_data, add_data, test_data = split_pilot_additional(seed,
+                                                                label,
+                                                                group_sizes_pilot,
                                                                 verbose = True)
 
-        X_pilot_train, X_pilot_test, y_pilot_train, y_pilot_test, latlon_pilot_train, latlon_pilot_test, ids_pilot_train, ids_pilot_test = train_test_split(
-            pilot_data['X_pilot'], pilot_data['y_pilot'], pilot_data['latlon_pilot'], pilot_data['ids_pilot'], test_size=0.2, random_state=42
-        )
-        cluster_path = "data/clusters/NLCD_percentages_cluster_assignment.pkl" #originally as parameter
-        clusters_pilot_train = retrieve_clusters(ids_pilot_train, cluster_path)
-        clusters_pilot_test = retrieve_clusters(ids_pilot_test, cluster_path)
+        X_pilot_train = pilot_data['X']
+        y_pilot_train = pilot_data['y']
+        clusters_pilot_train  = pilot_data['clusters']
 
-        training_set_size = np.min([len(cluster_pilot_train == c) for c in np.unique(cluster_pilot_train)])
+        _, X_pilot_test, _, y_pilot_test, _, ids_pilot_test, _, clusters_pilot_test = train_test_split(
+            add_data['X'], add_data['y'], add_data['ids'], add_data['clusters'], test_size=0.2, random_state=42
+        )
+
+        training_set_size = group_sizes_pilot
 
         # Create a base column
         base_column = np.array([0.01, 0.05, 0.08, 0.12, 0.15, 0.18, 0.20, 0.21])
@@ -236,26 +259,65 @@ if __name__ == '__main__':
         allocations = np.vstack([allocations, np.unique([np.random.permutation(column2) for _ in range(1000)], axis=0)])
         allocations = np.vstack([allocations, np.unique([np.random.permutation(column3) for _ in range(100)], axis=0)])
         allocations = allocations.T
-        subset_sizes = allocations*training_set_size
-
+        subset_sizes = np.round(allocations*training_set_size).astype(int)
         rmse = np.zeros(subset_sizes.shape)
 
-        alphas=np.logspace(-5, 5, 100)
-        kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
-
-        #Pipeline that scales and then fits ridge regression
+        alphas = np.logspace(-4, 4, 10)
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
         pipeline = Pipeline([
             ('scaler', StandardScaler()),     # Step 1: Standardize features
             ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 2: RidgeCV with 5-fold CV
         ])
 
-       for i in range(subset_sizes.shape[1]):
+        for i in range(subset_sizes.shape[1]):
+            X_train = None
+            y_train = None
+            #Get specified sizes of each group
             for j in range(subset_sizes.shape[0]):
-                size = subset_sizes
-                subset_indices = np.random.choice(len(X_train), size=n, replace=False)
+                size = subset_sizes[j][i]
+                print(f"Obtaining subset of cluster {j} of size {size}...")
+                X_train_group, y_train_group = take_group_subset(seed, 
+                                                                j, 
+                                                                clusters_pilot_train, 
+                                                                size, 
+                                                                X_pilot_train,
+                                                                y_pilot_train)
+                if X_train is None:
+                    X_train = X_train_group
+                    y_train = y_train_group
+                else:
+                    X_train = np.vstack([X_train, X_train_group])
+                    y_train = np.concatenate([y_train, y_train_group])
 
             #Fit the pipeline
-            pipeline.fit(X_train, y_train)
+            print("Running regression on pilot data...")
+            pipeline.fit(X_pilot_train, y_pilot_train)
 
+            #Test on each group
+            for j in range(subset_sizes.shape[0]):
+                print(f"Testing regression on group {j}")
+                X_test_group, y_test_group = take_all_group(j, 
+                                                            clusters_pilot_test,
+                                                            X_pilot_test,
+                                                            y_pilot_test)
+                y_pred_group = pipeline.predict(X_test_group)
+                rmse[j][i] = mean_squared_error(y_test_group, y_pred_group, squared=False)
+            
+        return subset_sizes, rmse
 
-            rmse = mean_squared_error(y_test, y_pred, squared=False)
+'''
+Write rmse to file
+'''
+def write_rmse_and_sizes(rmse, subset_sizes):
+    rmse_and_sizes = {
+        'sizes': subset_sizes,
+        'RMSE': rmse
+    }
+
+    with open("data/group_losses/RMSE3.pkl", "wb") as f:
+        dill.dump(rmse_and_sizes, f)
+
+if __name__ == '__main__':
+    rmse, sizes = group_loss_on_pilot(42, ["population", "elevation", "treecover"], 1000)
+    write_rmse_to_file(rmse, sizes)
+    

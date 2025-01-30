@@ -3,6 +3,7 @@ import numpy as np
 
 from utils import *
 from format_data import *
+import ast
 
 
 '''
@@ -23,6 +24,9 @@ def format_dataframe(df):
     df.set_index(['label', 'Cost'], inplace=True)
 
     df.drop(columns='cost_with_prefix', inplace=True)
+
+    df['Test R2'] = df['Test R2'].apply(ast.literal_eval)
+    df = df.explode('Test R2', ignore_index=False)
 
     df = df.reset_index()
     df = df.set_index(['label', 'Cost'])

@@ -180,9 +180,9 @@ class Sampler:
             yield dataset[subset_idxs]
             i += 1
 
-    def compute_probs(self, budget, l):
+    def compute_probs(self, budget):
         print(f"Computing probabilities for budget {budget}")
-        probs = opt.solve(self.ids, self.costs, budget, l)
+        probs = opt.solve(self.ids, self.costs, budget)
         return probs
 
     '''

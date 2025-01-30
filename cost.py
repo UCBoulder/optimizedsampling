@@ -73,6 +73,6 @@ def compute_state_cost(states, latlons=None, ids=None):
     state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
     gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
 
-    costs = gdf_points['in_state'].apply(lambda x: 1 if x else 1e6).to_numpy() #change back to inf
+    costs = gdf_points['in_state'].apply(lambda x: 1 if x else np.inf).to_numpy() #change back to inf
 
     return costs
