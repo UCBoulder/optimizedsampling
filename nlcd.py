@@ -7,7 +7,8 @@ from sklearn.metrics import silhouette_score
 
 from naip import *
 
-expected_labels = np.array([11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95])
+
+cted_labels = np.array([11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95])
 
 def nlcd_land_cover_class(latlons, land_cover_classes=None):
     nlcd_path = "land_cover/Annual_NLCD_LndCov_2016_CU_C1V0.tif"

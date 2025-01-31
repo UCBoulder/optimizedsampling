@@ -10,12 +10,20 @@ from naip import *
 
 expected_labels = np.array([0,1])
 
-def naip_img_labels(img_path, df_polygon, sindex):
+def naip_img_labels(img_path, polygons_gdf):
     latlons = all_pixels_latlons(img_path)
-    return urban_areas(latlons, df_polygon, sindex)
 
-def naip_img_urban_areas_label_counts(img_path, df_polygon, sindex):
-    labels = naip_img_labels(img_path, df_polygon, sindex)
+    if np.any(np.isinf(latlons)):
+            print("Warning: Infinity values detected in lat/lon coordinates.")
+            # Optionally return None or handle this case in another way
+            return None
+
+    return urban_areas(latlons, polygons_gdf)
+
+def naip_img_urban_areas_label_counts(img_path, polygons_gdf):
+    labels = naip_img_labels(img_path, polygons_gdf)
+    if labels is None:
+        return None
     unique_labels, counts = np.unique(labels, return_counts=True)
 
     label_count_dict = dict(zip(unique_labels, counts))
@@ -31,26 +39,18 @@ def naip_img_urban_areas_label_counts(img_path, df_polygon, sindex):
 
     return percentage_array
 
-# Function to check if a point is inside any polygon using spatial index
-def is_inside_polygon(point, df_polygon, sindex):
-    # Get potential polygon candidates using spatial index
-    possible_matches_index = list(sindex.intersection(point.bounds))
-    possible_matches = df_polygon.iloc[possible_matches_index]
-    
-    # Check for containment in those candidates
-    return any(possible_matches.contains(point))
-
-def urban_areas(latlons, df_polygon, sindex):
+def urban_areas(latlons, polygons_gdf):
     lats = latlons[:,0]
     lons = latlons[:,1]
 
-    # Convert to GeoDataFrame
-    geometry = [Point(lon, lat) for lon, lat in zip(lons, lats)]
-    gdf_samples = gpd.GeoDataFrame(geometry=geometry, crs="EPSG:4326") 
+    # Convert lat/lon NumPy array to a GeoDataFrame of Points
+    points_gdf = gpd.GeoDataFrame(geometry=[Point(lon, lat) for lat, lon in latlons], crs="EPSG:4326")
 
-    # Check if each point is inside any polygon
-    inside_polygon = np.array([is_inside_polygon(point, df_polygon, sindex) for point in gdf_samples.geometry])
-    inside_polygon = inside_polygon.astype(int)
+    # Spatial join: Find which polygon each point belongs to
+    joined = gpd.sjoin(points_gdf, polygons_gdf, how="left", predicate="within")
+
+    # Convert to 0s and 1s: if 'index_right' is NaN, it's 0 (not in any polygon), else 1
+    inside_polygon = np.where(joined["index_right"].notna(), 1, 0)
 
     return inside_polygon
 
@@ -59,9 +59,8 @@ if __name__ == '__main__':
     file_count = len(os.listdir(root_dir))
 
     #Read shape file with polygons
-    df_polygons = gpd.read_file('country_boundaries/census/tl_2020_us_uac20.shp')
-    df_polygons = df_polygons.to_crs("EPSG:4326")
-    sindex = df_polygons.sindex
+    polygons_gdf = gpd.read_file('country_boundaries/census/tl_2020_us_uac20.shp')
+    polygons_gdf = polygons_gdf.to_crs("EPSG:4326")
  
     ids = np.empty((file_count,), dtype='U{}'.format(15))
     nlcd_percentages = np.empty((file_count, 2), dtype=np.float32)
@@ -74,7 +73,7 @@ if __name__ == '__main__':
         print(f"Processing Sample {i}")
 
         try:
-            percentage_array = naip_img_urban_areas_label_counts(file_path, df_polygons, sindex)
+            percentage_array = naip_img_urban_areas_label_counts(file_path, polygons_gdf)
             nlcd_percentages[i] = percentage_array
 
             #Make sure no NaNs

@@ -168,11 +168,12 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
+    region = 'Northeast'
+    df_random = pd.read_csv(f"results/Torchgeo4096_random_State_{region}_formatted.csv", index_col=0)
     dfs.append(df_random)
 
-    df_jointobj = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
-    dfs.append(df_jointobj)
+    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_State_{region}_formatted.csv", index_col=0)
+    dfs.append(df_inv)
 
-    fig = plot_r2_cost(["srs", "jointobj"], dfs)
-    fig.savefig("test3.png")
+    fig = plot_r2_cost(["srs", "invsize"], dfs)
+    fig.savefig(f"R2_{region}.png")

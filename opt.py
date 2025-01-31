@@ -31,7 +31,7 @@ Sets up cvxpy problem and solves
 def solve(ids, 
           costs, 
           budget, 
-          sigmaj_sqs=np.ones((8,)), 
+          sigmaj_sqs=np.full((8,),2), 
           tauj_sqs=np.ones((8,)), 
           pjs=np.ones((8,)), 
           qjs=np.ones((8,)), 
@@ -40,8 +40,9 @@ def solve(ids,
     n = len(ids)
     x = cp.Variable(n, nonneg=True)
 
-    clusters = retrieve_clusters(ids, "data/clusters/NLCD_percentages_cluster_assignment.pkl")
-    gammajs = [np.sum(clusters == c)/len(ids) for c in np.unique(clusters)]
+    clusters = retrieve_clusters(ids, "data/clusters/urban_areas_cluster_assignment.pkl")
+    #gammajs = [np.sum(clusters == c)/len(ids) for c in np.unique(clusters)]
+    gammajs = [1 for c in np.unique(clusters)]
 
     #Need to set values to finite, large value instead
     if len(np.where(costs == np.inf)[0])>0:
