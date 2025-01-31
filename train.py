@@ -29,6 +29,7 @@ def run(labels_to_run,
             "Test Std R2": stdr2
             }
         )
+
     else:
         results_df = pd.DataFrame(
             {"Test R2": r2_dict
@@ -52,6 +53,10 @@ def run(labels_to_run,
         state = kwargs.get('states', 0)
         gamma = kwargs.get('gamma', 1)
         cost_str = f'State_{state}_{gamma}'
+
+    label_str = ''   
+    for label in labels_to_run:
+        label_str = #TODO
 
     results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
@@ -127,6 +132,63 @@ elif cost_func == "lin+rad":
     cost_func = compute_lin_w_r_cost
 elif cost_func == "state":
     cost_func = compute_state_cost
+
+states=args.states
+if states == "West":
+    states = ['Arizona',
+              'Colorado',
+              'Idaho',
+              'Montana',
+              'Nevada',
+              'New Mexico',
+              'Utah',
+              'Wyoming',
+              'California',
+              'Oregon',
+              'Washington']
+              
+if states == "Midwest":
+    states = ['Illinois',
+              'Indiana',
+              'Michigan',
+              'Ohio',
+              'Wisconsin',
+              'Iowa',
+              'Kansas',
+              'Minnesota',
+              'Missouri',
+              'Nebraska',
+              'North Dakota',
+              'South Dakota']
+
+if states == "South":
+    states = ['Florida', 
+              'Georgia', 
+              'North Carolina', 
+              'South Carolina', 
+              'Virginia', 
+              'Maryland', 
+              'Delaware', 
+              'West Virginia',
+              'Alabama',
+              'Kentucky',
+              'Mississippi',
+              'Tennessee',
+              'Arkansas',
+              'Louisiana',
+              'Oklahoma',
+              'Texas']
+
+if states == "Northeast":
+    states = ['Connecticut', 
+              'Maine', 
+              'Massachusetts', 
+              'New Hampshire', 
+              'Rhode Island', 
+              'Vermont', 
+              'New Jersey', 
+              'New York', 
+              'Pennsylvania']
 
 run(
     args.labels, 

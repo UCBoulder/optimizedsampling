@@ -48,11 +48,11 @@ def plot_r2_num_samples(methods, *dfs):
 
 def plot_r2_cost(methods, dfs):
     #Plot on the same plot:
-    fig, axs = plt.subplots(1, 2, figsize=(15, 5))  # 1 row, 3 columns
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
     i=0
     labels = dfs[0].index.get_level_values('label').unique().tolist()
-    for label in ["population", "treecover"]:
+    for label in ["population", "treecover", "elevation"]:
         j = 0
         colors = ["orangered", "black", "steelblue", "green"]
         for df in dfs:
@@ -85,7 +85,7 @@ def plot_r2_cost(methods, dfs):
                             label=methods[j], 
                             color=colors[j], 
                             markersize=5, 
-                            alpha=0.5)
+                            alpha=0.3*(-j+2))
             j += 1
 
         # Customize the plot
@@ -168,11 +168,11 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all_formatted.csv", index_col=0)
+    df_random = pd.read_csv("results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
     dfs.append(df_random)
 
     df_jointobj = pd.read_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index_col=0)
     dfs.append(df_jointobj)
 
     fig = plot_r2_cost(["srs", "jointobj"], dfs)
-    fig.savefig("test2.png")
+    fig.savefig("test3.png")

@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
 
 from format_data import retrieve_splits
-from clusters import retrieve_clusters
+from clusters import retrieve_clusters, retrieve_all_clusters
 
 '''
 Take subset with subset idxs of (multiple) dataset(s)
@@ -303,21 +303,23 @@ def group_loss_on_pilot(seed,
                 y_pred_group = pipeline.predict(X_test_group)
                 rmse[j][i] = mean_squared_error(y_test_group, y_pred_group, squared=False)
             
-        return subset_sizes, rmse
+        write_rmse_and_sizes(label, rmse, subset_sizes)
 
 '''
 Write rmse to file
 '''
-def write_rmse_and_sizes(rmse, subset_sizes):
+def write_rmse_and_sizes(label, rmse, subset_sizes):
     rmse_and_sizes = {
         'sizes': subset_sizes,
         'RMSE': rmse
     }
 
-    with open("data/group_losses/RMSE3.pkl", "wb") as f:
+    with open(f"data/group_losses/{label}_RMSE.pkl", "wb") as f:
         dill.dump(rmse_and_sizes, f)
 
 if __name__ == '__main__':
+    cluster_path = "data/clusters/NLCD_percentages_cluster_assignment.pkl"
+    groups = np.unique(retrieve_all_clusters(cluster_path))
+
     rmse, sizes = group_loss_on_pilot(42, ["population", "elevation", "treecover"], 1000)
-    write_rmse_to_file(rmse, sizes)
     

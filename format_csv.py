@@ -81,6 +81,6 @@ if __name__ == '__main__':
     df = format_dataframe_with_cost(df)
     df.to_csv("results/Torchgeo4096_jointobj_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
     #Random
-    df = pd.read_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all.csv", index_col=0)
+    df = pd.read_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_1.csv", index_col=0)
     df = format_dataframe_with_cost(df)
-    df.to_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_all_formatted.csv", index=True)
+    df.to_csv(f"results/Torchgeo4096_random_State_['California', 'Oregon', 'Washington', 'Idaho', 'Montana', 'Wyoming', 'Utah', 'Nevada', 'Colorado', 'Arizona', 'New Mexico']_formatted.csv", index=True)
