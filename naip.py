@@ -12,7 +12,6 @@ def all_pixels_latlons(img_path):
 
         #2D grid for each pixel in the raster
         rows, cols = np.meshgrid(np.arange(height), np.arange(width), indexing='ij')
-        from IPython import embed; embed()
 
         #Convert pixel indices to spatial coordinates corresponding to each pixel
         xs, ys = rasterio.transform.xy(transform, rows, cols)
