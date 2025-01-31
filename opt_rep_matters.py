@@ -321,5 +321,5 @@ if __name__ == '__main__':
     cluster_path = "data/clusters/NLCD_percentages_cluster_assignment.pkl"
     groups = np.unique(retrieve_all_clusters(cluster_path))
 
-    rmse, sizes = group_loss_on_pilot(42, ["population", "elevation", "treecover"], 1000)
+    group_loss_on_pilot(42, ["population", "elevation", "treecover"], 1000)
     

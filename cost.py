@@ -69,7 +69,6 @@ def compute_state_cost(states, latlons=None, ids=None):
         {'geometry': points},
         crs='EPSG:26914'
     )
-
     state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
     gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
 

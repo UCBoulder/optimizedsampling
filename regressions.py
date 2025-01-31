@@ -74,7 +74,7 @@ def run_regression(label,
                         rule=rule,
                         costs=costs)
     
-    if rule == 'jointobj':
+    if rule == 'invsize':
         probs = sampler.compute_probs(budget)
 
         #Ensure probs are not slightly more or less than 1 or 0
@@ -83,7 +83,7 @@ def run_regression(label,
     for seed in seeds:
         print(f"Using Seed {seed} to sample...")
 
-        if rule == 'jointobj':
+        if rule == 'invsize':
             X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_prob(probs, seed)
         else:
             X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_budget(budget, seed)

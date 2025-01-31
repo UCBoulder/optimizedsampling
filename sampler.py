@@ -87,6 +87,7 @@ class Sampler:
         budget: cost limit
     '''
     def subset_idxs_with_scores(self, budget=0, seed=42):
+        from IPython import embed; embed()
         subset_idxs = []
         total_cost = 0
         scores = self.scores.copy()

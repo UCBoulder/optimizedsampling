@@ -54,10 +54,6 @@ def run(labels_to_run,
         gamma = kwargs.get('gamma', 1)
         cost_str = f'State_{state}_{gamma}'
 
-    label_str = ''   
-    for label in labels_to_run:
-        label_str = #TODO
-
     results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
@@ -134,7 +130,7 @@ elif cost_func == "state":
     cost_func = compute_state_cost
 
 states=args.states
-if states == "West":
+if states == ["West"]:
     states = ['Arizona',
               'Colorado',
               'Idaho',
@@ -146,8 +142,8 @@ if states == "West":
               'California',
               'Oregon',
               'Washington']
-              
-if states == "Midwest":
+
+if states == ["Midwest"]:
     states = ['Illinois',
               'Indiana',
               'Michigan',
@@ -161,7 +157,7 @@ if states == "Midwest":
               'North Dakota',
               'South Dakota']
 
-if states == "South":
+if states == ["South"]:
     states = ['Florida', 
               'Georgia', 
               'North Carolina', 
@@ -179,7 +175,7 @@ if states == "South":
               'Oklahoma',
               'Texas']
 
-if states == "Northeast":
+if states == ["Northeast"]:
     states = ['Connecticut', 
               'Maine', 
               'Massachusetts', 
@@ -200,5 +196,5 @@ run(
     beta=args.beta, 
     gamma=args.gamma, 
     r=args.radius,
-    states=args.states
+    states=states
     )
