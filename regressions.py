@@ -58,6 +58,9 @@ def run_regression(label,
         costs = cost_func(states, latlon_train)
     elif cost_func == compute_unif_cost:
         costs = cost_func(ids_train)
+    elif cost_func == compute_cluster_cost:
+        costs = cost_func(ids_train, 
+                          cluster_type=kwargs.get('cluster_type', 'NLCD_percentages'))
     else:
         dist_path = "data/cost/distance_to_closest_city.pkl"
         costs = cost_func(dist_path, ids_train, **kwargs)
@@ -72,10 +75,12 @@ def run_regression(label,
                         y_train, 
                         latlon_train,
                         rule=rule,
-                        costs=costs)
+                        costs=costs,
+                        cluster_type=kwargs.get('cluster_type', 'NLCD_percentages')
+                    )
     
     if rule == 'invsize':
-        probs = sampler.compute_probs(budget)
+        probs = sampler.compute_probs(budget, kwargs.get('sigma', 1.0), kwargs.get('tau', 1.0))
 
         #Ensure probs are not slightly more or less than 1 or 0
         probs = np.clip(probs, 0, 1)

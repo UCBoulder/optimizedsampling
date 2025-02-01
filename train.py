@@ -81,8 +81,8 @@ parser.add_argument(
 )
 parser.add_argument(
     '-a', '--alpha',
-    default=1,
-    type=int,
+    default=1.0,
+    type=float,
     help='Value of alpha in alpha*dist+beta'
 )
 parser.add_argument(
@@ -116,6 +116,24 @@ parser.add_argument(
     type=str,
     help='Average results'
 )
+parser.add_argument(
+    '--sigma',
+    default=1.0,
+    type=float,
+    help='Coefficient sigma'
+)
+parser.add_argument(
+    '--tau',
+    default=1.0,
+    type=float,
+    help='Coefficient tau'
+)
+parser.add_argument(
+    '--cluster_type',
+    default='NLCD_percentages',
+    type=str,
+    help='Cluster type'
+)
 
 args = parser.parse_args()
 
@@ -128,6 +146,8 @@ elif cost_func == "lin+rad":
     cost_func = compute_lin_w_r_cost
 elif cost_func == "state":
     cost_func = compute_state_cost
+elif cost_func == "cluster":
+    cost_func = compute_cluster_cost
 
 states=args.states
 if states == ["West"]:
@@ -196,5 +216,8 @@ run(
     beta=args.beta, 
     gamma=args.gamma, 
     r=args.radius,
-    states=states
+    states=states,
+    sigma=args.sigma,
+    tau=args.tau,
+    cluster_type=args.cluster_type
     )

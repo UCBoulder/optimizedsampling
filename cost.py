@@ -4,6 +4,8 @@ import geopandas as gpd
 from shapely.geometry import Point
 from utils import distance_of_subset
 
+from clusters import retrieve_clusters
+
 contus_states = [
     "Alabama", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", 
     "Florida", "Georgia", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", 
@@ -75,3 +77,47 @@ def compute_state_cost(states, latlons=None, ids=None):
     costs = gdf_points['in_state'].apply(lambda x: 1 if x else np.inf).to_numpy() #change back to inf
 
     return costs
+
+'''
+Calculates cost based on clusters
+    cluster_assignment: cluster for each sample
+    cluster_cost: dict of cost for each cluster
+'''
+def compute_cluster_cost(ids, cluster_type):
+    cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
+    clusters = retrieve_clusters(ids, cluster_path)
+
+    cluster_cost = None
+    if cluster_type == 'NLCD':
+        cluster_cost = {
+            11: 100,
+            12: 100,
+            21: 1,
+            22: 1,
+            23: 1,
+            24: 1,
+            31: 100,
+            41: 100,
+            42: 100,
+            43: 100,
+            52: 100,
+            71: 100,
+            81: 1,
+            82: 1,
+            90: 100,
+            95: 100,
+            250: 1e9 #background or unmapped value, dont sample
+        }
+    if cluster_type == 'NLCD_percentages':
+        cluster_cost = {
+            0: 1,
+            1: 1,
+            2: 1,
+            3: 1, 
+            4: 10, 
+            5: 10,
+            6: 10,
+            7: 10
+        }
+    assert cluster_cost is not None
+    return np.array([cluster_cost[clusters[i]] for i in range(len(ids))])

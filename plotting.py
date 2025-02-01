@@ -46,7 +46,7 @@ def plot_r2_num_samples(methods, *dfs):
     fig.suptitle('$R^2$ of ridge regression trained on subsets of fixed size')
     return fig
 
-def plot_r2_cost(methods, dfs):
+def plot_r2_cost(methods, dfs, title):
     #Plot on the same plot:
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
@@ -102,7 +102,7 @@ def plot_r2_cost(methods, dfs):
         i = i+1
 
     fig.subplots_adjust(wspace=0.4)   
-    fig.suptitle('$R^2$ vs Cost of Collection')
+    fig.suptitle(title)
     return fig
 
 def plot_r2_num_samples_with_cost(methods, *dfs):
@@ -167,13 +167,13 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
     return fig
 
 if __name__ == '__main__':
-    dfs = []
-    region = 'Northeast'
-    df_random = pd.read_csv(f"results/Torchgeo4096_random_State_{region}_formatted.csv", index_col=0)
-    dfs.append(df_random)
+    for region in ['Northeast', 'Midwest', 'South', 'West']:
+        dfs = []
+        df_random = pd.read_csv(f"results/Torchgeo4096_random_State_{region}_formatted.csv", index_col=0)
+        dfs.append(df_random)
 
-    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_State_{region}_formatted.csv", index_col=0)
-    dfs.append(df_inv)
+        df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_State_{region}_urban_clusters_formatted.csv", index_col=0)
+        dfs.append(df_inv)
 
-    fig = plot_r2_cost(["srs", "invsize"], dfs)
-    fig.savefig(f"R2_{region}.png")
+        fig = plot_r2_cost(["srs", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for {region}')
+        fig.savefig(f"R2_{region}_urban_clusters.png")

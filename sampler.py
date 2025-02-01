@@ -17,7 +17,7 @@ class Sampler:
             rule="random",
             loc_emb=None, 
             costs=None,
-            cluster_type="NLCD_percentages"):
+            cluster_type=None):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -52,6 +52,8 @@ class Sampler:
 
         self.finite_idxs = np.where(self.costs != np.inf)[0]
         self.total_valid = len(self.finite_idxs)
+
+        self.cluster_type = cluster_type
 
     '''
     Sets scores according to rule
@@ -180,9 +182,12 @@ class Sampler:
             yield dataset[subset_idxs]
             i += 1
 
-    def compute_probs(self, budget):
+    def compute_probs(self, budget, sigma=1.0, tau=1.0):
         print(f"Computing probabilities for budget {budget}")
-        probs = opt.solve(self.ids, self.costs, budget)
+
+        sigmaj_sqs = np.full((8,), sigma)
+        tauj_sqs = np.full((8,), tau)
+        probs = opt.solve(self.ids, self.costs, budget, group_type=self.cluster_type, sigmaj_sqs=sigmaj_sqs, tauj_sqs=tauj_sqs)
         return probs
 
     '''

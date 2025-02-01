@@ -31,7 +31,8 @@ Sets up cvxpy problem and solves
 def solve(ids, 
           costs, 
           budget, 
-          sigmaj_sqs=np.full((8,),2), 
+          group_type="NLCD_percentages",
+          sigmaj_sqs=np.ones((8,)), 
           tauj_sqs=np.ones((8,)), 
           pjs=np.ones((8,)), 
           qjs=np.ones((8,)), 
@@ -40,9 +41,10 @@ def solve(ids,
     n = len(ids)
     x = cp.Variable(n, nonneg=True)
 
-    clusters = retrieve_clusters(ids, "data/clusters/urban_areas_cluster_assignment.pkl")
-    #gammajs = [np.sum(clusters == c)/len(ids) for c in np.unique(clusters)]
-    gammajs = [1 for c in np.unique(clusters)]
+    clusters = retrieve_clusters(ids, f"data/clusters/{group_type}_cluster_assignment.pkl")
+
+    gammajs = [np.sum(clusters == c)/len(ids) for c in np.unique(clusters)]
+    #gammajs = [1 for c in np.unique(clusters)]
 
     #Need to set values to finite, large value instead
     if len(np.where(costs == np.inf)[0])>0:
@@ -66,7 +68,7 @@ if __name__ == '__main__':
 
     dist_path = "data/cost/distance_to_closest_city.pkl"
 
-    costs = compute_lin_cost(dist_path, ids, alpha=1, beta=1)
+    costs = compute_lin_cost(dist_path, ids, alpha=0.1, beta=1)
 
     solve(ids, costs, budget)
 
