@@ -53,8 +53,11 @@ def run(labels_to_run,
         state = kwargs.get('states', 0)
         gamma = kwargs.get('gamma', 1)
         cost_str = f'State_{state}_{gamma}'
+    elif cost_func == compute_cluster_cost:
+        cluster_type = kwargs.get('cluster_type', 'NLCD_percentages')
+        cost_str = f'cost_cluster_{cluster_type}'
 
-    results_df.to_csv(Path(f"results/Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
+    results_df.to_csv(Path(f"results/checkcond_Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

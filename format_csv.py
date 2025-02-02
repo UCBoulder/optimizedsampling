@@ -76,8 +76,13 @@ def format_cost(df):
     return df
 
 if __name__ == '__main__':
-    for region in ['Northeast', 'West', 'Midwest', 'South']:
-        for method in ['invsize']:
-            df = pd.read_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters.csv", index_col=0)
-            df = format_dataframe_with_cost(df)
-            df.to_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters_formatted.csv", index=True)
+    for method in ['invsize', 'random']:
+        df = pd.read_csv(f"results/Torchgeo4096_{method}_cost_cluster_NLCD_percentages.csv", index_col=0)
+        df = format_dataframe_with_cost(df)
+        df.to_csv(f"results/Torchgeo4096_{method}_cost_cluster_NLCD_percentages_formatted.csv", index=True)
+
+    # for region in ['Northeast', 'West', 'Midwest', 'South']:
+    #     for method in ['invsize']:
+    #         df = pd.read_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters.csv", index_col=0)
+    #         df = format_dataframe_with_cost(df)
+    #         df.to_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters_formatted.csv", index=True)

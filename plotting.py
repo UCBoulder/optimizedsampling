@@ -85,7 +85,7 @@ def plot_r2_cost(methods, dfs, title):
                             label=methods[j], 
                             color=colors[j], 
                             markersize=5, 
-                            alpha=0.3*(-j+2))
+                            alpha=-0.6*j+1)
             j += 1
 
         # Customize the plot
@@ -167,13 +167,12 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
     return fig
 
 if __name__ == '__main__':
-    for region in ['Northeast', 'Midwest', 'South', 'West']:
-        dfs = []
-        df_random = pd.read_csv(f"results/Torchgeo4096_random_State_{region}_formatted.csv", index_col=0)
-        dfs.append(df_random)
+    dfs = []
+    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_random)
 
-        df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_State_{region}_urban_clusters_formatted.csv", index_col=0)
-        dfs.append(df_inv)
+    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_inv)
 
-        fig = plot_r2_cost(["srs", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for {region}')
-        fig.savefig(f"R2_{region}_urban_clusters.png")
+    fig = plot_r2_cost(["srs", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD Percent clusters')
+    fig.savefig(f"R2_cost_nlcd_percent_clusters.png")
