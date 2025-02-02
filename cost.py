@@ -111,13 +111,13 @@ def compute_cluster_cost(ids, cluster_type):
     if cluster_type == 'NLCD_percentages':
         cluster_cost = {
             0: 1,
-            1: 10,
+            1: 1,
             2: 1,
-            3: 10, 
-            4: 10, 
+            3: 1, 
+            4: 1, 
             5: 1,
             6: 1,
-            7: 10
+            7: 1
         }
     if cluster_type =='urban_areas':
         cluster_cost = {
