@@ -26,6 +26,7 @@ class Sampler:
             loc_emb: satclip embeddings if rule is satclip
         '''
         i = 0
+        self.datasets = datasets
         for dataset in datasets:
             if isinstance(dataset, pd.DataFrame):
                 dataset = dataset.to_numpy()
@@ -55,6 +56,24 @@ class Sampler:
 
         self.cluster_type = cluster_type
 
+    def reapply_filtering(self, valid_idxs):
+        i = 0
+        for i in range(len(self.datasets)):
+            setattr(self, f"dataset{i+1}", getattr(self, f"dataset{i+1}")[valid_idxs])
+        
+        self.ids = self.ids[valid_idxs]
+
+        if hasattr(self, 'loc_emb'):
+            self.loc_emb = self.loc_emb[valid_idxs]
+        
+        self.costs = self.costs[valid_idxs]
+
+        if hasattr(self, 'scores'):
+            self.scores = self.scores[valid_idxs]
+
+        self.finite_idxs = np.where(self.costs != np.inf)[0]
+        self.total_valid = len(self.finite_idxs)
+
     '''
     Sets scores according to rule
     '''
@@ -81,6 +100,12 @@ class Sampler:
     def set_clusters(self, cluster_type):
         cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
         self.clusters = retrieve_clusters(self.ids, cluster_path)
+
+        if len(np.where(np.isnan(self.clusters))) > 0:
+            valid_idxs = ~np.isnan(self.clusters)
+            reapply_filtering(self, valid_idxs)
+
+
 
     '''
     Determine indexes of subset to sample
@@ -185,9 +210,29 @@ class Sampler:
     def compute_probs(self, budget, sigma=1.0, tau=1.0):
         print(f"Computing probabilities for budget {budget}")
 
-        sigmaj_sqs = np.full((8,), sigma)
-        tauj_sqs = np.full((8,), tau)
-        probs = opt.solve(self.ids, self.costs, budget, group_type=self.cluster_type, sigmaj_sqs=sigmaj_sqs, tauj_sqs=tauj_sqs)
+        if self.cluster_type == 'NLCD':
+            n = 17
+        elif self.cluster_type == 'NLCD_percentages':
+            n = 8
+        elif self.cluster_type == 'urban_areas':
+            n = 2
+        elif self.cluster_type == 'urban_percentages':
+            n = 2
+
+        sigmaj_sqs = np.full((n,), sigma)
+        tauj_sqs = np.full((n,), tau)
+        pjs = np.ones((n,))
+        qjs = np.ones((n,)) 
+        deltajs = np.ones((n,))
+        probs = opt.solve(self.ids, 
+                          self.costs, 
+                          budget, 
+                          group_type=self.cluster_type, 
+                          sigmaj_sqs=sigmaj_sqs, 
+                          tauj_sqs=tauj_sqs, 
+                          pjs=pjs, 
+                          qjs=qjs, 
+                          deltajs=deltajs)
         return probs
 
     '''

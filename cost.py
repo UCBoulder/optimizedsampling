@@ -90,22 +90,22 @@ def compute_cluster_cost(ids, cluster_type):
     cluster_cost = None
     if cluster_type == 'NLCD':
         cluster_cost = {
-            11: 100,
-            12: 100,
-            21: 1,
-            22: 1,
-            23: 1,
-            24: 1,
-            31: 100,
-            41: 100,
-            42: 100,
-            43: 100,
-            52: 100,
-            71: 100,
+            11: 1,
+            12: 1,
+            21: 100,
+            22: 100,
+            23: 100,
+            24: 100,
+            31: 1,
+            41: 1,
+            42: 1,
+            43: 1,
+            52: 1,
+            71: 1,
             81: 1,
             82: 1,
-            90: 100,
-            95: 100,
+            90: 1,
+            95: 1,
             250: 1e9 #background or unmapped value, dont sample
         }
     if cluster_type == 'NLCD_percentages':
@@ -123,6 +123,11 @@ def compute_cluster_cost(ids, cluster_type):
         cluster_cost = {
             0: 10,
             1: 1
+        }
+    if cluster_type =='urban_percentages':
+        cluster_cost = {
+            0.0: 10,
+            1.0: 1
         }
     assert cluster_cost is not None
     return np.array([cluster_cost[clusters[i]] for i in range(len(ids))])

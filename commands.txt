@@ -14,3 +14,10 @@ python train.py --method random --cost cluster --cluster_type urban_areas --budg
 python train.py --method invsize --cost cluster --cluster_type urban_areas --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
 python train.py --method greedycost --cost cluster --cluster_type urban_areas --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
 python train.py --method clusters --cost cluster --cluster_type urban_areas --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+
+python train.py --method random --cost cluster --cluster_type urban_percentages --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+python train.py --method invsize --cost cluster --cluster_type urban_percentages --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+python train.py --method greedycost --cost cluster --cluster_type urban_percentages --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+python train.py --method clusters --cost cluster --cluster_type urban_percentages --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+
+python train.py --method invsize --cost cluster --cluster_type urban_percentages --budgets 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --tau 0.1

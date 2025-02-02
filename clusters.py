@@ -23,10 +23,10 @@ def retrieve_clusters(ids, cluster_path):
         arrs = dill.load(f)
 
     clusters_df = pd.DataFrame(arrs["clusters"], index=arrs["ids"], columns=["cluster"])
-    cluster_labels = np.empty((len(ids),), dtype=int)
+    cluster_labels = np.empty((len(ids),), dtype=float)
 
     for i in range(len(ids)):
-        cluster_labels[i] = clusters_df.loc[ids[i], "cluster"]
+        cluster_labels[i] = clusters_df["cluster"].get(ids[i], np.nan)
 
     return cluster_labels
 

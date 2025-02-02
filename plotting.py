@@ -168,14 +168,17 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
+    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_urban_areas_formatted.csv", index_col=0)
     dfs.append(df_random)
 
     df_clusters = pd.read_csv(f"results/Torchgeo4096_clusters_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_clusters)
 
-    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
+    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_urban_areas_formatted.csv", index_col=0)
     dfs.append(df_inv)
 
-    fig = plot_r2_cost(["srs", "clusters", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD Percent clusters')
-    fig.savefig(f"R2_cost_nlcd_percent_clusters_1347.png")
+    df_lowcost = pd.read_csv(f"results/Torchgeo4096_greedycost_cost_cluster_urban_areas_formatted.csv", index_col=0)
+    dfs.append(df_lowcost)
+
+    fig = plot_r2_cost(["srs", "clusters", "invsize", "lowcost"], dfs, title=f'$R^2$ vs Cost of Collection for Urban Clusters')
+    fig.savefig(f"R2_cost_urban_clusters.png")
