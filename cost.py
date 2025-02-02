@@ -111,13 +111,18 @@ def compute_cluster_cost(ids, cluster_type):
     if cluster_type == 'NLCD_percentages':
         cluster_cost = {
             0: 1,
-            1: 1,
+            1: 10,
             2: 1,
-            3: 1, 
+            3: 10, 
             4: 10, 
-            5: 10,
-            6: 10,
+            5: 1,
+            6: 1,
             7: 10
+        }
+    if cluster_type =='urban_areas':
+        cluster_cost = {
+            0: 10,
+            1: 1
         }
     assert cluster_cost is not None
     return np.array([cluster_cost[clusters[i]] for i in range(len(ids))])
