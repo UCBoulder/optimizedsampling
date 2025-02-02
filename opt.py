@@ -12,18 +12,18 @@ def group_size(x, groups, g):
 def pop_size(x):
     return cp.sum(x)
 
-def group_risk(nj, n, sigmaj_sq, tauj_sq, pj, qj, deltaj):
-    return deltaj + sigmaj_sq * cp.exp(-pj*cp.log(nj)) + tauj_sq * cp.exp(-qj*cp.log(n))
+def group_risk(nj, n, l):
+    return l*cp.exp(-1*cp.log(nj)) + (1-l)*cp.exp(-1*cp.log(n))
 
-def pop_risk(njs, n, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs):
-    group_risks = [group_risk(njs[i], n, sigmaj_sqs[i], tauj_sqs[i], pjs[i], qjs[i], deltajs[i]) for i in range(len(njs))]
+def pop_risk(njs, n, gammajs, l):
+    group_risks = [group_risk(njs[i], n, l) for i in range(len(njs))]
     weighted_group_risks = [gammajs[i]*group_risks[i] for i in range(len(njs))]
     return cp.sum(weighted_group_risks)
 
-def risk_by_prob(x, groups, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs):
+def risk_by_prob(x, groups, gammajs, l):
     njs = [group_size(x, groups, g) for g in np.unique(groups)]
     n = pop_size(x)
-    return pop_risk(njs, n, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs)
+    return pop_risk(njs, n, gammajs, l)
 
 '''
 Sets up cvxpy problem and solves
@@ -32,11 +32,7 @@ def solve(ids,
           costs, 
           budget, 
           group_type="NLCD_percentages",
-          sigmaj_sqs=np.ones((8,)), 
-          tauj_sqs=np.ones((8,)), 
-          pjs=np.ones((8,)), 
-          qjs=np.ones((8,)), 
-          deltajs=np.ones((8,))):
+          l=0.5):
 
     n = len(ids)
     x = cp.Variable(n, nonneg=True)
@@ -51,7 +47,7 @@ def solve(ids,
         costs = np.array([np.min([1e6, c]) for c in costs]).reshape(-1,1)
 
     #cvxpy Problem setup
-    objective = risk_by_prob(x, clusters, sigmaj_sqs, tauj_sqs, pjs, qjs, deltajs, gammajs)
+    objective = risk_by_prob(x, clusters, gammajs, l)
     constraints = [0 <= x, x <= 1, costs.T@x <= budget]
     prob = cp.Problem(cp.Minimize(objective), constraints)
 

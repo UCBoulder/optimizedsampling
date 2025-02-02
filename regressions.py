@@ -80,7 +80,7 @@ def run_regression(label,
                     )
     
     if rule == 'invsize':
-        probs = sampler.compute_probs(budget, kwargs.get('sigma', 1.0), kwargs.get('tau', 1.0))
+        probs = sampler.compute_probs(budget, kwargs.get('l', 0.5))
 
         #Ensure probs are not slightly more or less than 1 or 0
         probs = np.clip(probs, 0, 1)

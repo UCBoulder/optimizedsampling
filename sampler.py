@@ -207,32 +207,14 @@ class Sampler:
             yield dataset[subset_idxs]
             i += 1
 
-    def compute_probs(self, budget, sigma=1.0, tau=1.0):
+    def compute_probs(self, budget, l=0.5):
         print(f"Computing probabilities for budget {budget}")
 
-        if self.cluster_type == 'NLCD':
-            n = 17
-        elif self.cluster_type == 'NLCD_percentages':
-            n = 8
-        elif self.cluster_type == 'urban_areas':
-            n = 2
-        elif self.cluster_type == 'urban_percentages':
-            n = 2
-
-        sigmaj_sqs = np.full((n,), sigma)
-        tauj_sqs = np.full((n,), tau)
-        pjs = np.ones((n,))
-        qjs = np.ones((n,)) 
-        deltajs = np.ones((n,))
         probs = opt.solve(self.ids, 
                           self.costs, 
                           budget, 
                           group_type=self.cluster_type, 
-                          sigmaj_sqs=sigmaj_sqs, 
-                          tauj_sqs=tauj_sqs, 
-                          pjs=pjs, 
-                          qjs=qjs, 
-                          deltajs=deltajs)
+                          l=l)
         return probs
 
     '''

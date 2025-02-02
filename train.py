@@ -57,7 +57,12 @@ def run(labels_to_run,
         cluster_type = kwargs.get('cluster_type', 'NLCD_percentages')
         cost_str = f'cost_cluster_{cluster_type}'
 
-    results_df.to_csv(Path(f"results/checkcond_Torchgeo4096_{rule}_{cost_str}.csv"), index=True)
+    lambda_str = ''
+    if rule == 'inv_size':
+        l = kwargs.get('l', 0.5)
+        lambda_str = f"_lambda_{l}"
+
+    results_df.to_csv(Path(f"results/final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -120,16 +125,10 @@ parser.add_argument(
     help='Average results'
 )
 parser.add_argument(
-    '--sigma',
-    default=1.0,
+    '--l',
+    default=0.5,
     type=float,
-    help='Coefficient sigma'
-)
-parser.add_argument(
-    '--tau',
-    default=1.0,
-    type=float,
-    help='Coefficient tau'
+    help='Hyperparameter lambda in optimization problem'
 )
 parser.add_argument(
     '--cluster_type',
@@ -220,7 +219,6 @@ run(
     gamma=args.gamma, 
     r=args.radius,
     states=states,
-    sigma=args.sigma,
-    tau=args.tau,
+    l=args.l,
     cluster_type=args.cluster_type
     )

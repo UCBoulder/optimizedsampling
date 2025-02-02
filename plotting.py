@@ -54,7 +54,7 @@ def plot_r2_cost(methods, dfs, title):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in ["population", "treecover", "elevation"]:
         j = 0
-        colors = ["orangered", "steelblue", "black", "green"]
+        colors = ["#FF6347", "#4682B4", "#000000", "#008000", "#FFD700"]
         for df in dfs:
             df = df.reset_index()
             df = df.set_index(['label'])
@@ -62,7 +62,8 @@ def plot_r2_cost(methods, dfs, title):
             filtered_df = df.loc[label]
 
             # Sort the filtered DataFrame by 'size_of_subset' for accurate plotting
-            filtered_df = filtered_df.sort_index()
+            #filtered_df = filtered_df.sort_index()
+            filtered_df = filtered_df.sort_values(by="Cost")
 
             #If R2 is averaged, plot error bars
             if filtered_df.get('Test Avg R2.') is not None:
@@ -84,7 +85,7 @@ def plot_r2_cost(methods, dfs, title):
                             linestyle='', 
                             label=methods[j], 
                             color=colors[j], 
-                            markersize=5, 
+                            markersize=4, 
                             alpha=0.5)
             j += 1
 
@@ -168,17 +169,20 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_urban_areas_formatted.csv", index_col=0)
+    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_random)
 
     df_clusters = pd.read_csv(f"results/Torchgeo4096_clusters_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_clusters)
 
-    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_urban_areas_formatted.csv", index_col=0)
+    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_1347_lambda_0.5_formatted.csv", index_col=0)
     dfs.append(df_inv)
 
-    df_lowcost = pd.read_csv(f"results/Torchgeo4096_greedycost_cost_cluster_urban_areas_formatted.csv", index_col=0)
+    #df_propstrat = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_1347_lambda_1_formatted.csv", index_col=0)
+    #dfs.append(df_propstrat)
+
+    df_lowcost = pd.read_csv(f"results/Torchgeo4096_greedycost_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_lowcost)
 
-    fig = plot_r2_cost(["srs", "clusters", "invsize", "lowcost"], dfs, title=f'$R^2$ vs Cost of Collection for Urban Clusters')
-    fig.savefig(f"R2_cost_urban_clusters.png")
+    fig = plot_r2_cost(["srs", "clusters", "invsize", "lowcost"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters')
+    fig.savefig(f"R2_cost_nlcd_percent_clusters_1347_all.png")
