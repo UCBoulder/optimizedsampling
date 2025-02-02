@@ -81,7 +81,7 @@ def plot_r2_cost(methods, dfs, title):
             else:
                 axs[i].plot(filtered_df["Cost"], 
                             filtered_df["Test R2"], 
-                            marker='o', 
+                            marker='.', 
                             linestyle='', 
                             label=methods[j], 
                             color=colors[j], 
@@ -185,4 +185,4 @@ if __name__ == '__main__':
     dfs.append(df_lowcost)
 
     fig = plot_r2_cost(["srs", "clusters", "invsize", "lowcost"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters')
-    fig.savefig(f"R2_cost_nlcd_percent_clusters_1347_all.png")
+    fig.savefig(f"test.png")

@@ -58,7 +58,7 @@ def run(labels_to_run,
         cost_str = f'cost_cluster_{cluster_type}'
 
     lambda_str = ''
-    if rule == 'inv_size':
+    if rule == 'invsize':
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 

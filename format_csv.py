@@ -75,14 +75,44 @@ def format_cost(df):
 
     return df
 
-if __name__ == '__main__':
-    for method in ['clusters', 'greedycost']:
-        df = pd.read_csv(f"results/Torchgeo4096_{method}_cost_cluster_urban_areas.csv", index_col=0)
-        df = format_dataframe_with_cost(df)
-        df.to_csv(f"results/Torchgeo4096_{method}_cost_cluster_urban_areas_formatted.csv", index=True)
+def compute_avg_std(csv_file, costs, tolerance=10, output_file="output.csv"):
+    # Load the CSV file
+    df = pd.read_csv(csv_file, header=None, names=["label", "Cost", "Test R2"])
+    df["Cost"] = pd.to_numeric(df["Cost"], errors="coerce")
+    df = df.dropna(subset=["Cost"])
 
-    # for region in ['Northeast', 'West', 'Midwest', 'South']:
-    #     for method in ['invsize']:
-    #         df = pd.read_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters.csv", index_col=0)
-    #         df = format_dataframe_with_cost(df)
-    #         df.to_csv(f"results/Torchgeo4096_{method}_State_{region}_urban_clusters_formatted.csv", index=True)
+    df["Test R2"] = pd.to_numeric(df["Test R2"], errors="coerce")
+    df = df.dropna(subset=["Test R2"])
+    
+    results = []
+    for label in df['label'].unique():
+        label_df = df[df["label"] == label]  # Filter by label
+        for target_cost in costs:
+            # Filter rows where Cost is within the target range (±tolerance)
+            filtered_df = label_df[(label_df["Cost"] >= target_cost - tolerance) & (label_df["Cost"] <= target_cost + tolerance)]
+            
+            # Compute mean and standard deviation of Test R2 values
+            mean_r2 = filtered_df["Test R2"].mean()
+            std_r2 = filtered_df["Test R2"].std()
+
+            results.append([label, target_cost, mean_r2, std_r2])
+    
+    # Create DataFrame and save to CSV
+    results_df = pd.DataFrame(results, columns=["label", "Cost", "Avg R2", "Std R2"])
+    results_df.to_csv(output_file, index=False)
+
+if __name__ == '__main__':
+    # for method in ['clusters', 'greedycost']:
+    #     df = pd.read_csv(f"results/Torchgeo4096_{method}_cost_cluster_urban_areas.csv", index_col=0)
+    #     df = format_dataframe_with_cost(df)
+    #     df.to_csv(f"results/Torchgeo4096_{method}_cost_cluster_urban_areas_formatted.csv", index=True)
+
+    for method in ['random', 'invsize', 'greedycost', 'clusters']:
+        lambda_str = ''
+        if method == 'invsize':
+            lambda_str = 'lambda_0.5_'
+
+        csv_file = f"results/Torchgeo4096_{method}_cost_cluster_NLCD_percentages_1347_{lambda_str}formatted.csv"
+        output_file = f"results/Torchgeo4096_{method}_cost_cluster_NLCD_percentages_1347_{lambda_str}averaged.csv"
+        costs = list(range(500, 5001, 500))
+        compute_avg_std(csv_file, costs, output_file=output_file)
