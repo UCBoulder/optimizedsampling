@@ -54,7 +54,7 @@ def plot_r2_cost(methods, dfs, title):
     labels = dfs[0].index.get_level_values('label').unique().tolist()
     for label in ["population", "treecover", "elevation"]:
         j = 0
-        colors = ["orangered", "black", "steelblue", "green"]
+        colors = ["orangered", "steelblue", "black", "green"]
         for df in dfs:
             df = df.reset_index()
             df = df.set_index(['label'])
@@ -85,7 +85,7 @@ def plot_r2_cost(methods, dfs, title):
                             label=methods[j], 
                             color=colors[j], 
                             markersize=5, 
-                            alpha=-0.6*j+1)
+                            alpha=0.5)
             j += 1
 
         # Customize the plot
@@ -168,11 +168,14 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
 
 if __name__ == '__main__':
     dfs = []
-    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    df_random = pd.read_csv(f"results/Torchgeo4096_random_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_random)
 
-    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    df_clusters = pd.read_csv(f"results/Torchgeo4096_clusters_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
+    dfs.append(df_clusters)
+
+    df_inv = pd.read_csv(f"results/Torchgeo4096_invsize_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
     dfs.append(df_inv)
 
-    fig = plot_r2_cost(["srs", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD Percent clusters')
-    fig.savefig(f"R2_cost_nlcd_percent_clusters.png")
+    fig = plot_r2_cost(["srs", "clusters", "invsize"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD Percent clusters')
+    fig.savefig(f"R2_cost_nlcd_percent_clusters_1347.png")
