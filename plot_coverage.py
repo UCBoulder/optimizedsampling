@@ -123,7 +123,7 @@ def plot_lat_lon_cluster(lats, lons, clusters, title, markersize=1, alpha=0.5):
     # Define colors for clusters using a colormap
     cmap = plt.get_cmap('tab10')
     unique_clusters = sorted(gdf['cluster'].unique())  # Ensure clusters are sorted
-    cluster_colors = [cmap(i % 10) for i in unique_clusters]
+    cluster_colors = [cmap(int(i)) for i in unique_clusters]
 
     # Plot each cluster with its assigned color
     for cluster_id, color in zip(unique_clusters, cluster_colors):
@@ -131,11 +131,10 @@ def plot_lat_lon_cluster(lats, lons, clusters, title, markersize=1, alpha=0.5):
         cluster_points.plot(ax=ax, color=color, markersize=markersize, alpha=alpha, label=f'Cluster {cluster_id}')
 
     # Create a sorted custom legend
-    legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=f'Cluster {i}')
+    legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=f'Cluster {int(i)}')
                     for i, color in zip(unique_clusters, cluster_colors)]
 
-    ax.legend(handles=legend_elements, title="Clusters", loc='lower right')
-    ax.set_title(title)
+    ax.legend(handles=legend_elements, loc='lower right', fontsize=14)
     ax.axis("off")
 
     return fig
@@ -171,3 +170,24 @@ def plot_cluster_sample(cluster_num):
     fig.suptitle(f'GeoTIFFS from Cluster {cluster_num}', fontsize=16)
     plt.tight_layout()  # Adjust layout to avoid overlap
     return fig  # Return the figure object
+
+if __name__ == '__main__':
+    with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+        arrs = dill.load(f)
+    
+    ids = arrs['ids_X']
+    latlons = arrs['latlon']
+    lats = latlons[:,0]
+    lons = latlons[:,1]
+
+    from clusters import retrieve_clusters
+
+    clusters = retrieve_clusters(ids, "data/clusters/NLCD_percentages_cluster_assignment.pkl")
+    valid_idxs = np.where(~np.isnan(clusters))[0]
+    lats = lats[valid_idxs]
+    lons = lons[valid_idxs]
+    clusters = clusters[valid_idxs]
+
+    fig = plot_lat_lon_cluster(lats, lons, clusters, "NLCD groups", markersize=1, alpha=0.5)
+    fig.savefig("NLCD_groups.png", dpi=300, bbox_inches='tight')
+

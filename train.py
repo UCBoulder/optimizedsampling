@@ -62,6 +62,8 @@ def run(labels_to_run,
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 
+    from IPython import embed; embed()
+
     results_df.to_csv(Path(f"results/100_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
@@ -153,60 +155,22 @@ elif cost_func == "cluster":
 
 states=args.states
 if states == ["West"]:
-    states = ['Arizona',
-              'Colorado',
-              'Idaho',
-              'Montana',
-              'Nevada',
-              'New Mexico',
-              'Utah',
-              'Wyoming',
-              'California',
-              'Oregon',
-              'Washington']
+    states = [
+    'Montana', 'Idaho', 'Wyoming', 'Colorado', 'New Mexico',  # Mountain West
+    'Washington', 'Oregon', 'California', 'Nevada',  # Pacific
+    'Utah', 'Arizona'  # Southwest
+]
 
-if states == ["Midwest"]:
-    states = ['Illinois',
-              'Indiana',
-              'Michigan',
-              'Ohio',
-              'Wisconsin',
-              'Iowa',
-              'Kansas',
-              'Minnesota',
-              'Missouri',
-              'Nebraska',
-              'North Dakota',
-              'South Dakota']
-
-if states == ["South"]:
-    states = ['Florida', 
-              'Georgia', 
-              'North Carolina', 
-              'South Carolina', 
-              'Virginia', 
-              'Maryland', 
-              'Delaware', 
-              'West Virginia',
-              'Alabama',
-              'Kentucky',
-              'Mississippi',
-              'Tennessee',
-              'Arkansas',
-              'Louisiana',
-              'Oklahoma',
-              'Texas']
-
-if states == ["Northeast"]:
-    states = ['Connecticut', 
-              'Maine', 
-              'Massachusetts', 
-              'New Hampshire', 
-              'Rhode Island', 
-              'Vermont', 
-              'New Jersey', 
-              'New York', 
-              'Pennsylvania']
+if states == ["East"]:
+    states = [
+        'Maine', 'New Hampshire', 'Vermont', 'Massachusetts', 'Rhode Island', 'Connecticut',  # New England
+        'New York', 'New Jersey', 'Pennsylvania',  # Mid-Atlantic
+        'Delaware', 'Maryland', 'Virginia', 'West Virginia',  # Mid-Atlantic/Southeast
+        'Kentucky', 'Tennessee', 'North Carolina', 'South Carolina', 'Georgia', 'Florida',  # Southeast
+        'Alabama', 'Mississippi',  # Deep South
+        'Ohio', 'Michigan', 'Indiana', 'Illinois', 'Wisconsin',  # Great Lakes
+        'Missouri', 'Iowa', 'Minnesota', 'North Dakota', 'South Dakota', 'Nebraska', 'Kansas'  # Central Plains
+    ]
 
 run(
     args.labels, 

@@ -142,7 +142,7 @@ def ridge_regression(X_train,
                      X_test, 
                      y_test, 
                      n_folds=5, 
-                     alphas=np.logspace(-5, 5, 100)):
+                     alphas=np.logspace(-5, 5, 10)):
     
     n_samples = X_train.shape[0]
 

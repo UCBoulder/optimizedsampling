@@ -4,6 +4,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
+import statsmodels.api as sm
 
 from format_csv import *
 
@@ -52,9 +53,12 @@ def plot_r2_cost(methods, dfs, title):
 
     i=0
     labels = dfs[0].index.get_level_values('label').unique().tolist()
-    for label in ["population", "treecover", "elevation"]:
+    for label in ['population', 'treecover', 'elevation']:
         j = 0
-        colors = ["#FF4500", "#1E90FF", "#228B22", "#8B0000", "#FFD700", "#4B0082", "#A52A2A"]
+        colors = ['#1F77B4', '#800080', '#228B22', '#FF6347', '#808080']
+        if len(dfs) == 3:
+            colors = ['#1F77B4', '#800080', '#808080']
+
         for df in dfs:
             df = df.reset_index()
             df = df.set_index(['label'])
@@ -83,16 +87,35 @@ def plot_r2_cost(methods, dfs, title):
                             filtered_df["Test R2"], 
                             marker='o', 
                             linestyle='', 
-                            label=methods[j], 
+                            #label=methods[j], 
                             color=colors[j], 
                             markersize=4, 
-                            alpha=0.5)
+                            alpha=0.2)
+
+            # Perform LOWESS smoothing
+            smoothed = sm.nonparametric.lowess(
+                endog=filtered_df["Test R2"],  # Dependent variable (Y)
+                exog=filtered_df["Cost"],  # Independent variable (X)
+                frac=0.4,  # Smoothing parameter (adjust between 0.1 and 0.5)
+                it=3  # Number of robustifying iterations
+            )
+
+            # Extract smoothed values
+            x_smooth, y_smooth = smoothed[:, 0], smoothed[:, 1]
+
+            # Plot LOWESS trendline
+            axs[i].plot(x_smooth, y_smooth, 
+                        linestyle='--', 
+                        color=colors[j], 
+                        alpha=0.8, 
+                        label=f"{methods[j]}")
+
             j += 1
 
         # Customize the plot
         axs[i].set_xlabel("Cost")
         axs[i].set_ylabel("$R^2$")
-        axs[i].set_ylim(0,1)
+        axs[i].set_ylim(bottom=0)
         if label=="population":
             axs[i].set_title("Population")
         if label=="elevation":
@@ -168,27 +191,57 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
     return fig
 
 if __name__ == '__main__':
+    #Plot 10
+    dfs = []
+    df_random = pd.read_csv(f"results/final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_random)
+
+    df_clusters = pd.read_csv(f"results/final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_clusters)
+
+    df_l0 = pd.read_csv(f"results/final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_l0)
+
+    df_l05 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
+    dfs.append(df_l05)
+
+    df_l1 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
+    dfs.append(df_l1)
+
+    fig = plot_r2_cost(["SRS", "StRS", "l=0", "l=0.5", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 1')
+    fig.savefig("Plot10.png", dpi=300, bbox_inches='tight')
+
+    #Plot 100
     dfs = []
     df_random = pd.read_csv(f"results/100_final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
     dfs.append(df_random)
 
-    #df_clusters = pd.read_csv(f"results/Torchgeo4096_clusters_cost_cluster_NLCD_percentages_1347_formatted.csv", index_col=0)
-    #dfs.append(df_clusters)
+    df_clusters = pd.read_csv(f"results/100_final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    dfs.append(df_clusters)
 
     df_l0 = pd.read_csv(f"results/100_final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
     dfs.append(df_l0)
 
-    df_l005 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_0.05_formatted.csv", index_col=0)
-    dfs.append(df_l005)
-
     df_l05 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
     dfs.append(df_l05)
-
-    df_l095 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_0.95_formatted.csv", index_col=0)
-    dfs.append(df_l095)
 
     df_l1 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
     dfs.append(df_l1)
 
-    fig = plot_r2_cost(["srs", "l=0", "l=0.05", "l=0.5", "l=0.95", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters')
-    fig.savefig(f"test2.png")
+    fig = plot_r2_cost(["SRS", "StRS", "l=0", "l=0.5", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
+    fig.savefig("Plot100.png", dpi=300, bbox_inches='tight')
+
+    #Plot 3 (East)
+    dfs = []
+
+    df_random = pd.read_csv(f"results/final_random_State_East_formatted.csv", index_col=0)
+    dfs.append(df_random)
+
+    df_clusters = pd.read_csv("results/final_clusters_State_East_formatted.csv", index_col=0)
+    dfs.append(df_clusters)
+
+    df_l1 = pd.read_csv(f"results/final_invsize_State_East_lambda_1.0_formatted.csv", index_col=0)
+    dfs.append(df_l1)
+
+    fig = plot_r2_cost(["SRS", " StRS", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
+    fig.savefig("Plot_East.png", dpi=300, bbox_inches='tight')
