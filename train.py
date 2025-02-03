@@ -62,7 +62,7 @@ def run(labels_to_run,
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 
-    results_df.to_csv(Path(f"results/final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
+    results_df.to_csv(Path(f"results/100_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

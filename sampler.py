@@ -56,24 +56,6 @@ class Sampler:
 
         self.cluster_type = cluster_type
 
-    def reapply_filtering(self, valid_idxs):
-        i = 0
-        for i in range(len(self.datasets)):
-            setattr(self, f"dataset{i+1}", getattr(self, f"dataset{i+1}")[valid_idxs])
-        
-        self.ids = self.ids[valid_idxs]
-
-        if hasattr(self, 'loc_emb'):
-            self.loc_emb = self.loc_emb[valid_idxs]
-        
-        self.costs = self.costs[valid_idxs]
-
-        if hasattr(self, 'scores'):
-            self.scores = self.scores[valid_idxs]
-
-        self.finite_idxs = np.where(self.costs != np.inf)[0]
-        self.total_valid = len(self.finite_idxs)
-
     '''
     Sets scores according to rule
     '''
@@ -100,10 +82,6 @@ class Sampler:
     def set_clusters(self, cluster_type):
         cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
         self.clusters = retrieve_clusters(self.ids, cluster_path)
-
-        if len(np.where(np.isnan(self.clusters))) > 0:
-            valid_idxs = ~np.isnan(self.clusters)
-            reapply_filtering(self, valid_idxs)
 
 
 
