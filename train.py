@@ -3,9 +3,10 @@ import pandas as pd
 import dill
 import argparse
 
-from regressions import run_regression, r2_dict, avgr2, stdr2
+from regressions import run_regression, r2_dict, avgr2, stdr2, num_samples_dict
 import config as c
 from cost import *
+from format_csv import *
 
 #Run
 def run(labels_to_run, 
@@ -36,6 +37,10 @@ def run(labels_to_run,
             }
         )
     results_df.index.name = "label"
+    num_samples_df = pd.DataFrame(
+            {"Sample Size": num_samples_dict
+            }
+        )
 
     if cost_func == compute_unif_cost:
         cost_str = 'Unif'
@@ -62,9 +67,11 @@ def run(labels_to_run,
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 
-    from IPython import embed; embed()
-
-    results_df.to_csv(Path(f"results/100_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
+    num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{lambda_str}_cluster_50.csv", index=True)
+    results_df.to_csv(Path(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
+    results_df = pd.read_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv", index_col=0)
+    results_df = format_dataframe_with_cost(results_df)
+    results_df.to_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv", index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

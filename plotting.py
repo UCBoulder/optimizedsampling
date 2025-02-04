@@ -52,12 +52,17 @@ def plot_r2_cost(methods, dfs, title):
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
 
     i=0
-    labels = dfs[0].index.get_level_values('label').unique().tolist()
-    for label in ['population', 'treecover', 'elevation']:
+    labels = ['population', 'treecover', 'elevation']
+    if len(dfs) == 3:
+        labels = ['population', 'treecover']
+        fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+    for label in labels:
         j = 0
         colors = ['#1F77B4', '#800080', '#228B22', '#FF6347', '#808080']
+        linestyles = ['-', '--', '-.', ':', (0, (3, 1, 1, 1))] 
         if len(dfs) == 3:
             colors = ['#1F77B4', '#800080', '#808080']
+            linestyles = ['-', '--', (0, (3, 1, 1, 1))] 
 
         for df in dfs:
             df = df.reset_index()
@@ -96,7 +101,7 @@ def plot_r2_cost(methods, dfs, title):
             smoothed = sm.nonparametric.lowess(
                 endog=filtered_df["Test R2"],  # Dependent variable (Y)
                 exog=filtered_df["Cost"],  # Independent variable (X)
-                frac=0.4,  # Smoothing parameter (adjust between 0.1 and 0.5)
+                frac=0.5,  # Smoothing parameter (adjust between 0.1 and 0.5)
                 it=3  # Number of robustifying iterations
             )
 
@@ -105,7 +110,7 @@ def plot_r2_cost(methods, dfs, title):
 
             # Plot LOWESS trendline
             axs[i].plot(x_smooth, y_smooth, 
-                        linestyle='--', 
+                        linestyle=linestyles[j], 
                         color=colors[j], 
                         alpha=0.8, 
                         label=f"{methods[j]}")
@@ -115,18 +120,20 @@ def plot_r2_cost(methods, dfs, title):
         # Customize the plot
         axs[i].set_xlabel("Cost")
         axs[i].set_ylabel("$R^2$")
-        axs[i].set_ylim(bottom=0)
         if label=="population":
+            axs[i].set_ylim(bottom=0.0)
             axs[i].set_title("Population")
         if label=="elevation":
+            axs[i].set_ylim(bottom=0.0)
             axs[i].set_title("Elevation")
         if label=="treecover":
+            axs[i].set_ylim(bottom=0.2)
             axs[i].set_title("Treecover")
         axs[i].legend()
         i = i+1
 
-    fig.subplots_adjust(wspace=0.4)   
-    fig.suptitle(title)
+    #fig.subplots_adjust(wspace=0.4)
+    plt.tight_layout()
     return fig
 
 def plot_r2_num_samples_with_cost(methods, *dfs):
@@ -208,7 +215,7 @@ if __name__ == '__main__':
     df_l1 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
     dfs.append(df_l1)
 
-    fig = plot_r2_cost(["SRS", "StRS", "l=0", "l=0.5", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 1')
+    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 1')
     fig.savefig("Plot10.png", dpi=300, bbox_inches='tight')
 
     #Plot 100
@@ -228,8 +235,29 @@ if __name__ == '__main__':
     df_l1 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
     dfs.append(df_l1)
 
-    fig = plot_r2_cost(["SRS", "StRS", "l=0", "l=0.5", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
+    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
     fig.savefig("Plot100.png", dpi=300, bbox_inches='tight')
+
+    #Plot 50
+    dfs = []
+    df_random = pd.read_csv(f"results/50_final_random_cost_cluster_NLCD_percentages.csv", index_col=0)
+    dfs.append(df_random)
+
+    df_clusters = pd.read_csv(f"results/50_final_clusters_cost_cluster_NLCD_percentages.csv", index_col=0)
+    dfs.append(df_clusters)
+
+    df_l0 = pd.read_csv(f"results/50_final_greedycost_cost_cluster_NLCD_percentages.csv", index_col=0)
+    dfs.append(df_l0)
+
+    df_l05 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5.csv", index_col=0)
+    dfs.append(df_l05)
+
+    df_l1 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0.csv", index_col=0)
+    dfs.append(df_l1)
+
+    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
+    fig.savefig("Plot50.png", dpi=300, bbox_inches='tight')
+
 
     #Plot 3 (East)
     dfs = []
@@ -243,5 +271,20 @@ if __name__ == '__main__':
     df_l1 = pd.read_csv(f"results/final_invsize_State_East_lambda_1.0_formatted.csv", index_col=0)
     dfs.append(df_l1)
 
-    fig = plot_r2_cost(["SRS", " StRS", "l=1.0"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
+    fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
     fig.savefig("Plot_East.png", dpi=300, bbox_inches='tight')
+
+    #Plot 3 (West)
+    dfs = []
+
+    df_random = pd.read_csv(f"results/final_random_State_West_formatted.csv", index_col=0)
+    dfs.append(df_random)
+
+    df_clusters = pd.read_csv("results/final_clusters_State_West_formatted.csv", index_col=0)
+    dfs.append(df_clusters)
+
+    df_l1 = pd.read_csv(f"results/final_invsize_State_West_lambda_1.0_formatted.csv", index_col=0)
+    dfs.append(df_l1)
+
+    fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
+    fig.savefig("Plot_West.png", dpi=300, bbox_inches='tight')

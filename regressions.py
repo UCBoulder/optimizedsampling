@@ -25,6 +25,7 @@ import config as c
 r2_dict = {}
 avgr2 = {}
 stdr2 = {}
+num_samples_dict = {}
 
 '''
 Run regressions
@@ -69,6 +70,7 @@ def run_regression(label,
     seeds = [42, 123, 456, 789, 1011]
     r2_scores = []
     sample_costs = []
+    num_samples_arr = []
 
     sampler = Sampler(ids_train, 
                         X_train, 
@@ -98,6 +100,7 @@ def run_regression(label,
         if num_samples == sampler.total_valid:
             print("Used all samples.")
             c.used_all_samples = True
+        num_samples_arr.append(num_samples)
 
         #Plot Coverage
         # fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
@@ -119,7 +122,7 @@ def run_regression(label,
                     r2_dict[key] = []
                 r2_dict[key].append(r2)
 
-        print(f"Seed {seed}: R2 score on test set: {r2}")
+        # print(f"Seed {seed}: R2 score on test set: {r2}")
 
     if avg_results:
         #Add to results
@@ -133,6 +136,8 @@ def run_regression(label,
         else:
             avgr2[label + ";budget" + str(budget)] = None
             stdr2[label + ";budget" + str(budget)] = None
+    avg_num_samples = np.nanmean(num_samples_arr)
+    num_samples_dict[label + ";budget" + str(budget)] = avg_num_samples
 
 '''
 Run ridge regression and return R2 score
