@@ -121,13 +121,13 @@ def plot_r2_cost(methods, dfs, title):
         axs[i].set_xlabel("Cost")
         axs[i].set_ylabel("$R^2$")
         if label=="population":
-            axs[i].set_ylim(bottom=0.0)
+            axs[i].set_ylim(bottom=0.30)
             axs[i].set_title("Population")
         if label=="elevation":
             axs[i].set_ylim(bottom=0.0)
             axs[i].set_title("Elevation")
         if label=="treecover":
-            axs[i].set_ylim(bottom=0.2)
+            axs[i].set_ylim(bottom=0.65)
             axs[i].set_title("Treecover")
         axs[i].legend()
         i = i+1
