@@ -148,6 +148,13 @@ parser.add_argument(
     type=str,
     help='Cluster type'
 )
+parser.add_argument(
+    '--test_split',
+    default=None,
+    type=str,
+    nargs='+',
+    help='Test region'
+)
 
 args = parser.parse_args()
 
@@ -197,9 +204,14 @@ states_dict = {
 }
 
 states=args.states
+test_split=args.test_split
 if states is not None:
     if states[0] in states_dict:
         states = states_dict.get(states[0], set())
+        
+if test_split is not None:
+    if test_split[0] in states_dict:
+        test_split = states_dict.get(test_split[0], set())
 
 run(
     args.labels, 
@@ -213,5 +225,6 @@ run(
     r=args.radius,
     states=states,
     l=args.l,
-    cluster_type=args.cluster_type
+    cluster_type=args.cluster_type,
+    test_split=test_split
     )

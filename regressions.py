@@ -72,17 +72,25 @@ def run_regression(label,
     sample_costs = []
     num_samples_arr = []
 
-    sampler = Sampler(ids_train, 
-                        X_train, 
-                        y_train, 
-                        latlon_train,
-                        rule=rule,
-                        costs=costs,
-                        cluster_type=kwargs.get('cluster_type', 'NLCD_percentages')
-                    )
+    train_sampler = Sampler(ids_train, 
+                            X_train, 
+                            y_train, 
+                            latlon_train,
+                            rule=rule,
+                            costs=costs,
+                            cluster_type=kwargs.get('cluster_type', 'NLCD_percentages')
+                        )
+    
+    test_sampler = Sampler(ids_test,
+                           X_test,
+                           y_test)
+    test_split = kwargs.get("test_split", None)
+    if test_split is not None:
+        X_test, y_test = test_sampler.sample_region(test_split, latlon_test)
+        from IPython import embed; embed()
     
     if rule == 'invsize':
-        probs = sampler.compute_probs(budget, kwargs.get('l', 0.5))
+        probs = train_sampler.compute_probs(budget, kwargs.get('l', 0.5))
 
         #Ensure probs are not slightly more or less than 1 or 0
         probs = np.clip(probs, 0, 1)
@@ -91,13 +99,13 @@ def run_regression(label,
         print(f"Using Seed {seed} to sample...")
 
         if rule == 'invsize':
-            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_prob(probs, seed)
+            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = train_sampler.sample_with_prob(probs, seed)
         else:
-            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = sampler.sample_with_budget(budget, seed)
+            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = train_sampler.sample_with_budget(budget, seed)
 
         num_samples = X_train_sampled.shape[0]
         print("Number of samples: ", num_samples)
-        if num_samples == sampler.total_valid:
+        if num_samples == train_sampler.total_valid:
             print("Used all samples.")
             c.used_all_samples = True
         num_samples_arr.append(num_samples)
@@ -171,7 +179,7 @@ def ridge_regression(X_train,
     # Optimal alpha
     best_alpha = pipeline.named_steps['ridgecv'].alpha_
     print(f"Best alpha: {best_alpha}")
-            
+    from IPython import embed; embed()
     # Make predictions on the test set
     r2 = pipeline.score(X_test, y_test)
 

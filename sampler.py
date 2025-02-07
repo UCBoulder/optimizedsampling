@@ -1,10 +1,13 @@
 import pandas as pd
 import numpy as np
+from shapely.geometry import Point
+import geopandas as gpd
 
 from oed import *
 import opt
 import config as c
 from clusters import retrieve_clusters
+from cost import gdf_states
 
 class Sampler:
     '''
@@ -220,3 +223,33 @@ class Sampler:
                 return 
             yield dataset[subset_idxs]
             i += 1
+
+    def sample_region(self, states, latlons):
+        if latlons is None:
+            with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+                arrs = dill.load(f)
+
+            latlon_array = arrs['latlon']
+            id_array = arrs['ids_X']
+
+            id_to_latlon = {id_: latlon for id_, latlon in zip(id_array, latlon_array)}
+            latlons = [id_to_latlon.get(id_, None) for id_ in self.ids]
+
+        points = [Point(lon, lat) for lat, lon in latlons]
+        gdf_points = gpd.GeoDataFrame(
+            {'geometry': points},
+            crs='EPSG:26914'
+        )
+        state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
+        gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
+
+        in_state_indices = gdf_points.loc[gdf_points['in_state']].index.tolist()
+
+        i=1
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                return
+            yield dataset[in_state_indices]
+            i += 1
+

@@ -127,15 +127,15 @@ def plot_r2_cost(methods, dfs, title=None):
             axs[i].set_ylim(bottom=0.0)
             axs[i].set_title("Elevation")
         if label=="treecover":
-            axs[i].set_ylim(bottom=0.0)
+            axs[i].set_ylim(bottom=0.6)
             axs[i].set_title("Treecover")
         axs[i].legend()
         i = i+1
 
     #fig.subplots_adjust(wspace=0.4)
-    plt.tight_layout()
     if title is not None:
         fig.suptitle(title)
+    plt.tight_layout()
     return fig
 
 def plot_r2_num_samples_with_cost(methods, *dfs):
@@ -317,7 +317,6 @@ if __name__ == '__main__':
 
     df_l1 = pd.read_csv(f"results/final_invsize_State_South_1_lambda_1.0.csv", index_col=0)
     dfs.append(df_l1)
-    from IPython import embed; embed()
 
     fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title='Train on South, Test on US')
     fig.savefig("Plot_South.png", dpi=300, bbox_inches='tight')
