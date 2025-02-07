@@ -86,8 +86,7 @@ def run_regression(label,
                            y_test)
     test_split = kwargs.get("test_split", None)
     if test_split is not None:
-        X_test, y_test = test_sampler.sample_region(test_split, latlon_test)
-        from IPython import embed; embed()
+        latlon_test, X_test, y_test = test_sampler.sample_region(test_split, latlon_test)
     
     if rule == 'invsize':
         probs = train_sampler.compute_probs(budget, kwargs.get('l', 0.5))
@@ -179,7 +178,7 @@ def ridge_regression(X_train,
     # Optimal alpha
     best_alpha = pipeline.named_steps['ridgecv'].alpha_
     print(f"Best alpha: {best_alpha}")
-    from IPython import embed; embed()
+
     # Make predictions on the test set
     r2 = pipeline.score(X_test, y_test)
 

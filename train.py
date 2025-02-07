@@ -70,11 +70,18 @@ def run(labels_to_run,
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 
+    test_str = ''
+    test_split = kwargs.get('test_split', None)
+    if test_split is not None:
+        for region, states in states_dict.items():
+            if test_split == states:
+                test_str = f'_test_{region}'
+
     #num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{cost_str}{lambda_str}.csv", index=True)
-    results_df.to_csv(Path(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
-    results_df = pd.read_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv", index_col=0)
+    results_df.to_csv(Path(f"results/plus_final_{rule}_{cost_str}{lambda_str}{test_str}.csv"), index=True)
+    results_df = pd.read_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}{test_str}.csv", index_col=0)
     results_df = format_dataframe_with_cost(results_df)
-    results_df.to_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv", index=True)
+    results_df.to_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}{test_str}.csv", index=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -208,7 +215,7 @@ test_split=args.test_split
 if states is not None:
     if states[0] in states_dict:
         states = states_dict.get(states[0], set())
-        
+
 if test_split is not None:
     if test_split[0] in states_dict:
         test_split = states_dict.get(test_split[0], set())

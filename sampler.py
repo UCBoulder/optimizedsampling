@@ -246,6 +246,7 @@ class Sampler:
         in_state_indices = gdf_points.loc[gdf_points['in_state']].index.tolist()
 
         i=1
+        yield latlons[in_state_indices]
         while True:
             dataset = getattr(self, f"dataset{i}", None)
             if dataset is None:
