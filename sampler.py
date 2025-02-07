@@ -17,7 +17,7 @@ class Sampler:
             rule="random",
             loc_emb=None, 
             costs=None,
-            cluster_type=None):
+            cluster_type='NLCD_percentages'):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -80,6 +80,7 @@ class Sampler:
         cluster_type: NLCD, NLCD_percentages, 
     '''
     def set_clusters(self, cluster_type):
+        print(f"Setting clusters: {cluster_type}")
         cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
         self.clusters = retrieve_clusters(self.ids, cluster_path)
 
@@ -134,6 +135,7 @@ class Sampler:
         clusters = self.clusters.copy()
         unique_clusters  = np.unique(self.clusters)
         finite_idxs = self.finite_idxs.copy()
+        print("Sampling from {n} clusters".format(n=len(unique_clusters)))
 
         stop = False
         while total_cost < budget and len(finite_idxs) > 0:

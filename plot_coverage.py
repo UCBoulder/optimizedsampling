@@ -182,12 +182,12 @@ if __name__ == '__main__':
 
     from clusters import retrieve_clusters
 
-    clusters = retrieve_clusters(ids, "data/clusters/NLCD_percentages_cluster_assignment.pkl")
+    clusters = retrieve_clusters(ids, "data/clusters/SatCLIP_cluster_assignment_5.pkl")
     valid_idxs = np.where(~np.isnan(clusters))[0]
     lats = lats[valid_idxs]
     lons = lons[valid_idxs]
     clusters = clusters[valid_idxs]
 
-    fig = plot_lat_lon_cluster(lats, lons, clusters, "NLCD groups", markersize=1, alpha=0.5)
-    fig.savefig("NLCD_groups.png", dpi=300, bbox_inches='tight')
+    fig = plot_lat_lon_cluster(lats, lons, clusters, "SatCLIP groups", markersize=1, alpha=0.5)
+    fig.savefig("SatCLIP_groups.png", dpi=300, bbox_inches='tight')
 

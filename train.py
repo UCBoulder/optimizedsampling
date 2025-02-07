@@ -55,9 +55,12 @@ def run(labels_to_run,
         r = kwargs.get('r', 0)
         cost_str = f'LinRad_alpha{alpha}_beta{beta}_gamma{gamma}_rad{r}'
     elif cost_func == compute_state_cost:
-        state = kwargs.get('states', 0)
+        state_set = kwargs.get('states', 0)
+        for region, states in states_dict.items():
+            if state_set == states:
+                state_str = region
         gamma = kwargs.get('gamma', 1)
-        cost_str = f'State_{state}_{gamma}'
+        cost_str = f'State_{state_str}_{gamma}'
     elif cost_func == compute_cluster_cost:
         cluster_type = kwargs.get('cluster_type', 'NLCD_percentages')
         cost_str = f'cost_cluster_{cluster_type}'
@@ -67,7 +70,7 @@ def run(labels_to_run,
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
 
-    num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{lambda_str}_cluster_50.csv", index=True)
+    #num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{cost_str}{lambda_str}.csv", index=True)
     results_df.to_csv(Path(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv"), index=True)
     results_df = pd.read_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}.csv", index_col=0)
     results_df = format_dataframe_with_cost(results_df)
@@ -160,16 +163,13 @@ elif cost_func == "state":
 elif cost_func == "cluster":
     cost_func = compute_cluster_cost
 
-states=args.states
-if states == ["West"]:
-    states = [
-    'Montana', 'Idaho', 'Wyoming', 'Colorado', 'New Mexico',  # Mountain West
-    'Washington', 'Oregon', 'California', 'Nevada',  # Pacific
-    'Utah', 'Arizona'  # Southwest
-]
-
-if states == ["East"]:
-    states = [
+states_dict = {
+    "West": {
+        'Montana', 'Idaho', 'Wyoming', 'Colorado', 'New Mexico',  # Mountain West
+        'Washington', 'Oregon', 'California', 'Nevada',  # Pacific
+        'Utah', 'Arizona'  # Southwest
+    },
+    "East": {
         'Maine', 'New Hampshire', 'Vermont', 'Massachusetts', 'Rhode Island', 'Connecticut',  # New England
         'New York', 'New Jersey', 'Pennsylvania',  # Mid-Atlantic
         'Delaware', 'Maryland', 'Virginia', 'West Virginia',  # Mid-Atlantic/Southeast
@@ -177,7 +177,29 @@ if states == ["East"]:
         'Alabama', 'Mississippi',  # Deep South
         'Ohio', 'Michigan', 'Indiana', 'Illinois', 'Wisconsin',  # Great Lakes
         'Missouri', 'Iowa', 'Minnesota', 'North Dakota', 'South Dakota', 'Nebraska', 'Kansas'  # Central Plains
-    ]
+    },
+    "North": {
+        'Washington', 'Oregon', 'Idaho', 'Montana', 'Wyoming',  # Northwest/Rockies
+        'North Dakota', 'South Dakota', 'Nebraska',  # Northern Plains
+        'Minnesota', 'Wisconsin', 'Iowa',  # Upper Midwest
+        'Michigan', 'Illinois', 'Indiana', 'Ohio',  # Great Lakes
+        'Pennsylvania', 'New York', 'New Jersey',  # Mid-Atlantic
+        'Connecticut', 'Rhode Island', 'Massachusetts', 'Vermont', 'New Hampshire', 'Maine'  # New England
+    },
+    "South": {
+        'California', 'Nevada', 'Utah', 'Colorado',  # Southwest/Rockies
+        'Kansas', 'Missouri', 'Kentucky', 'West Virginia',  # Borderline states near the cutoff
+        'Virginia', 'Maryland', 'Delaware',  # Mid-Atlantic/Southeast
+        'North Carolina', 'South Carolina', 'Georgia', 'Florida',  # Southeast
+        'Tennessee', 'Arkansas', 'Alabama', 'Mississippi',  # Deep South
+        'Louisiana', 'Texas', 'Oklahoma', 'New Mexico', 'Arizona'  # Southern Plains & Southwest
+    }
+}
+
+states=args.states
+if states is not None:
+    if states[0] in states_dict:
+        states = states_dict.get(states[0], set())
 
 run(
     args.labels, 

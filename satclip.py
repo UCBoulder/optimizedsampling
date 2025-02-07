@@ -37,7 +37,7 @@ def get_satclip(c, X):
 
     return emb
 
-def satclip_k_means(emb_path):
+def satclip_k_means(emb_path, max_k):
     best_score = -1
     best_k = 0
     best_labels = None
@@ -47,7 +47,7 @@ def satclip_k_means(emb_path):
         data = arrs['emb']
         ids = arrs['ids']
 
-    for k in range(2, 50):  # Test k from 2 to 50
+    for k in range(2, max_k):  # Test k from 2 to 50
         try:
             kmeans = KMeans(n_clusters=k, random_state=0).fit(data)
             score = silhouette_score(data, kmeans.labels_)

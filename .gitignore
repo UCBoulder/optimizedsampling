@@ -2,5 +2,5 @@ country_boundaries/*
 __pycache__
 data/*
 test_image/*
-satclip/*
+satclip_files/*
 land_cover/*

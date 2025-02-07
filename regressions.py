@@ -122,7 +122,7 @@ def run_regression(label,
                     r2_dict[key] = []
                 r2_dict[key].append(r2)
 
-        # print(f"Seed {seed}: R2 score on test set: {r2}")
+        print(f"Seed {seed}: R2 score on test set: {r2}")
 
     if avg_results:
         #Add to results

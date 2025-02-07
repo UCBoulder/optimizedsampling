@@ -198,93 +198,123 @@ def plot_r2_num_samples_with_cost(methods, *dfs):
     return fig
 
 if __name__ == '__main__':
-    #Plot 10
+    # #Plot 10
+    # dfs = []
+    # df_random = pd.read_csv(f"results/final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_random)
+
+    # df_clusters = pd.read_csv(f"results/final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_clusters)
+
+    # df_l0 = pd.read_csv(f"results/final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_l0)
+
+    # df_l05 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
+    # dfs.append(df_l05)
+
+    # df_l1 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
+    # dfs.append(df_l1)
+
+    # fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 1')
+    # fig.savefig("Plot10.png", dpi=300, bbox_inches='tight')
+
+    # #Plot 100
+    # dfs = []
+    # df_random = pd.read_csv(f"results/100_final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_random)
+
+    # df_clusters = pd.read_csv(f"results/100_final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_clusters)
+
+    # df_l0 = pd.read_csv(f"results/100_final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    # dfs.append(df_l0)
+
+    # df_l05 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
+    # dfs.append(df_l05)
+
+    # df_l1 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
+    # dfs.append(df_l1)
+
+    # fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
+    # fig.savefig("Plot100.png", dpi=300, bbox_inches='tight')
+
+    # #Plot 50
+    # dfs = []
+    # df_random = pd.read_csv(f"results/50_final_random_cost_cluster_NLCD_percentages.csv", index_col=0)
+    # dfs.append(df_random)
+
+    # df_clusters = pd.read_csv(f"results/50_final_clusters_cost_cluster_NLCD_percentages.csv", index_col=0)
+    # dfs.append(df_clusters)
+
+    # df_l0 = pd.read_csv(f"results/50_final_greedycost_cost_cluster_NLCD_percentages.csv", index_col=0)
+    # dfs.append(df_l0)
+
+    # df_l05 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5.csv", index_col=0)
+    # dfs.append(df_l05)
+
+    # df_l1 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0.csv", index_col=0)
+    # dfs.append(df_l1)
+
+    # fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
+    # fig.savefig("Plot50.png", dpi=300, bbox_inches='tight')
+
+
+    # #Plot 3 (East)
+    # dfs = []
+
+    # df_random = pd.read_csv(f"results/final_random_State_East_formatted.csv", index_col=0)
+    # dfs.append(df_random)
+
+    # df_clusters = pd.read_csv("results/final_clusters_State_East_formatted.csv", index_col=0)
+    # dfs.append(df_clusters)
+
+    # df_l1 = pd.read_csv(f"results/final_invsize_State_East_lambda_1.0_formatted.csv", index_col=0)
+    # dfs.append(df_l1)
+
+    # fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
+    # fig.savefig("Plot_East.png", dpi=300, bbox_inches='tight')
+
+    # #Plot 3 (West)
+    # dfs = []
+
+    # df_random = pd.read_csv(f"results/final_random_State_West_formatted.csv", index_col=0)
+    # dfs.append(df_random)
+
+    # df_clusters = pd.read_csv("results/final_clusters_State_West_formatted.csv", index_col=0)
+    # dfs.append(df_clusters)
+
+    # df_l1 = pd.read_csv(f"results/final_invsize_State_West_lambda_1.0_formatted.csv", index_col=0)
+    # dfs.append(df_l1)
+
+    # fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
+    # fig.savefig("Plot_West.png", dpi=300, bbox_inches='tight')
+
+    #Plot 4 (North)
     dfs = []
-    df_random = pd.read_csv(f"results/final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+
+    df_random = pd.read_csv(f"results/final_random_State_North_1.csv", index_col=0)
     dfs.append(df_random)
 
-    df_clusters = pd.read_csv(f"results/final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
+    df_clusters = pd.read_csv("results/final_clusters_State_North_1.csv", index_col=0)
     dfs.append(df_clusters)
 
-    df_l0 = pd.read_csv(f"results/final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
-    dfs.append(df_l0)
-
-    df_l05 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
-    dfs.append(df_l05)
-
-    df_l1 = pd.read_csv(f"results/final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
-    dfs.append(df_l1)
-
-    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 1')
-    fig.savefig("Plot10.png", dpi=300, bbox_inches='tight')
-
-    #Plot 100
-    dfs = []
-    df_random = pd.read_csv(f"results/100_final_random_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
-    dfs.append(df_random)
-
-    df_clusters = pd.read_csv(f"results/100_final_clusters_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
-    dfs.append(df_clusters)
-
-    df_l0 = pd.read_csv(f"results/100_final_greedycost_cost_cluster_NLCD_percentages_formatted.csv", index_col=0)
-    dfs.append(df_l0)
-
-    df_l05 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5_formatted.csv", index_col=0)
-    dfs.append(df_l05)
-
-    df_l1 = pd.read_csv(f"results/100_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0_formatted.csv", index_col=0)
-    dfs.append(df_l1)
-
-    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
-    fig.savefig("Plot100.png", dpi=300, bbox_inches='tight')
-
-    #Plot 50
-    dfs = []
-    df_random = pd.read_csv(f"results/50_final_random_cost_cluster_NLCD_percentages.csv", index_col=0)
-    dfs.append(df_random)
-
-    df_clusters = pd.read_csv(f"results/50_final_clusters_cost_cluster_NLCD_percentages.csv", index_col=0)
-    dfs.append(df_clusters)
-
-    df_l0 = pd.read_csv(f"results/50_final_greedycost_cost_cluster_NLCD_percentages.csv", index_col=0)
-    dfs.append(df_l0)
-
-    df_l05 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_0.5.csv", index_col=0)
-    dfs.append(df_l05)
-
-    df_l1 = pd.read_csv(f"results/50_final_invsize_cost_cluster_NLCD_percentages_lambda_1.0.csv", index_col=0)
-    dfs.append(df_l1)
-
-    fig = plot_r2_cost(["SRS", "StRS", "OPT($\lambda=0$)", "OPT($\lambda=0.5$)", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 2')
-    fig.savefig("Plot50.png", dpi=300, bbox_inches='tight')
-
-
-    #Plot 3 (East)
-    dfs = []
-
-    df_random = pd.read_csv(f"results/final_random_State_East_formatted.csv", index_col=0)
-    dfs.append(df_random)
-
-    df_clusters = pd.read_csv("results/final_clusters_State_East_formatted.csv", index_col=0)
-    dfs.append(df_clusters)
-
-    df_l1 = pd.read_csv(f"results/final_invsize_State_East_lambda_1.0_formatted.csv", index_col=0)
+    df_l1 = pd.read_csv(f"results/final_invsize_State_North_1_lambda_1.0.csv", index_col=0)
     dfs.append(df_l1)
 
     fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
-    fig.savefig("Plot_East.png", dpi=300, bbox_inches='tight')
+    fig.savefig("Plot_North.png", dpi=300, bbox_inches='tight')
 
-    #Plot 3 (West)
+    #Plot 4 (South)
     dfs = []
 
-    df_random = pd.read_csv(f"results/final_random_State_West_formatted.csv", index_col=0)
+    df_random = pd.read_csv(f"results/final_random_State_South_1.csv", index_col=0)
     dfs.append(df_random)
 
-    df_clusters = pd.read_csv("results/final_clusters_State_West_formatted.csv", index_col=0)
+    df_clusters = pd.read_csv("results/final_clusters_State_South_1.csv", index_col=0)
     dfs.append(df_clusters)
 
-    df_l1 = pd.read_csv(f"results/final_invsize_State_West_lambda_1.0_formatted.csv", index_col=0)
+    df_l1 = pd.read_csv(f"results/final_invsize_State_South_1_lambda_1.0.csv", index_col=0)
     dfs.append(df_l1)
 
     fig = plot_r2_cost(["SRS", " StRS", "OPT($\lambda=1$)"], dfs, title=f'$R^2$ vs Cost of Collection for NLCD percentages clusters: Cost variation 3')
-    fig.savefig("Plot_West.png", dpi=300, bbox_inches='tight')
+    fig.savefig("Plot_South.png", dpi=300, bbox_inches='tight')
