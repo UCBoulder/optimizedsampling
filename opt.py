@@ -1,10 +1,19 @@
 import dill
+import os
 
 from cost import *
 from clusters import retrieve_all_clusters, retrieve_clusters
 
 import cvxpy as cp
 import numpy as np
+import mosek
+
+with mosek.Env() as env:
+    with env.Task() as task:
+        task.putintparam(mosek.iparam.num_threads, 1) 
+        task.putintparam(mosek.iparam.optimizer, mosek.optimizertype.primal_simplex) 
+        task.putdouparam(mosek.dparam.intpnt_co_tol_rel_gap, 1e-9)  # Tighten numerical tolerances
+os.environ["MKL_NUM_THREADS"] = "1"
 
 def group_size(x, groups, g):
     return cp.sum(x[groups == g])
@@ -51,7 +60,11 @@ def solve(ids,
     constraints = [0 <= x, x <= 1, costs.T@x <= budget]
     prob = cp.Problem(cp.Minimize(objective), constraints)
 
-    prob.solve(solver=cp.MOSEK, verbose=True)
+    prob.solve(solver=cp.MOSEK, mosek_params={
+        'MSK_DPAR_MIO_TOL_REL_GAP': 1e-6,
+        'MSK_IPAR_NUM_THREADS': 1,
+        'MSK_IPAR_LOG': 2
+    })
 
     print("Optimal x is: ", x.value)
     return x.value

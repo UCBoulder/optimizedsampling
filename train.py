@@ -69,6 +69,8 @@ def run(labels_to_run,
     if rule == 'invsize':
         l = kwargs.get('l', 0.5)
         lambda_str = f"_lambda_{l}"
+        cluster_type = kwargs.get('cluster_type', 'NLCD_percentages')
+        rule = f'{rule}_{cluster_type}'
 
     test_str = ''
     test_split = kwargs.get('test_split', None)
