@@ -79,7 +79,7 @@ def run(labels_to_run,
             if test_split == states:
                 test_str = f'_test_{region}'
 
-    #num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{cost_str}{lambda_str}.csv", index=True)
+    num_samples_df.to_csv(f"NUMSAMPLES_{rule}_{cost_str}{lambda_str}.csv", index=True)
     results_df.to_csv(Path(f"results/plus_final_{rule}_{cost_str}{lambda_str}{test_str}.csv"), index=True)
     results_df = pd.read_csv(f"results/plus_final_{rule}_{cost_str}{lambda_str}{test_str}.csv", index_col=0)
     results_df = format_dataframe_with_cost(results_df)
