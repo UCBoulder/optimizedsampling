@@ -7,6 +7,7 @@ from sklearn.metrics import silhouette_score
 
 from naip import *
 
+
 expected_labels = np.array([11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95])
 
 def nlcd_land_cover_class(latlons, land_cover_classes=None):
@@ -57,7 +58,7 @@ def naip_img_nlcd_label_counts(img_path, land_cover_classes):
 
     return percentage_array
 
-def nlcd_k_means(label_path):
+def nlcd_k_means(label_path, max_k=10):
     best_score = -1
     best_k = 0
     best_labels = None
@@ -67,7 +68,7 @@ def nlcd_k_means(label_path):
         data = arrs['NLCD_percentages']
         ids = arrs['ids']
 
-    for k in range(2, 10):  # Test k from 2 to 10
+    for k in range(2, max_k):  # Test k from 2 to 10
         try:
             kmeans = KMeans(n_clusters=k, random_state=0).fit(data)
             score = silhouette_score(data, kmeans.labels_)

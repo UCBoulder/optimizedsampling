@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
+from shapely.geometry import Point
+import geopandas as gpd
 
 from oed import *
+import opt
 import config as c
 from clusters import retrieve_clusters
+from cost import gdf_states
 
 class Sampler:
     '''
@@ -13,10 +17,10 @@ class Sampler:
             self, 
             ids, 
             *datasets, 
-            rule="random", 
+            rule="random",
             loc_emb=None, 
             costs=None,
-            cluster_type="NLCD_percentages"):
+            cluster_type='NLCD_percentages'):
         '''Initialize a new Sampler instance.
 
         Args:
@@ -25,6 +29,7 @@ class Sampler:
             loc_emb: satclip embeddings if rule is satclip
         '''
         i = 0
+        self.datasets = datasets
         for dataset in datasets:
             if isinstance(dataset, pd.DataFrame):
                 dataset = dataset.to_numpy()
@@ -52,6 +57,8 @@ class Sampler:
         self.finite_idxs = np.where(self.costs != np.inf)[0]
         self.total_valid = len(self.finite_idxs)
 
+        self.cluster_type = cluster_type
+
     '''
     Sets scores according to rule
     '''
@@ -76,8 +83,11 @@ class Sampler:
         cluster_type: NLCD, NLCD_percentages, 
     '''
     def set_clusters(self, cluster_type):
+        print(f"Setting clusters: {cluster_type}")
         cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
         self.clusters = retrieve_clusters(self.ids, cluster_path)
+
+
 
     '''
     Determine indexes of subset to sample
@@ -128,6 +138,7 @@ class Sampler:
         clusters = self.clusters.copy()
         unique_clusters  = np.unique(self.clusters)
         finite_idxs = self.finite_idxs.copy()
+        print("Sampling from {n} clusters".format(n=len(unique_clusters)))
 
         stop = False
         while total_cost < budget and len(finite_idxs) > 0:
@@ -157,17 +168,6 @@ class Sampler:
                 break
 
         return subset_idxs
-    
-    # def prob_by_cluster(self, budget, seed):
-    #     subset_idxs = []
-    #     total_cost = 0
-    #     clusters = self.clusters.copy()
-    #     unique_clusters  = np.unique(self.clusters)
-    #     num_clusters = len(unique_clusters)
-
-    #     cluster_sizes = [np.sum(clusters == i) for i in range(num_clusters)]
-    #     #TODO
-    #     return
 
     
     '''
@@ -185,6 +185,72 @@ class Sampler:
         while True:
             dataset = getattr(self, f"dataset{i}", None)
             if dataset is None:
-                return
+                yield np.sum(self.costs[subset_idxs])
+                return 
             yield dataset[subset_idxs]
             i += 1
+
+    def compute_probs(self, budget, l=0.5):
+        print(f"Computing probabilities for budget {budget}")
+
+        probs = opt.solve(self.ids, 
+                          self.costs, 
+                          budget, 
+                          group_type=self.cluster_type, 
+                          l=l)
+        return probs
+
+    '''
+    Sample according to a probability distribution
+    '''
+    def sample_with_prob(self, probs, seed=42):
+        print(f"Sampling using probabilities")
+
+        assert len(probs) == len(self.ids), "Distribution does not align"
+        subset_idxs = []
+
+        np.random.seed(seed)
+        for i in range(len(self.ids)):
+            draw = np.random.choice([0,1], p=[1-probs[i], probs[i]])
+            if draw == 1:
+                subset_idxs.append(i)
+
+        i = 1
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                yield np.sum(self.costs[subset_idxs])
+                return 
+            yield dataset[subset_idxs]
+            i += 1
+
+    def sample_region(self, states, latlons):
+        if latlons is None:
+            with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+                arrs = dill.load(f)
+
+            latlon_array = arrs['latlon']
+            id_array = arrs['ids_X']
+
+            id_to_latlon = {id_: latlon for id_, latlon in zip(id_array, latlon_array)}
+            latlons = [id_to_latlon.get(id_, None) for id_ in self.ids]
+
+        points = [Point(lon, lat) for lat, lon in latlons]
+        gdf_points = gpd.GeoDataFrame(
+            {'geometry': points},
+            crs='EPSG:26914'
+        )
+        state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
+        gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
+
+        in_state_indices = gdf_points.loc[gdf_points['in_state']].index.tolist()
+
+        i=1
+        yield latlons[in_state_indices]
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                return
+            yield dataset[in_state_indices]
+            i += 1
+

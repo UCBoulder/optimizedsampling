@@ -1,7 +1,10 @@
+import dill
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
 from utils import distance_of_subset
+
+from clusters import retrieve_clusters
 
 contus_states = [
     "Alabama", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", 
@@ -15,7 +18,7 @@ contus_states = [
 
 gdf_states = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp")
 
-def compute_unif_cost(dist_path, ids, **kwargs):
+def compute_unif_cost(ids, **kwargs):
     gamma = kwargs.get('gamma', 1)
 
     return np.full(len(ids), gamma)
@@ -52,16 +55,86 @@ def compute_lin_w_r_cost(dist_path, ids, **kwargs):
 
     return costs
 
-def compute_state_cost(states, latlons):
+def compute_state_cost(states, latlons=None, ids=None):
+    if latlons is None:
+        with open("data/int/feature_matrices/CONTUS_UAR_torchgeo4096.pkl", "rb") as f:
+            arrs = dill.load(f)
+
+        latlon_array = arrs['latlon']
+        id_array = arrs['ids_X']
+
+        id_to_latlon = {id_: latlon for id_, latlon in zip(id_array, latlon_array)}
+        latlons = [id_to_latlon.get(id_, None) for id_ in ids]
+
     points = [Point(lon, lat) for lat, lon in latlons]
     gdf_points = gpd.GeoDataFrame(
         {'geometry': points},
         crs='EPSG:26914'
     )
-
     state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
     gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
 
-    costs = gdf_points['in_state'].apply(lambda x: 1 if x else np.inf).to_numpy()
+    costs = gdf_points['in_state'].apply(lambda x: 1 if x else np.inf).to_numpy() #change back to inf
 
     return costs
+
+'''
+Calculates cost based on clusters
+    cluster_assignment: cluster for each sample
+    cluster_cost: dict of cost for each cluster
+'''
+def compute_cluster_cost(ids, cluster_type):
+    cluster_path = f"data/clusters/{cluster_type}_cluster_assignment.pkl"
+    clusters = retrieve_clusters(ids, cluster_path)
+
+    cluster_cost = None
+    if cluster_type == 'NLCD':
+        cluster_cost = {
+            11: 1,
+            12: 1,
+            21: 100,
+            22: 100,
+            23: 100,
+            24: 100,
+            31: 1,
+            41: 1,
+            42: 1,
+            43: 1,
+            52: 1,
+            71: 1,
+            81: 1,
+            82: 1,
+            90: 1,
+            95: 1,
+            250: 1e9 #background or unmapped value, dont sample
+        }
+    if cluster_type == 'NLCD_percentages':
+        cluster_cost = {
+            0: 1,
+            1: 50,
+            2: 1,
+            3: 50, 
+            4: 1, 
+            5: 1,
+            6: 1,
+            7: 1
+        }
+    if cluster_type == 'NLCD_percentages_4':
+        cluster_cost = {
+            0: 1,
+            1: 10,
+            2: 1,
+            3: 10
+        }
+    if cluster_type =='urban_areas':
+        cluster_cost = {
+            0: 10,
+            1: 1
+        }
+    if cluster_type =='urban_percentages':
+        cluster_cost = {
+            0.0: 10,
+            1.0: 1
+        }
+    assert cluster_cost is not None
+    return np.array([cluster_cost[clusters[i]] for i in range(len(ids))])

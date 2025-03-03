@@ -15,14 +15,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import VarianceThreshold
 
 from oed import *
+import opt
 from format_data import *
 from cost import *
 from sampler import Sampler
 from plot_coverage import plot_lat_lon
 import config as c
 
+r2_dict = {}
 avgr2 = {}
 stdr2 = {}
+num_samples_dict = {}
 
 '''
 Run regressions
@@ -34,7 +37,8 @@ Parameters:
 def run_regression(label, 
                    cost_func, 
                    rule='random', 
-                   budget=float('inf'), 
+                   budget=float('inf'),
+                   avg_results=False, 
                    **kwargs
                    ):
     print("*** Running regressions for: {label} with ${budget} budget using {rule} rule".format(label=label, budget=budget, rule=rule))
@@ -46,8 +50,6 @@ def run_regression(label,
         y_test,
         latlon_train,
         latlon_test,
-        loc_emb_train,
-        loc_emb_test,
         ids_train,
         ids_test
     ) = retrieve_splits(label)
@@ -55,6 +57,11 @@ def run_regression(label,
     if cost_func == compute_state_cost:
         states = kwargs.get('states', 1)
         costs = cost_func(states, latlon_train)
+    elif cost_func == compute_unif_cost:
+        costs = cost_func(ids_train)
+    elif cost_func == compute_cluster_cost:
+        costs = cost_func(ids_train, 
+                          cluster_type=kwargs.get('cluster_type', 'NLCD_percentages'))
     else:
         dist_path = "data/cost/distance_to_closest_city.pkl"
         costs = cost_func(dist_path, ids_train, **kwargs)
@@ -62,57 +69,82 @@ def run_regression(label,
     n_folds = 5
     seeds = [42, 123, 456, 789, 1011]
     r2_scores = []
+    sample_costs = []
+    num_samples_arr = []
 
-    if budget != float('inf'):
-        for seed in seeds:
-            sampler = Sampler(ids_train, 
-                          X_train, 
-                          y_train, 
-                          latlon_train,
-                          rule=rule, 
-                          loc_emb=loc_emb_train, 
-                          costs=costs)
-            
-            print(f"Using Seed {seed} to sample...")
-            X_train_sampled, y_train_sampled, latlon_train_sampled = sampler.sample_with_budget(budget, seed)
+    train_sampler = Sampler(ids_train, 
+                            X_train, 
+                            y_train, 
+                            latlon_train,
+                            rule=rule,
+                            costs=costs,
+                            cluster_type=kwargs.get('cluster_type', 'NLCD_percentages')
+                        )
+    
+    test_sampler = Sampler(ids_test,
+                           X_test,
+                           y_test)
+    test_split = kwargs.get("test_split", None)
+    if test_split is not None:
+        latlon_test, X_test, y_test = test_sampler.sample_region(test_split, latlon_test)
+    
+    if rule == 'invsize':
+        probs = train_sampler.compute_probs(budget, kwargs.get('l', 0.5))
 
-            num_samples = X_train_sampled.shape[0]
-            print("Number of samples: ", num_samples)
-            if num_samples == sampler.total_valid:
-                print("Used all samples.")
-                c.used_all_samples = True
+        #Ensure probs are not slightly more or less than 1 or 0
+        probs = np.clip(probs, 0, 1)
 
-            #Plot Coverage
-            # fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
-            # fig.savefig(f"plots/c Coverage with Budget {budget}.png")
+    for seed in seeds:
+        print(f"Using Seed {seed} to sample...")
 
-            r2 = ridge_regression(X_train_sampled, 
-                                  y_train_sampled, 
-                                  X_test, 
-                                  y_test, 
-                                  n_folds=n_folds)
+        if rule == 'invsize':
+            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = train_sampler.sample_with_prob(probs, seed)
+        else:
+            X_train_sampled, y_train_sampled, latlon_train_sampled, sample_cost = train_sampler.sample_with_budget(budget, seed)
+
+        num_samples = X_train_sampled.shape[0]
+        print("Number of samples: ", num_samples)
+        if num_samples == train_sampler.total_valid:
+            print("Used all samples.")
+            c.used_all_samples = True
+        num_samples_arr.append(num_samples)
+
+        #Plot Coverage
+        # fig = plot_lat_lon(latlon_train_sampled[:,0], latlon_train_sampled[:,1], title=f"Coverage with Budget {budget}", color="orange", alpha=1)
+        # fig.savefig(f"plots/c Coverage with Budget {budget}.png")
+
+        r2 = ridge_regression(X_train_sampled, 
+                                y_train_sampled, 
+                                X_test, 
+                                y_test, 
+                                n_folds=n_folds)
+
+        if avg_results:
             if r2 is not None:
                 r2_scores.append(r2)
+        else:
+            if r2 is not None:
+                key = label + ";cost" + str(sample_cost)
+                if key not in r2_dict:
+                    r2_dict[key] = []
+                r2_dict[key].append(r2)
 
-                print(f"Seed {seed}: R2 score on test set: {r2}")
-    else:
-        r2 = ridge_regression(X_train, y_train, X_test, y_test, n_folds=n_folds)
-        if r2 is not None:
-            r2_scores.append(r2)
+        print(f"Seed {seed}: R2 score on test set: {r2}")
 
-            print(f"R2 score on test set: {r2}")
-    
-    #Add to results
-    if len(r2_scores) != 0:
-        avg_r2 = np.nanmean(r2_scores)
-        std_r2 = np.std(r2_scores)
-        print(f"Average R2 score across seeds: {avg_r2}")
+    if avg_results:
+        #Add to results
+        if len(r2_scores) != 0:
+            avg_r2 = np.nanmean(r2_scores)
+            std_r2 = np.std(r2_scores)
+            print(f"Average R2 score across seeds: {avg_r2}")
 
-        avgr2[label + ";budget" + str(budget)] = avg_r2
-        stdr2[label + ";budget" + str(budget)] = std_r2
-    else:
-        avgr2[label + ";budget" + str(budget)] = None
-        stdr2[label + ";budget" + str(budget)] = None
+            avgr2[label + ";budget" + str(budget)] = avg_r2
+            stdr2[label + ";budget" + str(budget)] = std_r2
+        else:
+            avgr2[label + ";budget" + str(budget)] = None
+            stdr2[label + ";budget" + str(budget)] = None
+    avg_num_samples = np.nanmean(num_samples_arr)
+    num_samples_dict[label + ";budget" + str(budget)] = avg_num_samples
 
 '''
 Run ridge regression and return R2 score
@@ -122,7 +154,7 @@ def ridge_regression(X_train,
                      X_test, 
                      y_test, 
                      n_folds=5, 
-                     alphas=np.logspace(-5, 5, 100)):
+                     alphas=np.logspace(-5, 5, 10)):
     
     n_samples = X_train.shape[0]
 
@@ -146,7 +178,7 @@ def ridge_regression(X_train,
     # Optimal alpha
     best_alpha = pipeline.named_steps['ridgecv'].alpha_
     print(f"Best alpha: {best_alpha}")
-            
+
     # Make predictions on the test set
     r2 = pipeline.score(X_test, y_test)
 

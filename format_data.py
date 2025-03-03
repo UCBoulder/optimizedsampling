@@ -97,8 +97,8 @@ def retrieve_splits(label):
     y_test = arrs["y_test"]
     latlons_train = arrs["latlons_train"]
     latlons_test = arrs["latlons_test"]
-    loc_emb_train = arrs["loc_emb_train"]
-    loc_emb_test = arrs["loc_emb_test"]
+    #loc_emb_train = arrs["loc_emb_train"]
+    #loc_emb_test = arrs["loc_emb_test"]
     ids_train = arrs["ids_train"]
     ids_test = arrs["ids_test"]
 
@@ -107,16 +107,16 @@ def retrieve_splits(label):
     X_train = X_train[valid_train_idxs]
     y_train = y_train[valid_train_idxs]
     latlons_train = latlons_train[valid_train_idxs]
-    loc_emb_train = loc_emb_train[valid_train_idxs]
+    #loc_emb_train = loc_emb_train[valid_train_idxs]
 
     valid_test_idxs = np.where(~np.isin(ids_test, invalid_ids))[0]
     ids_test = ids_test[valid_test_idxs]
     X_test = X_test[valid_test_idxs]
     y_test = y_test[valid_test_idxs]
     latlons_test = latlons_test[valid_test_idxs]
-    loc_emb_test = loc_emb_test[valid_test_idxs]
+    #loc_emb_test = loc_emb_test[valid_test_idxs]
 
-    return X_train, X_test, y_train, y_test, latlons_train, latlons_test, loc_emb_train, loc_emb_test, ids_train, ids_test
+    return X_train, X_test, y_train, y_test, latlons_train, latlons_test, ids_train, ids_test
 
 def retrieve_train_X(label):
     data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)
