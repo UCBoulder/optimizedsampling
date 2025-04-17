@@ -43,21 +43,22 @@ def sample_geo_clusters(latlons, num_centers, buffer_rad, seed=42, return_all_po
     print(f"Sampled points within a {buffer_rad}m radius of centroids...")
 
     if save_sampled_points:
-        points_within.to_file(f"sampled_points/{num_centers}_centers_{buffer_rad}m_radius_seed_{seed}.geojson", driver="GeoJSON")
+        print("Saving sampled points...")
+        points_within.to_file(f"sampled_points_population/{num_centers}_centers_{buffer_rad}m_radius_seed_{seed}.geojson", driver="GeoJSON")
 
     if return_all_points:
         return gdf_points, gdf_centroids, points_within
 
     return points_within
 
-def plot_geo_clusters(latlons, num_centers=0, buffer_rad=0, seed=42):
+def plot_geo_clusters(latlons, num_centers=0, buffer_rad=0, **kwargs):
     all_points, center_points, selected_points = sample_geo_clusters(
-        latlons, num_centers, buffer_rad, seed=seed, return_all_points=True
+        latlons, num_centers, buffer_rad, return_all_points=True, **kwargs
     )
 
     fig, ax = plt.subplots(figsize=(12, 10))
 
-    world = gpd.read_file("country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
+    world = gpd.read_file("../country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
     exclude_states = ["Alaska", "Hawaii", "Puerto Rico"]
     contiguous_us = world[~world["name"].isin(exclude_states)]
     contiguous_outline = contiguous_us.dissolve()
@@ -65,6 +66,7 @@ def plot_geo_clusters(latlons, num_centers=0, buffer_rad=0, seed=42):
     contiguous_outline.boundary.plot(ax=ax, color='black', linewidth=0.8, zorder=4, alpha=0.8)
 
     all_points.plot(ax=ax, color='#cccccc', markersize=5, label='All Points', zorder=1, alpha=0.6)
+    from IPython import embed; embed()
 
     label = f'Sampled Points (within {buffer_rad}m) ({len(selected_points):,})'
     selected_points.plot(ax=ax, color='#d62728', markersize=5, label=label, zorder=3, alpha=0.8)
@@ -91,14 +93,47 @@ def plot_geo_clusters(latlons, num_centers=0, buffer_rad=0, seed=42):
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
 
     plt.tight_layout()
-    plt.savefig(f'geocluster_center_{num_centers}_rad_{buffer_rad}m.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'geocluster_plots/geocluster_center_{num_centers}_rad_{buffer_rad}m.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-if __name__ == '__main__':
-    with open("../data/int/feature_matrices/CONTUS_UAR_treecover_with_splits_torchgeo4096.pkl", "rb") as f:
+def generate_and_save_ids(latlons, num_centers, buffer_rad, seed=42):
+    sampled_points_gdf = sample_geo_clusters(latlons, num_centers, buffer_rad, seed=seed, save_sampled_points=True)
+
+    sampled_latlons = np.array([(point.y, point.x) for point in sampled_points_gdf.geometry])
+
+    with open("../data/int/feature_matrices/CONTUS_UAR_population_with_splits_torchgeo4096.pkl", "rb") as f:
         arrs = dill.load(f)
 
-    latlon_train = arrs['latlons_train']
+    invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+    ids_train = arrs['ids_train']
+    valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+    ids_train = ids_train[valid_idxs]
+
+    latlon_train = arrs['latlons_train'][valid_idxs]
+
+    latlon_to_idx = {tuple(latlon): idx for idx, latlon in enumerate(latlon_train)}
+
+    sampled_indices = [latlon_to_idx[tuple(latlon)] for latlon in sampled_latlons]
+
+    sampled_ids = ids_train[sampled_indices]
+
+    with open(f'sampled_points_population/IDs_{num_centers}_centers_{buffer_rad}m_radius_seed_{seed}.pkl', 'wb') as f:
+        dill.dump(sampled_ids, f) 
+
+if __name__ == '__main__':
+    with open("../data/int/feature_matrices/CONTUS_UAR_population_with_splits_torchgeo4096.pkl", "rb") as f:
+        arrs = dill.load(f)
+
+    invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+
+    ids_train = arrs['ids_train']
+    valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+
+    latlon_train = arrs['latlons_train'][valid_idxs]
     for num_centers in [1500]:
         for buffer_rad in [10000, 15000, 20000]:
             plot_geo_clusters(latlon_train, num_centers, buffer_rad, save_sampled_points=True)
+    # generate_and_save_ids(latlon_train, 500, 5000, 42)
+    # generate_and_save_ids(latlon_train, 500, 20000, 42)
+    # generate_and_save_ids(latlon_train, 750, 5000, 42)
+    # generate_and_save_ids(latlon_train, 1500, 10000, 42)
