@@ -238,7 +238,7 @@ class Sampler:
         points = [Point(lon, lat) for lat, lon in latlons]
         gdf_points = gpd.GeoDataFrame(
             {'geometry': points},
-            crs='EPSG:26914'
+            crs='EPSG:4326'
         )
         state_geom = gdf_states[gdf_states['name'].isin(states)].geometry.unary_union
         gdf_points['in_state'] = gdf_points.geometry.apply(lambda x: x.within(state_geom))
@@ -254,3 +254,35 @@ class Sampler:
             yield dataset[in_state_indices]
             i += 1
 
+    #Test this function
+    def sample_geo_clusters(self, latlons, num_centers, seed=42):
+        #Sample random centers
+        idxs = np.arange(len(latlons))
+        np.random.seed(seed)
+        centroid_latlon_idxs = np.random.choice(idxs, size=num_centers)
+        centroid_latlons = latlons[centroid_latlon_idxs]
+
+        points = [Point(lon, lat) for lat, lon in latlons]
+        centroid_points = [Point(lon, lat) for lat, lon in centroid_latlons]
+
+        gdf_points = gpd.GeoDataFrame(
+            {'geometry': points},
+            crs='EPSG:4326'
+        )
+        gdf_centroids = gpd.GeoDataFrame(
+            {'geometry': centroid_points},
+            crs='EPSG:4326'
+        )
+
+        gdf_centroids['buffer'] = gdf_centroids.buffer(3000)
+        combined_buffer = gdf_centroids.unary_union
+
+        mask = gdf_points.geometry.within(combined_buffer).to_numpy()
+
+        yield latlons[mask]
+        while True:
+            dataset = getattr(self, f"dataset{i}", None)
+            if dataset is None:
+                return
+            yield dataset[mask]
+            i += 1
