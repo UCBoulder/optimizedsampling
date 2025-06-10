@@ -29,7 +29,7 @@ def haversine_dist(lat1, lon1, lat2, lon2):
     c = 2 * np.arcsin(np.sqrt(a))
     return R * c
 
-def plot_counties(all_points, selected_points, total_counties_to_sample, points_per_county=np.nan, clustered=True, radius_km=10, seed=42):
+def plot_counties(all_points, selected_points, total_counties_to_sample, points_per_county=np.nan, clustered=True, radius_km=10, seed=42, density=False, label="treecover"):
     fig, ax = plt.subplots(figsize=(12, 10))
 
     world = gpd.read_file("../country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
@@ -41,8 +41,8 @@ def plot_counties(all_points, selected_points, total_counties_to_sample, points_
 
     all_points.plot(ax=ax, color='#cccccc', markersize=5, label='All Points', zorder=1, alpha=0.6)
 
-    label = f'Sampled Points ({len(selected_points):,})'
-    selected_points.plot(ax=ax, color='#d62728', markersize=5, label=label, zorder=3, alpha=0.8)
+    legend_label = f'Sampled Points ({len(selected_points):,})'
+    selected_points.plot(ax=ax, color='#d62728', markersize=5, label=legend_label, zorder=3, alpha=0.8)
 
     title_str = f'Geo-Spatial Clustering of Sampled Points\n({total_counties_to_sample} counties sampled, {radius_km} km radius clusters)' if clustered else f'Geo-Spatial Clustering of Sampled Points\n({total_counties_to_sample} counties sampled, {points_per_county} points per county)'
     ax.set_title(title_str, fontsize=16, fontweight='bold', pad=20)
@@ -57,7 +57,8 @@ def plot_counties(all_points, selected_points, total_counties_to_sample, points_
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
 
     plt.tight_layout()
-    save_str = f'county_sampling_plots/clustered treecover {total_counties_to_sample} counties sampled, radius {radius_km} km.png' if clustered else f'county_sampling_plots/clustered treecover {total_counties_to_sample} counties sampled, {points_per_county} points per county.png'
+    type_str = 'density' if density else 'clustered'
+    save_str = f'{label}/{type_str}/plots/{total_counties_to_sample}_counties_radius_{radius_km}.png' if np.isnan(points_per_county) else 'test.png'
     plt.savefig(save_str, dpi=300, bbox_inches='tight')
     plt.close()
 
@@ -93,7 +94,10 @@ def assign_counties_to_points(gdf_points, gdf_counties, save_path, latlons):
         suffixes=("", "_county")
     )
     gdf_points_with_county['latlon'] = [tuple(latlon) for latlon in latlons]  # when first creating it
-    gdf_points_with_county.to_file(save_path, driver="GeoJSON")
+    try:
+        gdf_points_with_county.to_file(save_path, driver="GeoJSON")
+    except Exception as e:
+        from IPython import embed; embed()
     return gdf_points_with_county
 
 def load_or_generate_county_assignments(gdf_points, gdf_counties, save_path, latlons):
@@ -105,24 +109,40 @@ def load_or_generate_county_assignments(gdf_points, gdf_counties, save_path, lat
         return assign_counties_to_points(gdf_points, gdf_counties, save_path, latlons)
 
 def sample_counties_by_state_proportion(gdf_counties, total_counties_to_sample, seed):
+    print("Sampling counties according to number of counties in state...")
     county_counts = gdf_counties['STATEFP'].value_counts()
     county_props = county_counts / county_counts.sum()
     state_num_counties = (county_props * total_counties_to_sample).round().astype(int)
 
     sampled_counties = []
     for statefp, n_counties in state_num_counties.items():
-        state_counties = gdf_counties[gdf_counties['STATEFP'] == statefp]
+        state_counties = gdf_counties[gdf_counties['STATEFP'] == str(statefp)]
         if not state_counties.empty:
             sampled = state_counties.sample(min(n_counties, len(state_counties)), random_state=seed)
             sampled_counties.append(sampled)
 
     return gpd.GeoDataFrame(pd.concat(sampled_counties, ignore_index=True), crs=gdf_counties.crs)
 
+def sample_counties_by_density_proportion(gdf_counties, total_counties_to_sample, seed):
+    print("Sampling counties according to population density...")
+    df = gdf_counties.copy()
+    df = df[(df['ALAND'] > 0) & (~df['2023'].isna())]
+
+    df['pop_density'] = df['2023'] / (df['ALAND'] / 1e6)
+
+    df = df[df['pop_density'].notna() & df['pop_density'].apply(np.isfinite)]
+
+    probs = df['pop_density'] / df['pop_density'].sum()
+
+    sampled = df.sample(n=total_counties_to_sample, weights=probs, random_state=seed)
+
+    return gpd.GeoDataFrame(sampled, crs=gdf_counties.crs)
+
 def sample_points_from_sampled_counties(sampled_counties, gdf_points_with_county, points_per_county, seed):
     selected_points = []
 
-    for idx, county_geom in enumerate(sampled_counties.geometry):
-        points_in_county = gdf_points_with_county[gdf_points_with_county['county_idx'] == idx]
+    for geoid in sampled_counties.GEOID:
+        points_in_county = gdf_points_with_county[gdf_points_with_county['GEOID'] == geoid]
 
         if len(points_in_county) >= points_per_county:
             sampled_points = points_in_county.sample(points_per_county, random_state=seed)
@@ -139,8 +159,8 @@ def sample_points_from_sampled_counties(sampled_counties, gdf_points_with_county
 def sample_clustered_points_from_sampled_counties(sampled_counties, gdf_points_with_county, radius_km=10, seed=42):
     selected_points = []
 
-    for idx, _ in enumerate(sampled_counties.geometry):
-        points_in_county = gdf_points_with_county[gdf_points_with_county['county_idx'] == idx]
+    for geoid in sampled_counties.GEOID:
+        points_in_county = gdf_points_with_county[gdf_points_with_county['GEOID'] == geoid]
         if points_in_county.empty:
             continue
 
@@ -162,16 +182,21 @@ def sample_clustered_points_from_sampled_counties(sampled_counties, gdf_points_w
 
     return selected_points
 
-def sample_points_from_counties(latlons, total_counties_to_sample, points_per_county=np.nan, radius_km=None, seed=42, sampling_method='radius', save_sampled_points=False):
+def sample_points_from_counties(latlons, total_counties_to_sample, points_per_county=np.nan, radius_km=None, seed=42, sampling_method='radius', save_sampled_points=False, density=False, label="treecover"):
     np.random.seed(seed)
 
-    gdf_counties = load_and_filter_counties("../country_boundaries/us_county/tl_2024_us_county.shp")
+    gdf_counties = load_and_filter_counties("../country_boundaries/us_county/counties_with_population.shp")
     gdf_points = create_geodataframe_from_latlons(latlons)
 
-    save_path = 'gdf_county.geojson'
+    save_path = f'{label}/gdf_county.geojson'
     gdf_points_with_county = load_or_generate_county_assignments(gdf_points, gdf_counties, save_path, latlons)
 
-    sampled_counties = sample_counties_by_state_proportion(gdf_counties, total_counties_to_sample, seed)
+    if density:
+        print("Using density sampling...")
+        sampled_counties = sample_counties_by_density_proportion(gdf_counties, total_counties_to_sample, seed)
+    else:
+        print("Using sampling by state proportions...")
+        sampled_counties = sample_counties_by_state_proportion(gdf_counties, total_counties_to_sample, seed)
 
     # Handle the sampling based on the chosen method
     if sampling_method == 'radius' and radius_km is not None:
@@ -181,54 +206,20 @@ def sample_points_from_counties(latlons, total_counties_to_sample, points_per_co
     else:
         raise ValueError("Invalid combination of sampling parameters.")
 
+    type_str = 'density' if density else 'clustered'
     if save_sampled_points:
         # Adjusting the output filename to include the sampling method and its parameters
         if sampling_method == 'radius':
-            output_path = f'sampled_points/{total_counties_to_sample}_counties_{radius_km}km_radius_seed_{seed}.geojson'
+            output_path = f'{label}/{type_str}/{total_counties_to_sample}_counties_{radius_km}km_radius_seed_{seed}.geojson'
         elif sampling_method == 'points_per_county':
-            output_path = f'sampled_points/{total_counties_to_sample}_counties_{points_per_county}_points_seed_{seed}.geojson'
+            output_path = f'{label}/{type_str}/{total_counties_to_sample}_counties_{points_per_county}_points_seed_{seed}.geojson'
         
         print(f"Saving sampled points to {output_path}...")
         sampled_points.to_file(output_path, driver="GeoJSON")
-
     return gdf_points, sampled_points
 
-def calculate_average_point_density(points, grid_resolution=0.05):
-    """
-    Calculate the density of points per unit area within the specified area.
-    """
-    world = gpd.read_file("../country_boundaries/ne_110m_admin_1_states_provinces.shp", engine="pyogrio")
-    exclude_states = ["Alaska", "Hawaii", "Puerto Rico"]
-    conus = world[~world["name"].isin(exclude_states)]
-    conus = conus.to_crs("EPSG:4326")
-    conus_outline = conus.dissolve()
-
-    # Get bounds for grid
-    minx, miny, maxx, maxy = conus_outline.total_bounds
-
-    # Create grid over CONUS
-    cols = np.arange(minx, maxx, grid_resolution)
-    rows = np.arange(miny, maxy, grid_resolution)
-    grid_cells = []
-    for x in cols:
-        for y in rows:
-            cell = box(x, y, x + grid_resolution, y + grid_resolution)
-            grid_cells.append(cell)
-
-    grid = gpd.GeoDataFrame({'geometry': grid_cells}, crs="EPSG:4326")
-
-    # Clip grid to CONUS shape
-    grid_clipped = gpd.overlay(grid, conus_outline, how='intersection')
-
-    # Spatial join: count points in each grid cell
-    joined = gpd.sjoin(points, grid_clipped, how='inner', predicate='within')
-    point_counts = joined.groupby('index_right').size()
-    grid_clipped['point_density'] = grid_clipped.index.map(point_counts).fillna(0)
-
-    return grid_clipped['point_density'].mean()
-
-def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county=np.nan, seed=42, plot=True, sampling_method='radius'):
-    with open("../data/int/feature_matrices/CONTUS_UAR_treecover_with_splits_torchgeo4096.pkl", "rb") as f:
+def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county=np.nan, seed=42, plot=True, sampling_method='radius', density=False, label="treecover"):
+    with open(f"../data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
         arrs = dill.load(f)
 
     invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -238,12 +229,10 @@ def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county
 
     latlon_train = arrs['latlons_train'][valid_idxs]
 
-    all_points_gdf, sampled_points_gdf = sample_points_from_counties(latlon_train, total_counties_to_sample, radius_km=radius_km, points_per_county=points_per_county, sampling_method=sampling_method, seed=seed, save_sampled_points=True)
-
-    print(f"Average point density: {calculate_average_point_density(sampled_points_gdf)}")
+    all_points_gdf, sampled_points_gdf = sample_points_from_counties(latlon_train, total_counties_to_sample, radius_km=radius_km, points_per_county=points_per_county, sampling_method=sampling_method, seed=seed, save_sampled_points=True, density=density, label=label)
     
     if plot:
-        plot_counties(all_points_gdf, sampled_points_gdf, total_counties_to_sample, radius_km=radius_km, seed=seed)
+        plot_counties(all_points_gdf, sampled_points_gdf, total_counties_to_sample, radius_km=radius_km, seed=seed, density=density, label=label)
 
     sampled_latlons = sampled_points_gdf['latlon'].tolist()
 
@@ -253,18 +242,14 @@ def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county
     # Extract the corresponding sampled IDs
     sampled_ids = ids_train[sampled_indices]
 
-    with open(f'clustered_sampled_points/IDs_{total_counties_to_sample}_counties_{points_per_county}_points_seed_{seed}.pkl', 'wb') as f:
+    type_str = 'density' if density else 'clustered'
+
+    with open(f'{label}/{type_str}/IDs_{total_counties_to_sample}_counties_{radius_km}_radius_seed_{seed}.pkl', 'wb') as f:
         dill.dump(sampled_ids, f)
 
 if __name__ == '__main__':
-    with open("../data/int/feature_matrices/CONTUS_UAR_treecover_with_splits_torchgeo4096.pkl", "rb") as f:
-        arrs = dill.load(f)
-
-    invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
-
-    ids_train = arrs['ids_train']
-    valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
-
-    latlon_train = arrs['latlons_train'][valid_idxs]
-
-    generate_and_save_ids(total_counties_to_sample=5000, radius_km=50, plot=True)
+    for label in ["population", "treecover"]:
+        for num_counties in [300, 400, 500]:
+            for radius_km in [10]:
+                for density in [False, True]:
+                    generate_and_save_ids(total_counties_to_sample=num_counties, radius_km=radius_km, plot=True, density=density, label=label)

@@ -2,8 +2,7 @@ import dill
 import pandas as pd
 import numpy as np
 
-from mosaiks.code.mosaiks.solve import data_parser as parse
-from mosaiks.code.mosaiks import config as cfg
+#from mosaiks.solve import data_parser as parse
 
 #IDs contain NaN in the metadata (transform, latlon,...) or latlon is outside US
 invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -117,6 +116,17 @@ def retrieve_splits(label):
     #loc_emb_test = loc_emb_test[valid_test_idxs]
 
     return X_train, X_test, y_train, y_test, latlons_train, latlons_test, ids_train, ids_test
+
+def subset_train_with_ids(ids,
+                          X_train,
+                          y_train,
+                          latlons_train,
+                          ids_train):
+    ids_to_index = {single_id: idx for idx, single_id in enumerate(ids_train)}
+    idxs = [ids_to_index[single_id] for single_id in ids]
+
+    return X_train[idxs], y_train[idxs], latlons_train[idxs], ids_train[idxs]
+
 
 def retrieve_train_X(label):
     data_path = "data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl".format(label=label)

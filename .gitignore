@@ -1,5 +1,6 @@
 country_boundaries/*
 __pycache__
+mosaiks/
 data/*
 test_image/*
 satclip_files/*
@@ -9,7 +10,5 @@ subset_results/*
 samples/
 geoclusters/sampled_points_*
 geoclusters/geocluster_plots/
-county_sampling/sampled_points_*
-county_sampling/county_sampling_plots/
-county_sampling/gdf_county.geojson
+county_sampling/
 cluster_tile_previews
