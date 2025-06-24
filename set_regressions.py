@@ -160,7 +160,8 @@ def generate_latex_table(run_regression):
 
 
 if __name__ == "__main__":
-    # label = "treecover"
+    from IPython import embed; embed()
+    # label = "income"
     # type_str = "clustered"
 
     # for label in ["population", "treecover"]:
@@ -178,5 +179,5 @@ if __name__ == "__main__":
     #                 arrs = dill.load(f)
     #             ids = arrs
     #             r2 = run_regression(label, ids)
-    generate_latex_table(run_regression)
+    # generate_latex_table(run_regression)
             

@@ -1,4 +1,4 @@
-country_boundaries/*
+boundaries/*
 __pycache__
 mosaiks/
 data/*
@@ -10,5 +10,7 @@ subset_results/*
 samples/
 geoclusters/sampled_points_*
 geoclusters/geocluster_plots/
-county_sampling/
+initial_sample/population/
+initial_sample/treecover/
+initial_sample/income/
 cluster_tile_previews

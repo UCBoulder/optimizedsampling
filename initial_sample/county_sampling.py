@@ -185,7 +185,7 @@ def sample_clustered_points_from_sampled_counties(sampled_counties, gdf_points_w
 def sample_points_from_counties(latlons, total_counties_to_sample, points_per_county=np.nan, radius_km=None, seed=42, sampling_method='radius', save_sampled_points=False, density=False, label="treecover"):
     np.random.seed(seed)
 
-    gdf_counties = load_and_filter_counties("../country_boundaries/us_county/counties_with_population.shp")
+    gdf_counties = load_and_filter_counties("../boundaries/us_county/counties_with_population.shp")
     gdf_points = create_geodataframe_from_latlons(latlons)
 
     save_path = f'{label}/gdf_county.geojson'
@@ -221,6 +221,7 @@ def sample_points_from_counties(latlons, total_counties_to_sample, points_per_co
 def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county=np.nan, seed=42, plot=True, sampling_method='radius', density=False, label="treecover"):
     with open(f"../data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
         arrs = dill.load(f)
+    from IPython import embed; embed()
 
     invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
     ids_train = arrs['ids_train']
@@ -248,8 +249,8 @@ def generate_and_save_ids(total_counties_to_sample, radius_km, points_per_county
         dill.dump(sampled_ids, f)
 
 if __name__ == '__main__':
-    for label in ["population", "treecover"]:
-        for num_counties in [300, 400, 500]:
+    for label in ["income"]:
+        for num_counties in [25, 50, 75, 100, 125, 150, 175, 200]:
             for radius_km in [10]:
                 for density in [False, True]:
                     generate_and_save_ids(total_counties_to_sample=num_counties, radius_km=radius_km, plot=True, density=density, label=label)

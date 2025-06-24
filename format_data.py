@@ -2,7 +2,7 @@ import dill
 import pandas as pd
 import numpy as np
 
-#from mosaiks.solve import data_parser as parse
+from mosaiks.code.mosaiks.solve import data_parser as parse
 
 #IDs contain NaN in the metadata (transform, latlon,...) or latlon is outside US
 invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -44,12 +44,12 @@ def save_with_splits(c, label, out_fpath, feature_path, loc_emb_path=None):
         y_test,
         latlons_train,
         latlons_test,
-        loc_emb_train,
-        loc_emb_test,
+        # loc_emb_train,
+        # loc_emb_test,
         ids_train,
         ids_test
     ) = parse.merge_dropna_transform_split_train_test(
-        c, label, X, latlons, loc_emb
+        c, label, X, latlons
     )
 
     out_fpath = out_fpath.format(label=label)
@@ -78,7 +78,9 @@ def save_with_splits(c, label, out_fpath, feature_path, loc_emb_path=None):
                 "y_train": y_train,
                 "X_test": X_test,
                 "latlons_test": latlons_test,
-                "y_test": y_test},
+                "y_test": y_test,
+                "ids_train": ids_train,
+                "ids_test": ids_test},
                 f,
                 protocol=4,
             )
