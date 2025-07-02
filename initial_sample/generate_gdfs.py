@@ -2,14 +2,38 @@ import os
 import dill
 import numpy as np
 import geopandas as gpd
-from shapely.geometry import Point
+from shapely.geometry import box, Point
 import matplotlib.pyplot as plt
+from geopy.distance import geodesic
 from shapely.ops import nearest_points
 
 STATE_SHP = "../boundaries/us_states_provinces/ne_110m_admin_1_states_provinces.shp"
 COUNTY_SHP = "../boundaries/us_county_2015/tl_2015_us_county.shp"
 PUMA_SHP = "../boundaries/us_puma_2015/{STATEFP}/tl_2015_{STATEFP}_puma10.shp"
 TRACT_SHP = "../boundaries/us_tract_2015/{STATEFP}/tl_2015_{STATEFP}_tract.shp"
+
+
+def get_nearest_polygon_index(point, gdf, buffer_degrees=0.5):
+    assert gdf.crs.to_string() == "EPSG:4326"
+    assert isinstance(point, Point)
+    
+    lon, lat = point.x, point.y
+    bbox = box(lon - buffer_degrees, lat - buffer_degrees,
+               lon + buffer_degrees, lat + buffer_degrees)
+    candidates = gdf[gdf.intersects(bbox)]
+
+    if candidates.empty:
+        candidates = gdf
+        #raise ValueError("No polygons found within the bounding box.")
+
+    distances = candidates.geometry.apply(
+        lambda poly: geodesic(
+            (point.y, point.x),
+            (nearest_points(point, poly)[1].y, nearest_points(point, poly)[1].x)
+        ).meters
+    )
+
+    return distances.idxmin()
 
 def process_or_load(latlons, ids, label, year):
     states_fp = f"{label}/gdf_states_{year}.geojson"
@@ -41,15 +65,15 @@ def process_or_load(latlons, ids, label, year):
         gdf_points_with_pumas = add_puma_to_points(gdf_points_with_states)
         gdf_points_with_pumas.to_file(pumas_fp, driver="GeoJSON")
 
-    if os.path.exists(tracts_fp):
-        print(f"Loading tracts from {tracts_fp}")
-        gdf_points_with_tracts = gpd.read_file(tracts_fp)
-    else:
-        print("Generating tracts...")
-        gdf_points_with_tracts = add_tracts_to_points(gdf_points_with_counties)
-        gdf_points_with_tracts.to_file(tracts_fp, driver="GeoJSON")
+    # if os.path.exists(tracts_fp):
+    #     print(f"Loading tracts from {tracts_fp}")
+    #     gdf_points_with_tracts = gpd.read_file(tracts_fp)
+    # else:
+    #     print("Generating tracts...")
+    #     gdf_points_with_tracts = add_tracts_to_points(gdf_points_with_counties)
+    #     gdf_points_with_tracts.to_file(tracts_fp, driver="GeoJSON")
 
-    return gdf_points_with_states, gdf_points_with_counties, gdf_points_with_pumas, gdf_points_with_tracts
+    return gdf_points_with_states, gdf_points_with_counties, gdf_points_with_pumas #, gdf_points_with_tracts
 
 def add_states_to_points(latlons, ids):
     print("Loading states shapefile...")
@@ -80,13 +104,12 @@ def add_states_to_points(latlons, ids):
     if not missing_points.empty:
         print(f"Assigning nearest states to {len(missing_points)} unmatched points...")
 
-        for idx, point in missing_points.iterrows():
-            nearest_geom = gdf_states.geometry.distance(point.geometry).sort_values().index[0]
+        for idx, row in missing_points.iterrows():
+            nearest_geom = get_nearest_polygon_index(row.geometry, gdf_states)
             nearest_state = gdf_states.loc[nearest_geom]
             gdf_points_with_states.at[idx, 'STATEFP'] = nearest_state['fips'].replace('US', '')
             gdf_points_with_states.at[idx, 'STATE_NAME'] = nearest_state['name']
 
-    print("State assignment done.\n")
     return gdf_points_with_states
 
 def add_counties_to_points(gdf_points_with_states):
@@ -120,7 +143,13 @@ def add_counties_to_points(gdf_points_with_states):
         gdf_points_with_counties.loc[joined.index, 'COUNTYFP'] = joined['COUNTYFP']
         gdf_points_with_counties.loc[joined.index, 'COUNTY_NAME'] = joined['NAME']
 
-    print("County assignment done.\n")
+    missing = gdf_points_with_counties[gdf_points_with_counties['COUNTYFP'].isna()]
+    for idx, row in missing.iterrows():
+        nearest_geom = get_nearest_polygon_index(row.geometry, gdf_counties)
+
+        gdf_points_with_counties.at[idx, 'COUNTYFP'] = gdf_counties.loc[nearest_geom, 'COUNTYFP']
+        gdf_points_with_counties.at[idx, 'COUNTY_NAME'] = gdf_counties.loc[nearest_geom, 'NAME']
+
     return gdf_points_with_counties
 
 def add_puma_to_points(gdf_points_with_states):
@@ -154,7 +183,12 @@ def add_puma_to_points(gdf_points_with_states):
 
         gdf_points_with_puma.loc[joined.index, 'PUMACE10'] = joined['PUMACE10']
 
-    print("PUMA assignment done.\n")
+        missing = gdf_points_with_puma[gdf_points_with_puma['PUMACE10'].isna() & (gdf_points_with_puma['STATEFP'] == state_fp)]
+        for idx, row in missing.iterrows():
+            nearest_geom = get_nearest_polygon_index(row.geometry, gdf_pumas)
+
+            gdf_points_with_puma.at[idx, 'PUMACE10'] = gdf_pumas.loc[nearest_geom, 'PUMACE10']
+
     return gdf_points_with_puma
 
 def add_tracts_to_points(gdf_points_with_counties):
@@ -195,7 +229,18 @@ def add_tracts_to_points(gdf_points_with_counties):
 
             gdf_points_with_tract.loc[joined.index, 'TRACTCE'] = joined['TRACTCE']
 
-    print("Tract assignment done.\n")
+            missing = gdf_points_with_tract[
+                gdf_points_with_tract['TRACTCE'].isna() &
+                (gdf_points_with_tract['STATEFP'] == state_fp) &
+                (gdf_points_with_tract['COUNTYFP'] == county_fp)
+            ]
+            for idx, row in missing.iterrows():
+                if tracts_sub.empty:
+                    continue
+                nearest_geom = get_nearest_polygon_index(row.geometry, tracts_sub)
+
+                gdf_points_with_tract.at[idx, 'TRACTCE'] = tracts_sub.loc[nearest_geom, 'TRACTCE']
+
     return gdf_points_with_tract
 
 def counts_per_division(gdf, division_col):
@@ -226,7 +271,7 @@ def plot_points_distribution(label, counts, division_type, division_col, log_sca
     plt.savefig(f"{label}/plots/{division_type}_hist.png", dpi=300)
 
 if __name__ == "__main__":
-    for label in ["population", "income", "treecover"]:
+    for label in ["income", "population", "treecover"]:
         year = 2015
 
         with open(f"../data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
@@ -239,7 +284,7 @@ if __name__ == "__main__":
 
         latlons = arrs['latlons_train'][valid_idxs]
         
-        gdf_states, gdf_counties, gdf_pumas, gdf_tracts = process_or_load(latlons, ids, label, year)
+        gdf_states, gdf_counties, gdf_pumas = process_or_load(latlons, ids, label, year)
 
         counts_state = counts_per_division(gdf_states, 'STATEFP')
         plot_points_distribution(label, counts_state, "state", 'STATEFP')
@@ -250,5 +295,5 @@ if __name__ == "__main__":
         counts_puma = counts_per_division(gdf_pumas, 'PUMACE10')
         plot_points_distribution(label, counts_puma, "puma", 'PUMACE10', log_scale=False)
 
-        counts_tract = counts_per_division(gdf_tracts, 'TRACTCE')
-        plot_points_distribution(label, counts_tract, "tract", 'TRACTCE', log_scale=False)
+        # counts_tract = counts_per_division(gdf_tracts, 'TRACTCE')
+        # plot_points_distribution(label, counts_tract, "tract", 'TRACTCE', log_scale=False)

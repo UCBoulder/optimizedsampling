@@ -95,89 +95,51 @@ def ridge_regression(X_train,
         print("Warning: Severe overfitting. Add more samples.")
     return r2
 
-def generate_latex_table(run_regression):
-    import dill
-    from collections import defaultdict
-
-    # Store rows organized by label and type_str
-    grouped = defaultdict(lambda: defaultdict(list))
-
-    for label in ["population", "treecover"]:
-        for type_str in ["clustered", "density"]:
-            for num_counties in [25, 50, 75, 100, 125, 150, 175, 200]:
-                id_path = f"county_sampling/{label}/{type_str}/IDs_{num_counties}_counties_10_radius_seed_42.pkl"
-                try:
-                    with open(id_path, "rb") as f:
-                        arrs = dill.load(f)
-                    ids = arrs
-                    r2 = run_regression(label, ids)
-                    num_samples = len(ids)
-                    grouped[label][type_str].append((num_counties, num_samples, r2))
-                except FileNotFoundError:
-                    print(f"File not found: {id_path}")
-                except Exception as e:
-                    print(f"Error processing {id_path}: {e}")
-
-    lines = []
-    lines.append("\\begin{table}[h!]")
-    lines.append("\\centering")
-    lines.append("\\caption{Regression results by Label and Sampling Type}")
-    lines.append("\\begin{tabular}{llccc}")
-    lines.append("\\toprule")
-    lines.append("Label & Type & \# Counties & \# Samples & Test $R^2$ \\\\")
-    lines.append("\\midrule")
-
-    for label in grouped:
-        label_total_rows = sum(len(v) for v in grouped[label].values())
-        label_printed = False
-        for type_str in grouped[label]:
-            type_rows = grouped[label][type_str]
-            type_total_rows = len(type_rows)
-            type_printed = False
-            for i, (num_counties, num_samples, r2) in enumerate(type_rows):
-                row = []
-                if not label_printed:
-                    row.append(f"\\multirow{{{label_total_rows}}}{{*}}{{{label}}}")
-                    label_printed = True
-                else:
-                    row.append("")  # skip label
-
-                if not type_printed:
-                    row.append(f"\\multirow{{{type_total_rows}}}{{*}}{{{type_str}}}")
-                    type_printed = True
-                else:
-                    row.append("")  # skip type
-
-                row.extend([str(num_counties), str(num_samples), f"{r2:.3f} \\\\"])
-                lines.append(" & ".join(row))
-
-    lines.append("\\bottomrule")
-    lines.append("\\end{tabular}")
-    lines.append("\\end{table}")
-
-    print("\n".join(lines))
-
 
 
 if __name__ == "__main__":
-    from IPython import embed; embed()
+    # import os
+    # import dill
+
     # label = "income"
-    # type_str = "clustered"
+    # folder = "/home/libe2152/optimizedsampling/initial_sample/income/cluster_sampling"
 
-    # for label in ["population", "treecover"]:
-    #     for type_str in ["clustered", "density"]:
-    #         for num_counties in [100, 125, 150, 175, 200]:
+    # print(f"LABEL: {label}")
+    # print(f"FOLDER: {folder}")
 
-    #             print(f"LABEL: {label}")
-    #             print(f"TYPE: {type_str}")
-    #             print(f"NUM COUNTIES: {num_counties}")
+    # for fname in sorted(os.listdir(folder)):
+    #     if fname.endswith(".pkl"):
+    #         id_path = os.path.join(folder, fname)
 
-    #             id_path = f"county_sampling/{label}/{type_str}/IDs_{num_counties}_counties_10_radius_seed_42.pkl"
-    #             print(f"ID_PATH: {id_path}")
-
+    #         try:
     #             with open(id_path, "rb") as f:
     #                 arrs = dill.load(f)
     #             ids = arrs
-    #             r2 = run_regression(label, ids)
-    # generate_latex_table(run_regression)
+    #             if len(ids) > 1000:
+    #                 r2 = run_regression(label, ids)
+
+    #                 print(f"\nFILE: {fname}")
+    #                 print(f"  R^2: {r2:.4f}")
+    #                 print(f"  NUM SAMPLES: {len(ids)}")
+    #         except Exception as e:
+    #             print(f"\nFAILED TO PROCESS {fname}: {e}")
+
+    label = "income"
+    id_path = "/home/libe2152/optimizedsampling/data/int/feature_matrices/CONTUS_UAR_income_with_splits_torchgeo4096.pkl"
+
+
+    try:
+        with open(id_path, "rb") as f:
+            arrs = dill.load(f)
+        invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+        ids_train = arrs['ids_train']
+        valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+        ids = ids_train[valid_idxs]
+        if len(ids) > 1000:
+            r2 = run_regression(label, ids)
+
+            print(f"  R^2: {r2:.4f}")
+            print(f"  NUM SAMPLES: {len(ids)}")
+    except Exception as e:
+        print(f"\nFAILED TO PROCESS : {e}")
             

@@ -2,14 +2,12 @@ import dill
 import pandas as pd
 import numpy as np
 from nlcd import nlcd_land_cover_class, nlcd_k_means
-from satclip import satclip_k_means
 
 
-def cluster_and_save(feat_type, max_k=5):
+def cluster_and_save(feat_type, data_path, max_k=10):
     cluster_path = f"data/clusters/{feat_type}_cluster_assignment_{max_k}.pkl"
-    data_path = f"data/int/feature_matrices/satclip_embeddings.pkl"
 
-    labels, ids = satclip_k_means(data_path, max_k) #Change depending on desired clustering
+    labels, ids = nlcd_k_means(data_path, max_k) #Change depending on desired clustering
 
     with open(cluster_path, "wb") as f:
         dill.dump(
@@ -37,4 +35,5 @@ def retrieve_all_clusters(cluster_path):
     return arrs['clusters']
 
 if __name__ == '__main__':
-    cluster_and_save("SatCLIP", max_k=10)
+    data_path = "data/clusters/NLCD_percentages.pkl"
+    cluster_and_save("NLCD_percentages", data_path, max_k=10)

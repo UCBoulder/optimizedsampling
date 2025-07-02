@@ -6,9 +6,9 @@ import numpy as np
 from torchgeo.models import RCF
 from USAVars import USAVars
 
-train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
-val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'elevation', 'population'), transforms=None, download=False, checksum=False)
+train = USAVars(root="/share/usavars", split="train", labels=('treecover', 'population', 'income'), transforms=None, download=False, checksum=False)
+test = USAVars(root="/share/usavars", split="test", labels=('treecover', 'population', 'income'), transforms=None, download=False, checksum=False)
+val = USAVars(root="/share/usavars", split="val", labels=('treecover', 'population', 'income'), transforms=None, download=False, checksum=False)
 
 total_num_images = train.__len__() + test.__len__() + val.__len__()
 img_height = 256

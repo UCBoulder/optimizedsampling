@@ -42,6 +42,7 @@ class USAVars(NonGeoDataset):
     * tree cover
     * elevation
     * population density
+    * income
 
     If you use this dataset in your research, please cite the following paper:
 
@@ -85,7 +86,7 @@ class USAVars(NonGeoDataset):
         },
     }
 
-    ALL_LABELS = ('treecover', 'elevation', 'population')
+    ALL_LABELS = ('treecover', 'elevation', 'population', 'income')
 
     def __init__(
         self,
