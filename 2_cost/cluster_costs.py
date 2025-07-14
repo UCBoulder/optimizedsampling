@@ -21,7 +21,7 @@ if __name__ == "__main__":
             unique_counties, county_counts = np.unique(data['assignments'], return_counts=True)
 
             county_costs = cost_of_cluster(county_counts, points_per_cluster)
-            county_costs_dict = {str(unique_counties[i]): int(county_costs[i]) for i in range(len(unique_counties))}
+            county_costs_dict = {str(unique_counties[i]): float(county_costs[i]) for i in range(len(unique_counties))}
 
             with open(output_path, "wb") as f:
                 pickle.dump(county_costs_dict, f)

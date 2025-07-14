@@ -127,7 +127,7 @@ if __name__ == "__main__":
         save_dist_array(ids, dists, out_path)
         print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
-        costs = dist_to_cost(dists, scale='sqrt', alpha=1.0)
+        costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
         print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
 
         # Save
