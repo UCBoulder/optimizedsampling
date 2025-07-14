@@ -1,0 +1,2 @@
+sample_size,method,mean_r2,std_r2,num_seeds
+1000,probabilistic,0.1782074957170608,0.045777946429640726,10

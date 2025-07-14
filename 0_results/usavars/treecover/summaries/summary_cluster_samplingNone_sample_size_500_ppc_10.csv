@@ -1,0 +1,2 @@
+points_per_cluster,sample_size,mean_r2,std_r2,num_seeds
+10,500,0.8087192425630724,0.00784760093718845,10

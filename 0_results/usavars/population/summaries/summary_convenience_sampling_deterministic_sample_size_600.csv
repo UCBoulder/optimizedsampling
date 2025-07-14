@@ -1,0 +1,2 @@
+sample_size,method,mean_r2,std_r2,num_seeds
+600,deterministic,-3.1615922959562948,,1
