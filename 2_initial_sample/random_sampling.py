@@ -64,23 +64,21 @@ class RandomSampler:
         plt.close()
 
 if __name__ == '__main__':
-    label = 'treecover'
+    for label in ['population', 'treecover']:
 
-    data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson"
-    gdf = gpd.read_file(data_path)
+        data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson"
+        gdf = gpd.read_file(data_path)
 
-    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling'
+        out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling'
 
-    country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
-    exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
+        country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
+        exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
 
+        sampler = RandomSampler(gdf, id_col="id")
 
-
-    sampler = RandomSampler(gdf, id_col="id")
-
-    for total_sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
-        for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
-            sampler.sample(total_sample_size=total_sample_size, seed=seed)
-            sampler.save_sampled_ids(out_path)
-            sampler.plot(country_shape_file, exclude_names=["Alaska", "Hawaii", "Puerto Rico"])
-            sampler.reset_sample()
+        for total_sample_size in [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000]:
+            for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
+                sampler.sample(total_sample_size=total_sample_size, seed=seed)
+                sampler.save_sampled_ids(out_path)
+                sampler.plot(country_shape_file, exclude_names=["Alaska", "Hawaii", "Puerto Rico"])
+                sampler.reset_sample()

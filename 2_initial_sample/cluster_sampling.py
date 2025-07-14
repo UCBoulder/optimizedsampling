@@ -29,7 +29,8 @@ class ClusterSampler:
                 gdf_points,
                 id_col,
                 strata_col, 
-                cluster_col):
+                cluster_col,
+                ADMIN_IDS):
         """
         Initialize with a GeoDataFrame and the relevant columns.
         """
@@ -44,6 +45,7 @@ class ClusterSampler:
         self.strata_col = strata_col
         self.cluster_col_name = cluster_col
         self.cluster_col = cluster_col
+        self.ADMIN_IDS = ADMIN_IDS
         self.strata_dict = self._stratify_points()
         print(f"[Init] Found {len(self.strata_dict)} strata.")
 
@@ -230,6 +232,7 @@ class ClusterSampler:
     def determine_clusters(self, total_sample_size, points_per_cluster):
         """Determine how many clusters to sample per stratum such that 
         points_per_cluster * clusters == total_sample_size.
+        Ensures that no stratum is assigned more clusters than it has available.
         """
         print(f"[Determine Clusters] Total desired sample size: {total_sample_size}")
         total_clusters = total_sample_size // points_per_cluster
@@ -244,19 +247,47 @@ class ClusterSampler:
             for s in strata_sizes
         }
 
+        # Start with integer part of allocations
         clusters_per_stratum = {s: int(raw_allocations[s]) for s in raw_allocations}
         remainders = {
             s: raw_allocations[s] - clusters_per_stratum[s] for s in raw_allocations
         }
 
-        remaining = total_clusters - sum(clusters_per_stratum.values())
+        # Cap to available clusters
+        cluster_capacities = {
+            s: self.gdf_points[self.gdf_points[self.strata_col] == s][self.cluster_col].nunique()
+            for s in strata_sizes
+        }
+
+        for s in clusters_per_stratum:
+            if clusters_per_stratum[s] > cluster_capacities[s]:
+                print(f"  [Adjust] Reducing {s} from {clusters_per_stratum[s]} to {cluster_capacities[s]} (max available clusters)")
+                clusters_per_stratum[s] = cluster_capacities[s]
+
+        # Redistribute leftover clusters
+        assigned_clusters = sum(clusters_per_stratum.values())
+        remaining = total_clusters - assigned_clusters
         if remaining > 0:
-            sorted_strata = sorted(remainders.items(), key=lambda x: -x[1])
-            for i in range(remaining):
-                clusters_per_stratum[sorted_strata[i % len(sorted_strata)][0]] += 1
+            eligible = {
+                s: cluster_capacities[s] - clusters_per_stratum[s]
+                for s in strata_sizes
+                if clusters_per_stratum[s] < cluster_capacities[s]
+            }
+
+            sorted_eligible = sorted(eligible.items(), key=lambda x: -remainders[x[0]])
+            i = 0
+            while remaining > 0 and sorted_eligible:
+                s, capacity_left = sorted_eligible[i % len(sorted_eligible)]
+                if capacity_left > 0:
+                    clusters_per_stratum[s] += 1
+                    remaining -= 1
+                    eligible[s] -= 1
+                i += 1
+                sorted_eligible = [(k, v) for k, v in eligible.items() if v > 0]
 
         print(f"[Determine Clusters] Final clusters per stratum: {clusters_per_stratum}")
         return clusters_per_stratum
+
 
     def sample_clusters(self, gdf, n_clusters, seed):
         """Sample clusters with probability proportional to size."""
@@ -331,8 +362,8 @@ class ClusterSampler:
         self.out_dir = out_path
 
         file_name = 'IDs_{strata_name}_strata_{cluster_name}_clusters_{points_per_cluster}_points_per_cluster_{sample_size}_size_seed_{seed}.pkl'
-        file_name = file_name.format(strata_name=ADMIN_IDS[self.strata_col], 
-                                    cluster_name=ADMIN_IDS[self.cluster_col_name], 
+        file_name = file_name.format(strata_name=self.ADMIN_IDS[self.strata_col], 
+                                    cluster_name=self.ADMIN_IDS[self.cluster_col_name], 
                                     points_per_cluster=self.points_per_cluster, 
                                     sample_size=self.sample_size,
                                     seed=self.seed)
@@ -360,7 +391,7 @@ class ClusterSampler:
         self.gdf_points.plot(ax=ax, color='#cccccc', markersize=5, label='All Points', zorder=1, alpha=0.6)
         self.sampled_gdf.plot(ax=ax, color='#d62728', markersize=5, label=f'Sampled ({self.sample_size})', zorder=3, alpha=0.8)
 
-        ax.set_title(f'Cluster Sampling\n(Stratified by {ADMIN_IDS[self.strata_col]}, clustered by {ADMIN_IDS[self.cluster_col_name]})\n'
+        ax.set_title(f'Cluster Sampling\n(Stratified by {self.ADMIN_IDS[self.strata_col]}, clustered by {self.ADMIN_IDS[self.cluster_col_name]})\n'
                     f'{self.points_per_cluster} points per cluster; {self.sample_size} total points',
                     fontsize=16, fontweight='bold', pad=20)
         ax.legend(loc='lower left', fontsize=10)
@@ -370,8 +401,8 @@ class ClusterSampler:
         plot_dir = os.path.join(self.out_dir, 'plots')
         os.makedirs(plot_dir, exist_ok=True)
         save_path = '{strata_name}_strata_{cluster_name}_clusters_{points_per_cluster}_points_per_cluster_{sample_size}_size_seed_{seed}.png'
-        save_path = save_path.format(strata_name=ADMIN_IDS[self.strata_col], 
-                                    cluster_name=ADMIN_IDS[self.cluster_col_name], 
+        save_path = save_path.format(strata_name=self.ADMIN_IDS[self.strata_col], 
+                                    cluster_name=self.ADMIN_IDS[self.cluster_col_name], 
                                     points_per_cluster=self.points_per_cluster, 
                                     sample_size=self.sample_size,
                                     seed=self.seed)
@@ -400,13 +431,13 @@ if __name__ == '__main__':
         strata_col = 'STATEFP'
         cluster_col = 'COUNTYFP'
 
-        sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col)
+        sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
 
         for points_per_cluster in [2, 5, 10, 25]:
             sampler.cluster_col = cluster_col
             sampler.merge_small_strata(points_per_cluster)
             sampler.merge_small_clusters(points_per_cluster)
-            for total_sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+            for total_sample_size in [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000]:
                 
                 for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
                     try:

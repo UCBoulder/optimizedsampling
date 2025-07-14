@@ -16,7 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotation=30):
+def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotation=30, set_y_lim=False):
     """
     Plot R² boxplots across sampling methods using a dictionary of CSV paths,
     using predefined colorblind-friendly colors from SAMPLING_TYPE_COLORS.
@@ -71,7 +71,8 @@ def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotati
     # Rotate x labels with alignment to avoid overlap
     ax.tick_params(axis='x', labelrotation=45, labelsize=9)
 
-    ax.set_ylim(bottom=-0.1)
+    if set_y_lim:
+        ax.set_ylim(bottom=-0.1)
 
     sns.despine(offset=10, trim=True)
     ax.grid(True, axis='y', linestyle="--", alpha=0.6)
@@ -92,10 +93,11 @@ if __name__ == "__main__":
                 csv_dict={
                     "Cluster": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
                     "Convenience\nProbabilistic": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_probabilistic_sample_size_{sample_size}.csv",
-                    "Convenience\nDeterministic": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_deterministic_sample_size_{sample_size}.csv",
+                    #"Convenience\nDeterministic": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_deterministic_sample_size_{sample_size}.csv",
                     "Random": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
                 },
                 sample_size=sample_size,
                 save_path= f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
-                rotation=30
+                rotation=30,
+                set_y_lim=True if label == 'population' else False
             )

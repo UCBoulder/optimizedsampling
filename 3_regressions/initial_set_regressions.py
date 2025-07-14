@@ -155,7 +155,7 @@ def random_sampling_r2_scores(*args, **kwargs):
 if __name__ == "__main__":
     from regressions import ridge_regression
 
-    for label in ['treecover']:
+    for label in ['population', 'treecover']:
 
         features_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
         cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/cluster_sampling"
