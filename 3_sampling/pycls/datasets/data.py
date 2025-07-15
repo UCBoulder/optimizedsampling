@@ -1,7 +1,7 @@
 # This file is modified from a code implementation shared with me by Prateek Munjal et al., authors of the paper https://arxiv.org/abs/2002.09564
 # GitHub: https://github.com/PrateekMunjal
 # ----------------------------------------------------------
-
+import os
 import torch
 import numpy as np
 
@@ -14,36 +14,6 @@ from pycls.datasets.usavars import USAVars
 from pycls.datasets.india_secc import IndiaSECC
 
 logger = lu.get_logger(__name__)
-
-class _RepeatSampler(object):
-    """ Sampler that repeats forever.
-    Args:
-        sampler (Sampler)
-    """
-
-    def __init__(self, sampler):
-        self.sampler = sampler
-
-    def __iter__(self):
-        while True:
-            yield from iter(self.sampler)
-
-
-class MultiEpochsDataLoader(torch.utils.data.DataLoader):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._DataLoader__initialized = False
-        self.batch_sampler = _RepeatSampler(self.batch_sampler)
-        self._DataLoader__initialized = True
-        self.iterator = super().__iter__()
-
-    def __len__(self):
-        return len(self.batch_sampler.sampler)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield next(self.iterator)
 
 class Data:
     """
@@ -62,15 +32,11 @@ class Data:
         cfg: yacs.config, config object
         """
         self.cfg = cfg
-        self.num_workers = cfg.DATA_LOADER.NUM_WORKERS
         self.dataset = cfg.DATASET.NAME
         self.data_dir = cfg.DATASET.ROOT_DIR
         self.datasets_accepted = cfg.DATASET.ACCEPTED
         # self.target_dir = {"test": cfg.DATASET.TEST_DIR, "train": cfg.DATASET.TRAIN_DIR, "val": cfg.DATASET.VAL_DIR}
         self.eval_mode = False
-        self.aug_method = cfg.DATASET.AUG_METHOD
-        self.rand_augment_N = 1 if cfg is None else cfg.RANDAUG.N
-        self.rand_augment_M = 5 if cfg is None else cfg.RANDAUG.M
 
     def about(self):
         """
@@ -145,17 +111,6 @@ class Data:
             #     raise NotImplementedError
                 return
 
-            if not self.eval_mode and (self.aug_method == 'simclr'):
-                ops.insert(1, get_simclr_ops(input_shape=cfg.TRAIN.IM_SIZE))
-
-            elif not self.eval_mode and (self.aug_method == 'randaug'):
-                #N and M values are taken from Experiment Section of RandAugment Paper
-                #Though RandAugment paper works with WideResNet model
-                ops.append(RandAugmentPolicy(N=self.rand_augment_N, M=self.rand_augment_M))
-
-            elif not self.eval_mode and (self.aug_method == 'hflip'):
-                ops.append(transforms.RandomHorizontalFlip())
-
             ops.append(transforms.ToTensor())
             ops.append(transforms.Normalize(norm_mean, norm_std))
 
@@ -171,7 +126,7 @@ class Data:
             #raise NotImplementedError
 
 
-    def getDataset(self, save_dir, isTrain=True, isDownload=False):
+    def getDataset(self, isTrain=True, isDownload=False):
         """
         This function returns the dataset instance and number of data points in it.
         
@@ -190,7 +145,6 @@ class Data:
         """
         self.eval_mode = True
         test_preops_list = self.getPreprocessOps()
-        test_preprocess_steps = transforms.Compose(test_preops_list)
         self.eval_mode = False
         
         if isTrain:
@@ -198,8 +152,6 @@ class Data:
         else:
             preprocess_steps = test_preops_list
         preprocess_steps = transforms.Compose(preprocess_steps)
-
-        only_features = self.cfg.MODEL.LINEAR_FROM_FEATURES
         
         if self.dataset == 'USAVARS_POP':
             usavars_pop = USAVars(root='/share/usavars', isTrain=isTrain, label='population')
@@ -482,108 +434,6 @@ class Data:
         
         return f'{save_dir}/uSet.npy', f'{save_dir}/valSet.npy'
 
-    def getIndexesDataLoader(self, indexes, batch_size, data):
-        """
-        Gets reference to the data loader which provides batches of <batch_size> by randomly sampling
-        from indexes set. We use SubsetRandomSampler as sampler in returned DataLoader.
-
-        ARGS
-        -----
-
-        indexes: np.ndarray, dtype: int, Array of indexes which will be used for random sampling.
-
-        batch_size: int, Specifies the batchsize used by data loader.
-
-        data: reference to dataset instance. This can be obtained by calling getDataset function of Data class.
-
-        OUTPUT
-        ------
-
-        Returns a reference to dataloader
-        """
-
-        assert isinstance(indexes, np.ndarray), "Indexes has dtype: {} whereas expected is nd.array.".format(type(indexes))
-        assert isinstance(batch_size, int), "Batchsize is expected to be of int type whereas currently it has dtype: {}".format(type(batch_size))
-        while len(indexes) < batch_size:
-            orig_indexes = indexes
-            indexes = np.concatenate((indexes, orig_indexes))
-
-        subsetSampler = SubsetRandomSampler(indexes)
-        # # print(data)
-        # if self.dataset == "IMAGENET":
-        #     loader = DataLoader(dataset=data, batch_size=batch_size,sampler=subsetSampler, pin_memory=True)
-        # else:
-        batch_size = min(batch_size, len(indexes))
-
-        loader = MultiEpochsDataLoader(dataset=data, num_workers=8, batch_size=batch_size,
-                                       sampler=subsetSampler, pin_memory=True, drop_last=True)
-        return loader
-
-
-    def getSequentialDataLoader(self, indexes, batch_size, data):
-        """
-        Gets reference to the data loader which provides batches of <batch_size> sequentially 
-        from indexes set. We use IndexedSequentialSampler as sampler in returned DataLoader.
-
-        ARGS
-        -----
-
-        indexes: np.ndarray, dtype: int, Array of indexes which will be used for random sampling.
-
-        batch_size: int, Specifies the batchsize used by data loader.
-
-        data: reference to dataset instance. This can be obtained by calling getDataset function of Data class.
-
-        OUTPUT
-        ------
-
-        Returns a reference to dataloader
-        """
-
-        assert isinstance(indexes, np.ndarray), "Indexes has dtype: {} whereas expected is nd.array.".format(type(indexes))
-        assert isinstance(batch_size, int), "Batchsize is expected to be of int type whereas currently it has dtype: {}".format(type(batch_size))
-        
-        subsetSampler = IndexedSequentialSampler(indexes)
-        # if self.dataset == "IMAGENET":
-        #     loader = DataLoader(dataset=data, batch_size=batch_size,sampler=subsetSampler,pin_memory=True)
-        # else:
-
-        loader = MultiEpochsDataLoader(dataset=data, num_workers=self.num_workers, batch_size=batch_size, sampler=subsetSampler, shuffle=False, pin_memory=True)
-        return loader
-
-
-    def getTestLoader(self, data, test_batch_size, seed_id=0):
-        """
-        Implements a random subset sampler for sampling the data from test set.
-        
-        INPUT:
-        data: reference to dataset instance. This can be obtained by calling getDataset function of Data class.
-        
-        test_batch_size: int, Denotes the size of test batch
-
-        seed_id: int, Helps in reporoducing results of random operations
-        
-        OUTPUT:
-        (On Success) Returns the testLoader
-        (On Failure) Returns Message as <dataset> not specified.
-        """
-        # Reproducibility stuff
-        torch.manual_seed(seed_id)
-        np.random.seed(seed_id)
-
-        if self.dataset in self.datasets_accepted:
-            n_datapts = len(data)
-            idx = [i for i in range(n_datapts)]
-            #np.random.shuffle(idx)
-
-            test_sampler = SubsetRandomSampler(idx)
-            testLoader = MultiEpochsDataLoader(data, num_workers=self.num_workers, batch_size=test_batch_size, sampler=test_sampler, pin_memory=True)
-            return testLoader
-
-        else:
-            raise NotImplementedError
-
-
     def loadPartitions(self, lSetPath, uSetPath, valSetPath):
 
         assert isinstance(lSetPath, str), "Expected lSetPath to be a string."
@@ -624,6 +474,7 @@ class Data:
 
 
     def saveSets(self, lSet, uSet, activeSet, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
 
         lSet = np.array(lSet, dtype=np.ndarray)
         uSet = np.array(uSet, dtype=np.ndarray)

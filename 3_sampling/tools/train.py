@@ -13,6 +13,12 @@ from sklearn.model_selection import KFold
 
 import torch
 
+def add_path(path):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+add_path(os.path.abspath('..'))
+
 # Local imports
 from pycls.al.ActiveLearning import ActiveLearning
 from pycls.core.config import cfg, dump_cfg
@@ -53,6 +59,8 @@ def argparser():
     parser.add_argument('--unit_assignment_path', default=None, type=str)
     parser.add_argument('--unit_cost_path', default=None, type=str)
 
+    parser.add_argument('--util-lambda', default=0.5, type=float)
+
     parser.add_argument('--similarity_matrix_path', default=None, type=str)
     parser.add_argument('--distance_matrix_path', default=None, type=str)
     return parser
@@ -68,7 +76,13 @@ def main(cfg):
         now = datetime.now()
         exp_dir = now.strftime('%Y%m%d_%H%M%S')
     else:
-        exp_dir = f"{cfg.INITIAL_SET.STR}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}/seed_{cfg.RNG_SEED}"
+        seed_str = f"seed_{cfg.RNG_SEED}"
+        exp_dir = f"{cfg.INITIAL_SET.STR}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
+
+        # Check if INITIAL_SET.STR already ends with seed_{seed}
+        if not cfg.INITIAL_SET.STR.endswith(seed_str):
+            exp_dir = f"{exp_dir}/{seed_str}"
+
 
     exp_dir = os.path.join(dataset_dir, exp_dir)
     os.makedirs(exp_dir, exist_ok=True)
@@ -84,19 +98,23 @@ def main(cfg):
     train_data, _ = data_obj.getDataset(isTrain=True)
     test_data, _ = data_obj.getDataset(isTrain=False)
 
+
     if cfg.LSET_IDS:
-        lSet = cfg.LSET_IDS
-        uSet = [i for i in range(len(train_data)) if i not in lSet]
+        lSet = np.array(cfg.LSET_IDS)
+        uSet = np.array([i for i in range(len(train_data)) if i not in lSet])
     else:
-        lSet, uSet = [], list(range(len(train_data)))
+        lSet = np.array([])
+        uSet = np.arange(len(train_data))
+
 
     def evaluate_r2(model, X_test, y_test):
         return model.score(X_test, y_test)
+    
+    X_test, y_test = test_data[:][0], test_data[:][1]
 
-    if lSet:
+    if lSet.size > 0:
         logger.info("Training ridge regression on initial set...")
         X_train, y_train = train_data[lSet][0], train_data[lSet][1]
-        X_test, y_test = test_data[:][0], test_data[:][1]
 
         pipeline = Pipeline([
             ('scaler', StandardScaler()),
@@ -115,11 +133,30 @@ def main(cfg):
 
     logger.info("Starting subset selection...")
     al_obj = ActiveLearning(data_obj, cfg)
-    model = pipeline if lSet else None
+    model = pipeline if lSet.size > 0 else None
     activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data)
 
     logger.info(f"Selected {len(activeSet)} new samples.")
-    data_obj.saveSets(lSet, uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
+    data_obj.saveSets(lSet, uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_0'))
+
+    lSet_updated = np.concatenate((lSet, activeSet))
+    lSet_updated = lSet_updated.astype(int)
+
+
+    # Train again on the updated labeled set
+    if lSet_updated.size > 0:
+        logger.info("Training ridge regression on updated labeled set...")
+        X_train_updated, y_train_updated = train_data[lSet_updated][0], train_data[lSet_updated][1]
+        pipeline = Pipeline([
+            ('scaler', StandardScaler()),
+            ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+        ])
+        pipeline.fit(X_train_updated, y_train_updated)
+        r2_updated = evaluate_r2(pipeline, X_test, y_test)
+        logger.info(f"Updated R² score: {r2_updated:.4f}")
+
+    data_obj.saveSets(lSet_updated, new_uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
+
 
 if __name__ == "__main__":
     args = argparser().parse_args()
@@ -156,7 +193,7 @@ if __name__ == "__main__":
         cfg.UNITS.UNIT_TYPE = args.unit_type
         with open(args.unit_assignment_path, "rb") as f:
             unit_assignments = dill.load(f)['assignments']
-        cfg.UNITS.UNIT_ASSIGNMENT = unit_assignments.tolist() if not isinstance(unit_assignments, list) else unit_assignments
+        cfg.UNITS.UNIT_ASSIGNMENT = unit_assignments.tolist() if not isinstance(unit_assignments, list) else unit_assignments #how do you know in the right order?
         cfg.UNITS.POINTS_PER_UNIT = args.points_per_unit
 
         if args.unit_cost_path:

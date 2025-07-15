@@ -24,7 +24,7 @@ from torchgeo.datasets.utils import Path, download_url, extract_archive
 invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
 
 def load_from_pkl(label, split):
-    data_path = f"/home/libe2152/optimizedsampling/data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
+    data_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
 
     with open(data_path, "rb") as f:
         arrs = dill.load(f)

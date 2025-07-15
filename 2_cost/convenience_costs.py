@@ -95,12 +95,12 @@ def save_cost_array(ids, costs, out_path):
 if __name__ == "__main__":
     N_urban = 50
 
-    for label in ["population", "income", "treecover"]:
+    for label in ["population", "treecover"]:
         print(f"\n=== Processing label: {label} ===")
 
         # Load training data
         print("Loading training data...")
-        with open(f"../data/int/feature_matrices/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
+        with open(f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
             arrs = dill.load(f)
 
         invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -116,14 +116,14 @@ if __name__ == "__main__":
 
         # Load urban area polygons
         print("Loading urban areas...")
-        urban_areas_path = "/home/libe2152/optimizedsampling/boundaries/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp"
+        urban_areas_path = "/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp"
         gdf_urban = gpd.read_file(urban_areas_path).to_crs("EPSG:4326")
         gdf_urban_top = gdf_urban.nlargest(N_urban, 'POP').copy()
         print(f"Selected top {N_urban} urban areas by population.")
 
         # Compute distance-based cost
         dists = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top)
-        out_path = f"{label}/convenience_sampling/distance_to_top{N_urban}_urban.pkl"
+        out_path = f"/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_to_top{N_urban}_urban.pkl"
         save_dist_array(ids, dists, out_path)
         print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
@@ -131,5 +131,5 @@ if __name__ == "__main__":
         print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
 
         # Save
-        out_path = f"{label}/convenience_sampling/distance_based_costs_top{N_urban}_urban.pkl"
+        out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/distance_based_costs_top{N_urban}_urban.pkl"
         save_cost_array(ids, costs, out_path)
