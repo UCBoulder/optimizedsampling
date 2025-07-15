@@ -100,11 +100,13 @@ def main(cfg):
 
 
     if cfg.LSET_IDS:
-        lSet = np.array(cfg.LSET_IDS)
-        uSet = np.array([i for i in range(len(train_data)) if i not in lSet])
+        lSet_path, uSet_path, valSet_path = data_obj.makeLUVSets_from_ids(cfg.LSET_IDS, data=train_data, save_dir=cfg.EXP_DIR)
+        lSet, uSet, _= data_obj.loadPartitions(lSetPath=lSet_path, \
+            uSetPath=uSet_path, valSetPath = valSet_path )
     else:
-        lSet = np.array([])
-        uSet = np.arange(len(train_data))
+        lSet_path, uSet_path, valSet_path = data_obj.makeLUVSets_from_ids([], data=train_data, save_dir=cfg.EXP_DIR)
+        lSet, uSet, _= data_obj.loadPartitions(lSetPath=lSet_path, \
+            uSetPath=uSet_path, valSetPath = valSet_path )
 
 
     def evaluate_r2(model, X_test, y_test):
@@ -112,8 +114,10 @@ def main(cfg):
     
     X_test, y_test = test_data[:][0], test_data[:][1]
 
-    if lSet.size > 0:
+    if len(lSet) > 0:
         logger.info("Training ridge regression on initial set...")
+        lSet = lSet.astype(int)
+        uSet = uSet.astype(int)
         X_train, y_train = train_data[lSet][0], train_data[lSet][1]
 
         pipeline = Pipeline([

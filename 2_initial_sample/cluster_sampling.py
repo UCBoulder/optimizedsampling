@@ -228,79 +228,111 @@ class ClusterSampler:
         self.strata_dict = self._stratify_points()
         print(f"[Merge] All strata merged. Using '{self.cluster_col}' as cluster column.")
 
-
-    def determine_clusters(self, total_sample_size, points_per_cluster):
+    def determine_clusters(self, total_sample_size, points_per_cluster, seed, ignore_small_clusters=True, ignore_small_strata = True):
         """Determine how many clusters to sample per stratum such that 
         points_per_cluster * clusters == total_sample_size.
-        Ensures that no stratum is assigned more clusters than it has available.
+
+        Strategy:
+        - If total_clusters <= num_strata:
+            Assign 1 cluster to total_clusters many randomly chosen strata.
+        - If total_clusters > num_strata:
+            Assign floor(total_clusters / num_strata) clusters to each stratum.
+            Then distribute the remaining clusters randomly (without exceeding availability).
         """
         print(f"[Determine Clusters] Total desired sample size: {total_sample_size}")
-        total_clusters = total_sample_size // points_per_cluster
+        np.random.seed(seed)
         if total_sample_size % points_per_cluster != 0:
             raise ValueError("Total sample size must be divisible by points_per_cluster.")
+        
+        total_clusters = total_sample_size // points_per_cluster
 
-        strata_sizes = {s: len(gdf) for s, gdf in self.strata_dict.items()}
-        total_size = sum(strata_sizes.values())
+        strata_grouped = self.gdf_points.groupby(self.strata_col)
+        strata_vals = []
 
-        raw_allocations = {
-            s: (strata_sizes[s] / total_size) * total_clusters
-            for s in strata_sizes
-        }
+        for stratum, gdf in strata_grouped:
+            if ignore_small_strata and len(gdf) < points_per_cluster:
+                continue
 
-        # Start with integer part of allocations
-        clusters_per_stratum = {s: int(raw_allocations[s]) for s in raw_allocations}
-        remainders = {
-            s: raw_allocations[s] - clusters_per_stratum[s] for s in raw_allocations
-        }
+            if ignore_small_clusters:
+                cluster_sizes = gdf[self.cluster_col].value_counts()
+                cluster_sizes = cluster_sizes[cluster_sizes >= points_per_cluster]
+                if len(cluster_sizes) == 0:
+                    continue
+            strata_vals.append(stratum)
 
-        # Cap to available clusters
-        cluster_capacities = {
-            s: self.gdf_points[self.gdf_points[self.strata_col] == s][self.cluster_col].nunique()
-            for s in strata_sizes
-        }
+        num_strata = len(strata_vals)
+        if num_strata == 0:
+            raise ValueError("No eligible strata to assign clusters to.")
 
-        for s in clusters_per_stratum:
-            if clusters_per_stratum[s] > cluster_capacities[s]:
-                print(f"  [Adjust] Reducing {s} from {clusters_per_stratum[s]} to {cluster_capacities[s]} (max available clusters)")
-                clusters_per_stratum[s] = cluster_capacities[s]
+        cluster_counts = {stratum: 0 for stratum in strata_vals}
 
-        # Redistribute leftover clusters
-        assigned_clusters = sum(clusters_per_stratum.values())
-        remaining = total_clusters - assigned_clusters
-        if remaining > 0:
-            eligible = {
-                s: cluster_capacities[s] - clusters_per_stratum[s]
-                for s in strata_sizes
-                if clusters_per_stratum[s] < cluster_capacities[s]
-            }
+        if total_clusters <= num_strata:
+            chosen_strata = np.random.choice(strata_vals, size=total_clusters, replace=False)
+            for stratum in chosen_strata:
+                cluster_counts[stratum] = 1
+        else:
+            #step 1: assign floor(total_clusters / num_strata) to all strata
+            min_clusters_per_stratum = total_clusters // num_strata
+            for stratum in strata_vals:
+                gdf_stratum = self.gdf_points[self.gdf_points[self.strata_col] == stratum]
+                cluster_sizes = gdf_stratum[self.cluster_col].value_counts()
+                if ignore_small_clusters:
+                    cluster_sizes = cluster_sizes[cluster_sizes >= points_per_cluster]
+                max_available = len(cluster_sizes)
+                cluster_counts[stratum] = min(min_clusters_per_stratum, max_available)
 
-            sorted_eligible = sorted(eligible.items(), key=lambda x: -remainders[x[0]])
-            i = 0
-            while remaining > 0 and sorted_eligible:
-                s, capacity_left = sorted_eligible[i % len(sorted_eligible)]
-                if capacity_left > 0:
-                    clusters_per_stratum[s] += 1
+            #step 2: distribute remaining clusters
+            assigned_clusters = sum(cluster_counts.values())
+            remaining = total_clusters - assigned_clusters
+
+            while remaining > 0:
+                candidates = [
+                    stratum for stratum in cluster_counts.keys()
+                    if cluster_counts[stratum] < (
+                        self.gdf_points[self.gdf_points[self.strata_col] == stratum][self.cluster_col]
+                        .value_counts()
+                        .loc[lambda x: x >= points_per_cluster if ignore_small_clusters else slice(None)]
+                        .shape[0]
+                    )
+                ]
+                if not candidates:
+                    print("[Determine Clusters] No more eligible strata with available clusters.")
+                    break
+
+                np.random.shuffle(candidates)
+                for stratum in candidates:
+                    cluster_counts[stratum] += 1
                     remaining -= 1
-                    eligible[s] -= 1
-                i += 1
-                sorted_eligible = [(k, v) for k, v in eligible.items() if v > 0]
+                    if remaining == 0:
+                        break
 
-        print(f"[Determine Clusters] Final clusters per stratum: {clusters_per_stratum}")
-        return clusters_per_stratum
+        print(f"[Determine Clusters] Cluster allocation per stratum:\n{cluster_counts}")
+        return cluster_counts
 
-
-    def sample_clusters(self, gdf, n_clusters, seed):
-        """Sample clusters with probability proportional to size."""
+    def sample_clusters(self, gdf, n_clusters, seed, points_per_cluster, ignore_small_clusters=True):
         print(f"[Sample Clusters] Sampling {n_clusters} clusters")
+
         counts = gdf[self.cluster_col].value_counts()
+
+        if ignore_small_clusters:
+            counts = counts[counts >= points_per_cluster]
+            print(f"[Sample Clusters] Ignoring clusters with < {points_per_cluster} points. Remaining: {len(counts)}")
+
+        if len(counts) == 0:
+            print("[Sample Clusters] No eligible clusters to sample from.")
+            return []
+
         probs = counts / counts.sum()
-        n_clusters = min(n_clusters, len(probs))
+
         try:
             sampled = probs.sample(n=n_clusters, weights=probs, replace=False, random_state=seed)
         except Exception as e:
+            print(f"[Sample Clusters] Error during sampling: {e}")
             from IPython import embed; embed()
+
         print(f"[Sample Clusters] Sampled cluster IDs: {sampled.index.tolist()}")
         return sampled.index.tolist()
+
 
     def sample_points_within(self, gdf, clusters, points_per_cluster, seed):
         """Sample points within each selected cluster."""
@@ -322,19 +354,35 @@ class ClusterSampler:
             points.append(sampled)
         return pd.concat(points)
 
-    def sample(self, total_sample_size, points_per_cluster, seed):
+    def sample(self, total_sample_size, points_per_cluster, seed, ignore_small_clusters=True, ignore_small_strata=True):
         """Run the full sampling process."""
         print("[Sample] Starting sampling process...")
-        clusters_per_stratum = self.determine_clusters(total_sample_size, points_per_cluster)
+        clusters_per_stratum = self.determine_clusters(total_sample_size, points_per_cluster, seed)
         all_sampled = []
 
+        strata_grouped = self.gdf_points.groupby(self.strata_col)
+        strata_vals = []
+
+        for stratum, gdf in strata_grouped:
+            if ignore_small_strata and len(gdf) < points_per_cluster:
+                continue
+
+            if ignore_small_clusters:
+                cluster_sizes = gdf[self.cluster_col].value_counts()
+                cluster_sizes = cluster_sizes[cluster_sizes >= points_per_cluster]
+                if len(cluster_sizes) == 0:
+                    continue
+            strata_vals.append(stratum)
+
         for stratum, gdf_stratum in self.strata_dict.items():
+            if stratum not in strata_vals:
+                continue
             print(f"[Sample] Processing stratum: {stratum}")
             n_clusters = clusters_per_stratum[stratum]
             if n_clusters == 0:
                 continue
 
-            sampled_clusters = self.sample_clusters(gdf_stratum, n_clusters, seed)
+            sampled_clusters = self.sample_clusters(gdf_stratum, n_clusters, seed, points_per_cluster, ignore_small_clusters)
             
             sampled_points = self.sample_points_within(gdf_stratum, sampled_clusters, points_per_cluster, seed)
             all_sampled.append(sampled_points)
@@ -433,11 +481,9 @@ if __name__ == '__main__':
 
         sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
 
-        for points_per_cluster in [2, 5, 10, 25]:
+        for points_per_cluster in [25]:
             sampler.cluster_col = cluster_col
-            sampler.merge_small_strata(points_per_cluster)
-            sampler.merge_small_clusters(points_per_cluster)
-            for total_sample_size in [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000]:
+            for total_sample_size in range(100, 1100, 100):
                 
                 for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
                     try:
@@ -445,5 +491,6 @@ if __name__ == '__main__':
                         sampler.save_sampled_ids(out_path)
                         sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
                     except Exception as e:
+                        from IPython import embed; embed()
                         print(e)
                     sampler.reset_sample()

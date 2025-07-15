@@ -85,7 +85,7 @@ def sampling_r2_scores(
 
             writer.writerow(metadata)
             if verbose:
-                print(f"[WRITE] Saved result from {fname}")
+                print(f"[WRITE] Saved result from {fname} to {csv_path}")
 
     if verbose:
         print(f"Results written incrementally to {csv_path}")
@@ -99,11 +99,11 @@ def parse_cluster_metadata(fname, sampled_indices, r2):
     parts = fname.replace(".pkl", "").split("_")
     return {
         "filename": fname,
-        "seed": parts[-1] if len(parts) > 0 else None,
+        "seed": parts[-1],
         "sample_size": len(sampled_indices),
-        "points_per_cluster": parts[-6] if len(parts) > 5 else None,
-        "strata": parts[2] if len(parts) > 2 else None,
-        "cluster": parts[4] if len(parts) > 4 else None,
+        "points_per_cluster": parts[-8],
+        "strata": parts[1],
+        "cluster": parts[3],
         "r2": r2,
     }
 

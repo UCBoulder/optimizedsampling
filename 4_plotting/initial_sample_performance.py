@@ -86,18 +86,17 @@ def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotati
         plt.show()
 
 if __name__ == "__main__":
-    for label in ['treecover']:
+    for label in ['population', 'treecover']:
         for sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
             for points_per_cluster in [2, 5, 10, 25]:
                 plot_r2_boxplot_across_methods(
                 csv_dict={
+                    "Convenience\nProbabilistic\n(Urban)": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_probabilistic_sample_size_{sample_size}.csv",
                     "Cluster": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
-                    "Convenience\nProbabilistic": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_probabilistic_sample_size_{sample_size}.csv",
-                    "Convenience\nDeterministic": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_deterministic_sample_size_{sample_size}.csv",
                     "Random": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
                 },
                 sample_size=sample_size,
                 save_path= f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
                 rotation=30,
-                set_y_lim=True if label == 'population' else False
+                set_y_lim=False #True if label == 'population' else False
             )
