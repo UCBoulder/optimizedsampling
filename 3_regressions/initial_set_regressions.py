@@ -73,9 +73,14 @@ def sampling_r2_scores(
 
     df = pd.DataFrame(results)
     csv_path = os.path.join(results_dir, f"{results_filename_suffix}.csv")
-    df.to_csv(csv_path, index=False)
+    file_exists = os.path.isfile(csv_path)
+
+    # Write header only if the file does not already exist
+    df.to_csv(csv_path, mode='a', index=False, header=not file_exists)
+
     if verbose:
-        print(f"Saved {len(results)} results to {csv_path}")
+        action = "Appended" if file_exists else "Saved"
+        print(f"{action} {len(results)} results to {csv_path}")
 
 
 # --- Metadata parsers for each sampling type ---

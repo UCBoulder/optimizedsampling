@@ -5,3 +5,5 @@ __pycache__
 .vscode/
 0_results/*/*/summaries
 0_results/*/*/plots
+3_sampling/tools/*.log
+3_sampling/tools/*.sh

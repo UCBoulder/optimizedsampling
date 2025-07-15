@@ -116,11 +116,11 @@ if __name__ == "__main__":
         ids = arrs['ids']
         groups = arrs['assignments']
 
-        similarity_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_test.npz"
-        similarity_matrix = np.load(similarity_path)['arr_0']
+        # similarity_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_test.npz"
+        # similarity_matrix = np.load(similarity_path)['arr_0']
 
-        distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npz"
-        distance_matrix = np.load(distance_path)['arr_0']
+        # distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npz"
+        # distance_matrix = np.load(distance_path)['arr_0']
 
         # Filter out invalid ids from groups and ids
         filtered_pairs = [(i, g) for i, g in zip(ids, groups) if i not in invalid_ids]
@@ -164,8 +164,8 @@ if __name__ == "__main__":
                                 all_ids,
                                 utility_fns,
                                 group_dict,
-                                similarity_matrix = similarity_matrix,
-                                distance_matrix = distance_matrix
+                                #similarity_matrix = similarity_matrix,
+                                #distance_matrix = distance_matrix
                             )
                             filename = os.path.basename(sampled_path)
                             sampling_label = f"{sampling_type}_{subfolder}"
@@ -197,8 +197,8 @@ if __name__ == "__main__":
                             all_ids,
                             utility_fns,
                             group_dict,
-                            similarity_matrix = similarity_matrix,
-                            distance_matrix = distance_matrix
+                            #similarity_matrix = similarity_matrix,
+                            #distance_matrix = distance_matrix
                         )
                         filename = os.path.basename(sampled_path)
                         results_list.append((filename, sampling_type, results))

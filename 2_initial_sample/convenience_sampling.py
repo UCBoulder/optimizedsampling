@@ -31,7 +31,7 @@ class ConvenienceSampler:
             with open(save_path, "rb") as f:
                 dist_dict = dill.load(f)
             distance_map = dist_dict["distances_to_urban_area"]
-            self.distances = self.gdf_points[self.id_col].map(distance_map)
+            self.distances = self.gdf_points[self.id_col].astype(str).map(distance_map)
         else:
             print("Computing distances using spatial index...")
             tree = STRtree(self.gdf_urban_top.geometry.values)
@@ -84,7 +84,7 @@ class ConvenienceSampler:
     def save_sampled_ids(self, out_path):
         self.out_dir = out_path
 
-        file_name = f"IDS_top{self.n_urban}_urban_{self.num_samples}_points_{self.method}_seed_{self.seed}.pkl" if self.method == 'probabilistic' else f"IDS_top{self.n_urban}_urban_{self.num_samples}_points_{self.method}.pkl"
+        file_name = f"probabilistic/IDS_top{self.n_urban}_urban_{self.num_samples}_points_{self.method}_seed_{self.seed}.pkl" if self.method == 'probabilistic' else f"deterministic/IDS_top{self.n_urban}_urban_{self.num_samples}_points_{self.method}.pkl"
         self.out_path = os.path.join(out_path, file_name)
         os.makedirs(os.path.dirname(self.out_path), exist_ok=True)
 
@@ -116,62 +116,54 @@ class ConvenienceSampler:
 
         plot_dir = os.path.join(self.out_dir, "plots")
         os.makedirs(plot_dir, exist_ok=True)
-        save_path = os.path.join(plot_dir, f'top{self.n_urban}_urban_areas_{self.num_samples}_points_{self.method}_seed_{self.seed}.png' if self.method == 'probabilistic' else f'convenience_sampling/plots/top{self.n_urban}_urban_areas_{self.num_samples}_points_{self.method}.png')
+        save_path = os.path.join(plot_dir, f'top{self.n_urban}_urban_areas_{self.num_samples}_points_{self.method}_seed_{self.seed}.png' if self.method == 'probabilistic' else f'top{self.n_urban}_urban_areas_{self.num_samples}_points_{self.method}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Saved plot to {save_path}")
 
 if __name__ == '__main__':
-    id_col = 'id'
-    for label in ['population', 'treecover']:
-        gdf_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson"
-        gdf = gpd.read_file(gdf_path)
+    id_col = 'condensed_shrug_id'
+    gdf_path = '/share/india_secc/MOSAIKS/shrugs_with_all_admins.geojson'
+    n_urban = 50
+    pop_col = 'pc11_pca_tot_p_combined'
+    country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
+    country_name = 'India'
+    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling'
+    distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/india_secc/distance_to_top50_urban.pkl'
 
-        n_urban = 50
-        pop_col = 'POP'
-        gdf_urban_path = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp'
-        gdf_urban = gpd.read_file(gdf_urban_path)
+    print("Reading GeoDataFrame...")
+    gdf = gpd.read_file(gdf_path)
 
-        distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_to_top50_urban.pkl'
+    method = 'deterministic'
+    # for desired_sample_size in range(1000, 1100, 100):
+    #     print("Initializing ConvenienceSampler...")
+    #     sampler = ConvenienceSampler(
+    #         id_col=id_col,
+    #         gdf_points=gdf,
+    #         gdf_urban=gdf,
+    #         n_urban=n_urban,
+    #         pop_col=pop_col,
+    #         distances_dir=distances_dir
+    #     )
 
-        country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
-        exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
+    #     sampler.sample(n_samples=desired_sample_size, method=method, seed=1) #seed needed to break ties
+    #     sampler.save_sampled_ids(out_path)
+    #     sampler.plot(country_shape_file=country_shape_file, country_name=country_name)
 
-        out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling'
+    method = 'probabilistic'
+    for desired_sample_size in range(100, 1100, 100):
+        for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
 
-        print("Reading GeoDataFrame...")
-        gdf = gpd.read_file(gdf_path)
-
-        method = 'deterministic'
-        for desired_sample_size in [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000]:
             print("Initializing ConvenienceSampler...")
             sampler = ConvenienceSampler(
                 id_col=id_col,
                 gdf_points=gdf,
-                gdf_urban=gdf_urban,
+                gdf_urban=gdf,
                 n_urban=n_urban,
                 pop_col=pop_col,
                 distances_dir=distances_dir
             )
 
-            sampler.sample(n_samples=desired_sample_size, method=method, seed=1) #seed needed to break ties
+            sampler.sample(n_samples=desired_sample_size, method=method, seed=seed)
             sampler.save_sampled_ids(out_path)
-            sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
-
-        for method in ['probabilistic']:
-            for desired_sample_size in [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000]:
-                for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
-
-                    print("Initializing ConvenienceSampler...")
-                    sampler = ConvenienceSampler(
-                        id_col=id_col,
-                        gdf_points=gdf,
-                        gdf_urban=gdf_urban,
-                        n_urban=n_urban,
-                        pop_col=pop_col,
-                        distances_dir=distances_dir
-                    )
-
-                    sampler.sample(n_samples=desired_sample_size, method=method, seed=seed)
-                    sampler.save_sampled_ids(out_path)
-                    sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
+            sampler.plot(country_shape_file=country_shape_file, country_name=country_name)

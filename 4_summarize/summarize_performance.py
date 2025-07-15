@@ -18,10 +18,6 @@ def summarize_cluster_sampling_r2(csv_path, sample_size, **kwargs):
         print("No matching data found.")
         return None
 
-    if filtered.empty:
-        print("No matching data found.")
-        return None
-
     # summary_df = pd.DataFrame({
     #     'sample_size': [sample_size],
     #     'points_per_cluster': [points_per_cluster],
@@ -64,7 +60,7 @@ def summarize_convenience_sampling_r2(csv_path, sample_size, **kwargs):
         'num_seeds': [filtered['r2'].count()],
     })
 
-    return filtered, summary_df
+    return filtered #, summary_df
 
 def summarize_random_sampling_r2(csv_path, sample_size, **kwargs):
     """
@@ -91,7 +87,7 @@ def summarize_random_sampling_r2(csv_path, sample_size, **kwargs):
         'num_seeds': [filtered['r2'].count()],
     })
 
-    return filtered, summary_df
+    return filtered #, summary_df
 
 
 def save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, **kwargs):
@@ -123,6 +119,8 @@ def save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, **kwa
 
     #filtered, summary_df = summary_fn(csv_path, sample_size, **kwargs)
     filtered = summary_fn(csv_path, sample_size, **kwargs)
+    if filtered is None:
+        from IPython import embed; embed()
     filtered = filtered.drop(columns=['Unnamed: 0'], errors='ignore')
 
     # if summary_df is None or summary_df.empty:
@@ -158,17 +156,17 @@ if __name__ == "__main__":
     for label in ['population', 'treecover']:
         summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries"
 
-        for sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+        for sample_size in range(100, 1100, 100):
             sampling_type = "cluster_sampling"
             csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
             # for points_per_cluster in [2, 5, 10, 25]:
             save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type) #points_per_cluster=points_per_cluster)
 
-            # sampling_type = 'convenience_sampling'
-            # csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-            # for method in ['deterministic', 'probabilistic']:
-            #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method=method)
+            sampling_type = 'convenience_sampling'
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+            for method in ['deterministic', 'probabilistic']:
+                save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method=method)
 
-            # sampling_type = 'random_sampling'
-            # csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-            # save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)
+            sampling_type = 'random_sampling'
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+            save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)

@@ -68,7 +68,7 @@ def load_and_merge_utilities_r2(utilities_csv_path, summaries_dir):
 def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None, set_y_lim=False):
     """
     Scatter plot utility vs. r2 colored by sampling_type.
-    Annotates plot with Spearman's ρ per sampling_type.
+    Annotates plot with overall Spearman's ρ.
 
     Args:
         merged_df (pd.DataFrame): DataFrame with 'sampling_type', utility_col, 'r2'
@@ -80,26 +80,18 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
     sns.set(style="white", context="notebook", font_scale=1.2)
     plt.figure(figsize=(8, 6), dpi=300)
 
-    # Compute Spearman's rho for each sampling type
-    spearman_rhos = {}
-    for sampling_type in merged_df['sampling_type'].unique():
-        sub_df = merged_df[merged_df['sampling_type'] == sampling_type]
-        if sub_df[utility_col].nunique() > 1:
-            rho, _ = spearmanr(sub_df[utility_col], sub_df['r2'])
-            spearman_rhos[sampling_type] = round(rho, 2)
-        else:
-            spearman_rhos[sampling_type] = None
-
-    # Build legend labels with ρ
-    merged_df['sampling_label'] = merged_df['sampling_type'].apply(
-        lambda t: f"{t} (ρ={spearman_rhos[t]})" if spearman_rhos[t] is not None else t
-    )
+    # Compute overall Spearman's rho
+    if merged_df[utility_col].nunique() > 1:
+        overall_rho, _ = spearmanr(merged_df[utility_col], merged_df['r2'])
+        overall_rho = round(overall_rho, 2)
+    else:
+        overall_rho = None
 
     ax = sns.scatterplot(
         data=merged_df,
         x=utility_col,
         y='r2',
-        hue='sampling_label',
+        hue='sampling_type',
         palette='Set2',
         s=70,
         alpha=0.8,
@@ -110,15 +102,18 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
     ax.set_ylabel("R² Score", fontsize=12)
     ax.grid(False)
 
+    # Title includes overall rho if available
     if title:
         ax.set_title(title, fontsize=14, pad=15)
+    elif overall_rho is not None:
+        ax.set_title(f"Utility ({utility_col}) vs. R² (ρ = {overall_rho})", fontsize=14, pad=15)
     else:
-        ax.set_title(f"Utility ({utility_col}) vs. R² by Sampling Type", fontsize=14, pad=15)
+        ax.set_title(f"Utility ({utility_col}) vs. R²", fontsize=14, pad=15)
 
     if set_y_lim:
         ax.set_ylim(bottom=0)
 
-    plt.legend(title='Sampling Type\n(Spearman ρ)', loc='best', fontsize=10)
+    plt.legend(title='Sampling Type', loc='best', fontsize=10)
     plt.tight_layout()
 
     if save_path:
@@ -126,6 +121,7 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
         print(f"Saved plot to {save_path}")
     else:
         plt.show()
+
 
 # === Usage Example ===
 if __name__ == '__main__':
