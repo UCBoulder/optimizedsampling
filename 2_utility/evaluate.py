@@ -92,8 +92,8 @@ if __name__ == "__main__":
         "pop_risk_0.9": lambda x, groups: pop_risk(x, groups, l=0.9),
         "pop_risk_0.99": lambda x, groups: pop_risk(x, groups, l=0.99),
         "pop_risk_1": lambda x, groups: pop_risk(x, groups, l=1),
-        #"similarity": similarity,
-        #"diversity": diversity
+        "similarity": similarity,
+        "diversity": diversity
     }
 
     invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         for sampling_type in sampling_types:
             if sampling_type == "convenience_sampling":
                 # iterate over the two subfolders inside convenience_sampling
-                for subfolder in ["probabilistic", "deterministic"]:
+                for subfolder in ["urban_based", "region_based"]:
                     dir_path = os.path.join(base_dir, sampling_type, subfolder)
                     if not os.path.isdir(dir_path):
                         print(f"[Warning] Directory does not exist: {dir_path}")
@@ -152,6 +152,8 @@ if __name__ == "__main__":
                     pkl_files = glob(os.path.join(dir_path, "*.pkl"))
 
                     for sampled_path in pkl_files:
+                        if not sampled_path.endswith("seed_1.pkl"):
+                            continue
                         try:
                             with open(sampled_path, "rb") as f:
                                 sampled_ids = dill.load(f)
@@ -185,6 +187,8 @@ if __name__ == "__main__":
                 pkl_files = glob(os.path.join(dir_path, "*.pkl"))
 
                 for sampled_path in pkl_files:
+                    if not sampled_path.endswith("seed_1.pkl"):
+                        continue
                     try:
                         with open(sampled_path, "rb") as f:
                             sampled_ids = dill.load(f)
@@ -209,5 +213,5 @@ if __name__ == "__main__":
 
         save_utilities_results_to_csv(
             results_list,
-            f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/utilities.csv"
+            f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/utilities_with_sim_and_div.csv"
         )

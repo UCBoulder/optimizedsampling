@@ -1,0 +1,11 @@
+filename,sample_size,seed,r2
+random_sample_500_points_seed_1.pkl,500,1,0.1565373665791813
+random_sample_500_points_seed_1213.pkl,500,1213,0.150701413284459
+random_sample_500_points_seed_123.pkl,500,123,0.1629373180067996
+random_sample_500_points_seed_1234.pkl,500,1234,0.1663399943465403
+random_sample_500_points_seed_1415.pkl,500,1415,0.1652370548795256
+random_sample_500_points_seed_42.pkl,500,42,0.1900221176055905
+random_sample_500_points_seed_456.pkl,500,456,0.2171216321528906
+random_sample_500_points_seed_5678.pkl,500,5678,0.2204907396216776
+random_sample_500_points_seed_789.pkl,500,789,0.1612794696477477
+random_sample_500_points_seed_9101.pkl,500,9101,0.2192770537438091

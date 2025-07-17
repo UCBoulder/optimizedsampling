@@ -40,12 +40,12 @@ class ActiveLearning:
             opt = Opt(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
             opt.set_utility_func(self.cfg.ACTIVE_LEARNING.SAMPLING_FN)
                 
-            if self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
+            if self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["random"]:
                 activeSet, uSet, total_cost = opt.select_samples()
-                return activeSet, uSet, total_cost
+                return activeSet, uSet #, total_cost
             else:
                 activeSet, uSet, total_cost, probs, relevant_indices = opt.select_samples()
-                return activeSet, uSet, total_cost, probs, relevant_indices 
+                return activeSet, uSet #, total_cost, probs, relevant_indices 
 
         if self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
 

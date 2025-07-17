@@ -89,8 +89,9 @@ class Opt:
         self.cost_domain = "unit"
 
         if cost_func_type == "pointwise_by_array":
-            if self.cfg.COST.UNIT_COST is not None:
-                self.cost_dict = self.cfg.COST.UNIT_COST[0] #since is an array
+            if self.cfg.COST.UNIT_COST_PATH is not None:
+                with open(self.cfg.COST.UNIT_COST_PATH, "rb") as f:
+                    self.cost_dict = dill.load(f)
                 self.cost_array = np.array([self.cost_dict[u] for u in self.units])
             elif self.cfg.COST.ARRAY is not None:
                 self.cost_array = np.array(self.cfg.COST.ARRAY)
@@ -172,7 +173,20 @@ class Opt:
         #make labeled inclusion vector of units
         #clean this up, can prob make this variable for the class
         unit_index_map = {u: i for i, u in enumerate(self.units)}
-        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        labeled_unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+
+        if self.cost_domain == "unit":
+            for i, u in enumerate(self.units):
+                unit_point_indices = self.relevant_indices[self.unit_assignment == u]
+                labeled_mask = np.array([idx in labeled_set for idx in unit_point_indices])
+                
+                if np.any(labeled_mask):
+                    labeled_unit_inclusion_vector[i] = True
+        else:
+            for i in range(len(self.units)):
+                labeled_unit_inclusion_vector[i] = True if self.units[i] in labeled_set else False
+
+        unit_inclusion_vector=labeled_unit_inclusion_vector.copy()
 
         unit_to_indices = {
             u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
@@ -192,13 +206,39 @@ class Opt:
 
             for u in permuted_units:
                 unit_inclusion_vector[unit_index_map[u]] = 1
-                if self.np_cost_func(unit_inclusion_vector) > self.budget + len(labeled_units):
+                if self.np_cost_func(unit_inclusion_vector) > self.budget + self.np_cost_func(labeled_unit_inclusion_vector):
                     unit_inclusion_vector[unit_index_map[u]] = 0
                     break
+
+        elif self.utility_func_type in ["stratified", "match_population_proportion"]:
+            from .representation import Representation
+            from .Sampling import Sampling
+
+            sampler = None
+            if self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "stratified":
+                sampler = Representation(self.cfg, self.lSet, self.uSet, self.budget, strategy="balanced")
+            elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "match_population_proportion":
+                sampler = Representation(self.cfg, self.lSet, self.uSet, self.budget, strategy="match_population")
+
+            assert sampler is not None, f"No sampler found for {self.cfg.ACTIVE_LEARNING.SAMPLING_FN}"
+
+            unit_inclusion_vector[:] = 0
+            labeled_cost = self.np_cost_func(labeled_unit_inclusion_vector)
+
+            while self.np_cost_func(unit_inclusion_vector) + labeled_cost <= self.budget:
+                sampled_units, _ = sampler.select_samples()
+                if not sampled_units:
+                    break
+
+                for u in np.random.shuffle(sampled_units):
+                    unit_inclusion_vector[unit_index_map[u]] = 1
+                    if self.np_cost_func(unit_inclusion_vector) + labeled_cost > self.budget:
+                        unit_inclusion_vector[unit_index_map[u]] = 0
+                        break
         else:
             assert hasattr(self, "utility_func") and self.utility_func is not None, "Need to specify utility function"
 
-            prob_path = os.path.join(self.cfg.EXP_ROOT, "probabilities.pkl")
+            prob_path = os.path.join(self.cfg.EXP_DIR, "probabilities.pkl")
 
             if os.path.exists(prob_path):
                 print("Loading probabilities from file...")
@@ -206,9 +246,21 @@ class Opt:
                     probs = dill.load(f)["probs"] #already in the order of relevant indices based on how I saved these files
             else:
                 probs = self.solve_opt()
-            for i in range(len(self.units)):
-                draw = np.random.choice([0, 1], p=[1 - probs[i], probs[i]])
-                unit_inclusion_vector[i] = draw
+                with open(prob_path, "wb") as f:
+                    dill.dump({"ids": self.units, "probs": probs}, f)
+
+            indices = np.arange(len(self.units))
+            np.random.shuffle(indices)
+
+            for i in indices:
+                draw = np.random.binomial(1, probs[i])
+                if draw == 1:
+                    unit_inclusion_vector[i] = 1
+                    total_cost = self.np_cost_func(unit_inclusion_vector)
+                    if total_cost > self.budget + self.np_cost_func(labeled_unit_inclusion_vector):
+                        unit_inclusion_vector[i] = 0
+                        break
+
         
         selected_units = self.units[unit_inclusion_vector.astype(bool)]
         selected_units = np.setdiff1d(selected_units, labeled_units)
@@ -235,6 +287,7 @@ class Opt:
         print(f"Total Sample Cost: {total_sample_cost}")
         print(f"Finished the selection of {len(activeSet)} samples.")
         print(f"Active set is {activeSet}")
+
 
         if self.utility_func_type == "random":
             return activeSet, remainSet, self.np_cost_func(unit_inclusion_vector)

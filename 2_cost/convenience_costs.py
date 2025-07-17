@@ -93,7 +93,7 @@ def save_cost_array(ids, costs, out_path):
 
 # === Example Usage ===
 if __name__ == "__main__":
-    N_urban = 50
+    N_urban = 10
 
     for label in ["population", "treecover"]:
         print(f"\n=== Processing label: {label} ===")

@@ -115,7 +115,7 @@ _C.COST = CN()
 _C.COST.FN = None
 _C.COST.NAME = None
 _C.COST.ARRAY = None
-_C.COST.UNIT_COST = None
+_C.COST.UNIT_COST_PATH = None
 
 # #-------------------------------------------------------------------------------#
 # #  GROUP options

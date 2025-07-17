@@ -64,11 +64,10 @@ def load_and_merge_utilities_r2(utilities_csv_path, summaries_dir):
     return merged_df
 
 
-
 def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None, set_y_lim=False):
     """
     Scatter plot utility vs. r2 colored by sampling_type.
-    Annotates plot with overall Spearman's ρ.
+    Annotates plot with overall Spearman's ρ and per-sampling-type ρ.
 
     Args:
         merged_df (pd.DataFrame): DataFrame with 'sampling_type', utility_col, 'r2'
@@ -77,6 +76,10 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
         save_path (str, optional): Save path
         set_y_lim (bool): Whether to force y-axis to start at 0
     """
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from scipy.stats import spearmanr
+
     sns.set(style="white", context="notebook", font_scale=1.2)
     plt.figure(figsize=(8, 6), dpi=300)
 
@@ -87,11 +90,25 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
     else:
         overall_rho = None
 
+    # Compute per-sampling-type Spearman's rho
+    rho_labels = {}
+    grouped = merged_df.groupby('sampling_type')
+    for name, group in grouped:
+        if group[utility_col].nunique() > 1:
+            rho, _ = spearmanr(group[utility_col], group['r2'])
+            rho_labels[name] = f"{name} (ρ={rho:.2f})"
+        else:
+            rho_labels[name] = f"{name} (ρ=N/A)"
+
+    # Replace labels in DataFrame for legend
+    merged_df['sampling_type_rho'] = merged_df['sampling_type'].map(rho_labels)
+
+    # Plot
     ax = sns.scatterplot(
         data=merged_df,
         x=utility_col,
         y='r2',
-        hue='sampling_type',
+        hue='sampling_type_rho',
         palette='Set2',
         s=70,
         alpha=0.8,
@@ -122,6 +139,85 @@ def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None
     else:
         plt.show()
 
+def plot_top_percent_utility_vs_r2(merged_df, utility_col='size', top_percent=0.1, title=None, save_path=None, set_y_lim=False):
+    """
+    Plot the top `top_percent` of data by R² score vs. utility, color-coded by sampling type.
+
+    Args:
+        merged_df (pd.DataFrame): DataFrame with 'sampling_type', utility_col, 'r2'
+        utility_col (str): Column for x-axis (utility)
+        top_percent (float): Fraction of top-performing samples to plot (e.g. 0.1 for top 10%)
+        title (str, optional): Plot title
+        save_path (str, optional): Save path
+        set_y_lim (bool): Whether to force y-axis to start at 0
+    """
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from scipy.stats import spearmanr
+
+    sns.set(style="white", context="notebook", font_scale=1.2)
+    plt.figure(figsize=(8, 6), dpi=300)
+
+    # Select top x% based on R²
+    n_top = int(len(merged_df) * top_percent)
+    top_df = merged_df.nlargest(n_top, 'r2').copy()
+
+    # Compute overall Spearman's rho
+    if top_df[utility_col].nunique() > 1:
+        overall_rho, _ = spearmanr(top_df[utility_col], top_df['r2'])
+        overall_rho = round(overall_rho, 2)
+    else:
+        overall_rho = None
+
+    # Per-sampling-type rho
+    rho_labels = {}
+    grouped = top_df.groupby('sampling_type')
+    for name, group in grouped:
+        if group[utility_col].nunique() > 1:
+            rho, _ = spearmanr(group[utility_col], group['r2'])
+            rho_labels[name] = f"{name} (ρ={rho:.2f})"
+        else:
+            rho_labels[name] = f"{name} (ρ=N/A)"
+
+    # Apply labels
+    top_df['sampling_type_rho'] = top_df['sampling_type'].map(rho_labels)
+
+    # Plot
+    ax = sns.scatterplot(
+        data=top_df,
+        x=utility_col,
+        y='r2',
+        hue='sampling_type_rho',
+        palette='Set2',
+        s=70,
+        alpha=0.8,
+        edgecolor='k'
+    )
+
+    ax.set_xlabel(f"Utility ({utility_col})", fontsize=12)
+    ax.set_ylabel("R² Score", fontsize=12)
+    ax.grid(False)
+
+    # Title logic
+    if title:
+        ax.set_title(title, fontsize=14, pad=15)
+    elif overall_rho is not None:
+        ax.set_title(f"Top {int(top_percent * 100)}%: Utility vs. R² (ρ = {overall_rho})", fontsize=14, pad=15)
+    else:
+        ax.set_title(f"Top {int(top_percent * 100)}%: Utility vs. R²", fontsize=14, pad=15)
+
+    if set_y_lim:
+        ax.set_ylim(bottom=0)
+
+    plt.legend(title='Sampling Type', loc='best', fontsize=10)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved plot to {save_path}")
+    else:
+        plt.show()
+
 
 # === Usage Example ===
 if __name__ == '__main__':
@@ -136,11 +232,18 @@ if __name__ == '__main__':
         set_y_lim = (label == "population")
         merged_df = load_and_merge_utilities_r2(utilities_csv_path, summaries_dir)
 
-        for utility in ['size', 'pop_risk_0.5', 'pop_risk_0', 'pop_risk_0.01', 'pop_risk_0.1', 'pop_risk_0.9', 'pop_risk_0.99', 'pop_risk_1']:
+        for utility in ['size', 'pop_risk_0.5', 'pop_risk_0', 'pop_risk_0.01', 'pop_risk_0.1', 'pop_risk_0.9', 'pop_risk_0.99', 'pop_risk_1', 'similarity', 'diversity']:
 
             plot_utility_vs_r2(
                 merged_df,
                 utility_col=utility,
                 save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot.png"),
                 set_y_lim=set_y_lim
+            )
+
+            plot_top_percent_utility_vs_r2(
+                merged_df,
+                utility_col=utility,
+                save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot_top_10_percent.png"),
+                set_y_lim=False
             )

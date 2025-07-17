@@ -1,0 +1,11 @@
+filename,sample_size,seed,source,r2
+IDS_region_28_600_points_seed_1.pkl,600,,region_based,-1.425758003016977
+IDS_region_28_600_points_seed_1213.pkl,600,,region_based,-3.7493365364992126
+IDS_region_28_600_points_seed_123.pkl,600,,region_based,-0.6584794554046371
+IDS_region_28_600_points_seed_1234.pkl,600,,region_based,-0.6734330305690885
+IDS_region_28_600_points_seed_1415.pkl,600,,region_based,-0.76697703801334
+IDS_region_28_600_points_seed_42.pkl,600,,region_based,-0.7247056809367551
+IDS_region_28_600_points_seed_456.pkl,600,,region_based,-2.034690865390933
+IDS_region_28_600_points_seed_5678.pkl,600,,region_based,-2.030509567172629
+IDS_region_28_600_points_seed_789.pkl,600,,region_based,-0.8976028310149189
+IDS_region_28_600_points_seed_9101.pkl,600,,region_based,-0.8783729481144202

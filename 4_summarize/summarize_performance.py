@@ -42,11 +42,10 @@ def summarize_convenience_sampling_r2(csv_path, sample_size, **kwargs):
     """
     method = kwargs.get('method', None)
     assert method is not None, 'Need to specify method'
-
     df = pd.read_csv(csv_path)
 
     # Filter by sample_size and method
-    filtered = df[(df['sample_size'] == sample_size) & (df['method'] == method)]
+    filtered = df[(df['sample_size'] == sample_size) & (df['source'] == method)]
 
     if filtered.empty:
         print("No matching data found.")
@@ -54,7 +53,7 @@ def summarize_convenience_sampling_r2(csv_path, sample_size, **kwargs):
 
     summary_df = pd.DataFrame({
         'sample_size': [sample_size],
-        'method': [method],
+        'source' : [method],
         'mean_r2': [filtered['r2'].mean()],
         'std_r2': [filtered['r2'].std()],
         'num_seeds': [filtered['r2'].count()],
@@ -119,25 +118,24 @@ def save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, **kwa
 
     #filtered, summary_df = summary_fn(csv_path, sample_size, **kwargs)
     filtered = summary_fn(csv_path, sample_size, **kwargs)
-    if filtered is None:
-        from IPython import embed; embed()
-    filtered = filtered.drop(columns=['Unnamed: 0'], errors='ignore')
+    if filtered is not None:
+        filtered = filtered.drop(columns=['Unnamed: 0'], errors='ignore')
 
     # if summary_df is None or summary_df.empty:
     #     print("No summary data to save.")
     #     return
 
-    points_per_cluster = kwargs.get('points_per_cluster', None)
-    ppc_str = f"_ppc_{points_per_cluster}" if points_per_cluster is not None else ""
-    method = kwargs.get('method', None)
-    method_str = f"_{method}" if method is not None else ""
+        points_per_cluster = kwargs.get('points_per_cluster', None)
+        ppc_str = f"_ppc_{points_per_cluster}" if points_per_cluster is not None else ""
+        method = kwargs.get('method', None)
+        method_str = f"_{method}" if method is not None else ""
 
-    filename = f"filtered_{sampling_type}{method_str}_sample_size_{sample_size}{ppc_str}.csv"
-    filtered_csv_path = os.path.join(summary_csv_dir, filename)
+        filename = f"filtered_{sampling_type}{method_str}_sample_size_{sample_size}{ppc_str}.csv"
+        filtered_csv_path = os.path.join(summary_csv_dir, filename)
 
-    filtered.to_csv(filtered_csv_path, index=False)
+        filtered.to_csv(filtered_csv_path, index=False)
 
-    print(f"Saved all filtered to {filtered_csv_path}")
+        print(f"Saved all filtered to {filtered_csv_path}")
 
     # filename = f"summary_{sampling_type}{method_str}_sample_size_{sample_size}{ppc_str}.csv"
     # summary_csv_path = os.path.join(summary_csv_dir, filename)
@@ -153,20 +151,37 @@ SUMMARY_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    for label in ['population', 'treecover']:
-        summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries"
+    # for label in ['population', 'treecover']:
+        # summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries"
+
+        # for sample_size in range(100, 1100, 100):
+        #     sampling_type = "cluster_sampling"
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+        #     for points_per_cluster in [2, 5, 10, 25]:
+        #         save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, points_per_cluster=points_per_cluster)
+
+        #     sampling_type = 'convenience_sampling'
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='urban_based')
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='region_based')
+
+        #     sampling_type = 'random_sampling'
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)
+
+        summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries"
 
         for sample_size in range(100, 1100, 100):
             sampling_type = "cluster_sampling"
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-            # for points_per_cluster in [2, 5, 10, 25]:
-            save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type) #points_per_cluster=points_per_cluster)
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+            for points_per_cluster in [2, 5, 10, 25]:
+                save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, points_per_cluster=points_per_cluster)
 
             sampling_type = 'convenience_sampling'
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-            for method in ['deterministic', 'probabilistic']:
-                save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method=method)
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+            save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='urban_based')
+            save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='region_based')
 
             sampling_type = 'random_sampling'
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
             save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)

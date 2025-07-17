@@ -108,22 +108,20 @@ def parse_cluster_metadata(fname, sampled_indices, r2):
     }
 
 def parse_convenience_metadata(fname, sampled_indices, r2):
-    method = None
     seed = None
-    if "_deterministic.pkl" in fname:
-        method = "deterministic"
+    # Determine source type
+    if "urban" in fname:
+        source = "urban_based"
+    elif "region" in fname:
+        source = "region_based"
     else:
-        m = re.search(r"_probabilistic_seed_(\d+)\.pkl$", fname)
-        if m:
-            method = "probabilistic"
-            seed = int(m.group(1))
-        else:
-            method = "unknown"
+        source = "unknown"
+
     return {
-        "filename": fname,
+        "filename": os.path.basename(fname),
         "sample_size": len(sampled_indices),
-        "method": method,
         "seed": seed,
+        "source": source,
         "r2": r2,
     }
 

@@ -59,7 +59,7 @@ def argparser():
     parser.add_argument('--unit_assignment_path', default=None, type=str)
     parser.add_argument('--unit_cost_path', default=None, type=str)
 
-    parser.add_argument('--util-lambda', default=0.5, type=float)
+    parser.add_argument('--util_lambda', default=0.5, type=float)
 
     parser.add_argument('--similarity_matrix_path', default=None, type=str)
     parser.add_argument('--distance_matrix_path', default=None, type=str)
@@ -77,7 +77,7 @@ def main(cfg):
         exp_dir = now.strftime('%Y%m%d_%H%M%S')
     else:
         seed_str = f"seed_{cfg.RNG_SEED}"
-        exp_dir = f"{cfg.INITIAL_SET.STR}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
+        exp_dir = f"{cfg.INITIAL_SET.STR}/cost_aware/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}" if cfg.ACTIVE_LEARNING.COST_AWARE else f"{cfg.INITIAL_SET.STR}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
 
         # Check if INITIAL_SET.STR already ends with seed_{seed}
         if not cfg.INITIAL_SET.STR.endswith(seed_str):
@@ -171,6 +171,11 @@ if __name__ == "__main__":
     cfg.INITIAL_SET.STR = args.initial_set_str
     cfg.RNG_SEED = args.seed
 
+    cfg.DATASET.ROOT_DIR = os.path.abspath(cfg.DATASET.ROOT_DIR)
+    data_obj = Data(cfg)
+    train_data, _ = data_obj.getDataset(isTrain=True)
+    test_data, _ = data_obj.getDataset(isTrain=False)
+
     if args.id_path:
         with open(args.id_path, "rb") as f:
             ids = dill.load(f)
@@ -181,29 +186,64 @@ if __name__ == "__main__":
     if args.cost_func:
         cfg.COST.FN = args.cost_func
         cfg.COST.NAME = args.cost_name or args.cost_func
+        cfg.ACTIVE_LEARNING.COST_AWARE = True
+    else:
+        cfg.COST.FN = 'uniform'
+        cfg.COST.NAME = 'uniform'
+
+    if args.sampling_fn in ['poprisk', 'similarity', 'diversity']:
+        cfg.ACTIVE_LEARNING.COST_AWARE = True
 
     if args.cost_array_path:
         with open(args.cost_array_path, "rb") as f:
-            cost_array = dill.load(f)['costs']
-        cfg.COST.ARRAY = cost_array.tolist() if not isinstance(cost_array, list) else cost_array
+            loaded = dill.load(f)
+        if 'ids' in loaded:
+            idx_to_cost = dict(zip(loaded['ids'], loaded['costs']))
+            # train_data has indices
+            cost_array = [idx_to_cost[idx] for idx in train_data.ids]
+        else:
+            cost_array = loaded['assignments']
+        cfg.COST.ARRAY = [float(x) for x in cost_array]
 
     if args.group_assignment_path:
         cfg.GROUPS.GROUP_TYPE = args.group_type
         with open(args.group_assignment_path, "rb") as f:
-            group_assignments = dill.load(f)['assignments']
-        cfg.GROUPS.GROUP_ASSIGNMENT = group_assignments.tolist() if not isinstance(group_assignments, list) else group_assignments
+            loaded = dill.load(f)
+        if isinstance(loaded, dict):
+            idx_to_assignment = loaded
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        elif 'ids' in loaded:
+            idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
+            # train_data has indices
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        else:
+            assignments_ordered = loaded['assignments']
+
+        cfg.GROUPS.GROUP_ASSIGNMENT = [str(x) for x in assignments_ordered]
+
 
     if args.unit_assignment_path:
         cfg.UNITS.UNIT_TYPE = args.unit_type
         with open(args.unit_assignment_path, "rb") as f:
-            unit_assignments = dill.load(f)['assignments']
-        cfg.UNITS.UNIT_ASSIGNMENT = unit_assignments.tolist() if not isinstance(unit_assignments, list) else unit_assignments #how do you know in the right order?
+            loaded = dill.load(f)
+        if isinstance(loaded, dict):
+            idx_to_assignment = loaded
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        elif 'ids' in loaded:
+            idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        else:
+            assignments_ordered = loaded['assignments']
+
+        cfg.UNITS.UNIT_ASSIGNMENT = [str(x) for x in assignments_ordered]
+
         cfg.UNITS.POINTS_PER_UNIT = args.points_per_unit
 
         if args.unit_cost_path:
-            with open(args.unit_cost_path, "rb") as f:
-                unit_cost = dill.load(f)
-            cfg.COST.UNIT_COST = [unit_cost]
+            cfg.COST.UNIT_COST_PATH = args.unit_cost_path
+
+    if args.util_lambda:
+        cfg.ACTIVE_LEARNING.UTIL_LAMBDA = args.util_lambda
 
     cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH = args.similarity_matrix_path
     cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = args.distance_matrix_path

@@ -1,0 +1,5 @@
+filename,sample_size,seed,source,r2
+IDS_top50_urban_800_points_probabilistic_seed_1.pkl,800,,urban_based,-0.1309113471110365
+IDS_top50_urban_800_points_probabilistic_seed_123.pkl,800,,urban_based,-0.2138721412480604
+IDS_top50_urban_800_points_probabilistic_seed_42.pkl,800,,urban_based,0.1012553555820141
+IDS_top50_urban_800_points_probabilistic_seed_456.pkl,800,,urban_based,-0.220658404148248

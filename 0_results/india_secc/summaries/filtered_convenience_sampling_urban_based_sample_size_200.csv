@@ -1,0 +1,11 @@
+filename,sample_size,seed,source,r2
+IDS_top50_urban_200_points_probabilistic_seed_1.pkl,200,,urban_based,-0.0830808066968462
+IDS_top50_urban_200_points_probabilistic_seed_1213.pkl,200,,urban_based,-0.2767345617591865
+IDS_top50_urban_200_points_probabilistic_seed_123.pkl,200,,urban_based,-0.2550393584263117
+IDS_top50_urban_200_points_probabilistic_seed_1234.pkl,200,,urban_based,-0.2485265412412212
+IDS_top50_urban_200_points_probabilistic_seed_1415.pkl,200,,urban_based,-0.2683300214781565
+IDS_top50_urban_200_points_probabilistic_seed_42.pkl,200,,urban_based,-1.2293568168447018
+IDS_top50_urban_200_points_probabilistic_seed_456.pkl,200,,urban_based,0.0059972011119736
+IDS_top50_urban_200_points_probabilistic_seed_5678.pkl,200,,urban_based,-1.020053586694714
+IDS_top50_urban_200_points_probabilistic_seed_789.pkl,200,,urban_based,-0.6942795300417399
+IDS_top50_urban_200_points_probabilistic_seed_9101.pkl,200,,urban_based,-0.1169725696684156
