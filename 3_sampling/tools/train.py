@@ -40,7 +40,8 @@ def argparser():
     parser = argparse.ArgumentParser(description='Subset Selection - Ridge Regression')
     parser.add_argument('--cfg', dest='cfg_file', required=True, type=str)
     parser.add_argument('--exp-name', required=True, type=str)
-    parser.add_argument('--sampling-fn', required=True, type=str)
+    parser.add_argument('--sampling_fn', required=True, type=str)
+    parser.add_argument('--random_strategy', default=None, type=str)
     parser.add_argument('--budget', required=True, type=int)
     parser.add_argument('--initial_size', default=0, type=int)
     parser.add_argument('--id-path', default=None, type=str)
@@ -72,16 +73,34 @@ def main(cfg):
     dataset_dir = os.path.join(cfg.OUT_DIR, cfg.DATASET.NAME)
     os.makedirs(dataset_dir, exist_ok=True)
 
+
     if cfg.EXP_NAME == 'auto':
         now = datetime.now()
         exp_dir = now.strftime('%Y%m%d_%H%M%S')
     else:
         seed_str = f"seed_{cfg.RNG_SEED}"
-        exp_dir = f"{cfg.INITIAL_SET.STR}/cost_aware/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}" if cfg.ACTIVE_LEARNING.COST_AWARE else f"{cfg.INITIAL_SET.STR}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
+        base_dir = (f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/opt/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
+                    if cfg.ACTIVE_LEARNING.OPT
+                    else f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}")
+
+        # Add random_strategy subfolder if cost_name is cluster_based and sampling_fn is random
+        if cfg.COST.NAME == "cluster_based" and cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
+            random_strategy = getattr(cfg.ACTIVE_LEARNING, "RANDOM_STRATEGY", None)
+            if random_strategy:
+                base_dir = f"{base_dir}/{random_strategy}"
+
+        # Append util_lambda if sampling_fn is poprisk
+        if cfg.ACTIVE_LEARNING.SAMPLING_FN == "poprisk":
+            util_lambda = getattr(cfg.ACTIVE_LEARNING, "UTIL_LAMBDA", None)
+            if util_lambda is not None:
+                base_dir = f"{base_dir}/util_lambda_{util_lambda}"
 
         # Check if INITIAL_SET.STR already ends with seed_{seed}
         if not cfg.INITIAL_SET.STR.endswith(seed_str):
-            exp_dir = f"{exp_dir}/{seed_str}"
+            exp_dir = f"{base_dir}/{seed_str}"
+        else:
+            exp_dir = base_dir
+
 
 
     exp_dir = os.path.join(dataset_dir, exp_dir)
@@ -167,6 +186,7 @@ if __name__ == "__main__":
     cfg.merge_from_file(args.cfg_file)
     cfg.EXP_NAME = args.exp_name
     cfg.ACTIVE_LEARNING.SAMPLING_FN = args.sampling_fn
+    cfg.ACTIVE_LEARNING.RANDOM_STRATEGY = args.random_strategy
     cfg.ACTIVE_LEARNING.BUDGET_SIZE = args.budget
     cfg.INITIAL_SET.STR = args.initial_set_str
     cfg.RNG_SEED = args.seed
@@ -186,13 +206,14 @@ if __name__ == "__main__":
     if args.cost_func:
         cfg.COST.FN = args.cost_func
         cfg.COST.NAME = args.cost_name or args.cost_func
-        cfg.ACTIVE_LEARNING.COST_AWARE = True
     else:
         cfg.COST.FN = 'uniform'
         cfg.COST.NAME = 'uniform'
 
-    if args.sampling_fn in ['poprisk', 'similarity', 'diversity']:
-        cfg.ACTIVE_LEARNING.COST_AWARE = True
+    if args.sampling_fn in ['greedycost', 'poprisk', 'similarity', 'diversity']:
+        cfg.ACTIVE_LEARNING.OPT = True
+    else:
+        cfg.ACTIVE_LEARNING.OPT = False
 
     if args.cost_array_path:
         with open(args.cost_array_path, "rb") as f:

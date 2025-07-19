@@ -1,105 +1,269 @@
-# This file is modified from a code implementation shared with me by Prateek Munjal et al., authors of the paper https://arxiv.org/abs/2002.09564
-# GitHub: https://github.com/PrateekMunjal
-# ----------------------------------------------------------
+import dill
+import numpy as np
 
-import numpy as np 
-import torch
-from statistics import mean
-import gc
-import os
-import math
-import sys
-import time
-import pickle
-import math
-from copy import deepcopy
-from tqdm import tqdm
+from . import cost
 
-from scipy.spatial import distance_matrix
-import torch.nn as nn
+COST_FNS = {
+    "uniform": cost.uniform,
+    "pointwise_by_array": cost.pointwise_by_array,
+    "unit_aware_pointwise_cost": cost.unit_aware_pointwise_cost
+}
 
 class Sampling:
-    """
-    Here we implement different sampling methods which are used to sample
-    active learning points from unlabelled set.
-    """
-
-    def __init__(self, dataObj, cfg):
+    def __init__(self, cfg, lSet, uSet, budgetSize):
         self.cfg = cfg
-        self.cuda_id = 0 if cfg.ACTIVE_LEARNING.SAMPLING_FN.startswith("ensemble") else torch.cuda.current_device()
-        self.dataObj = dataObj
+        self.ds_name = self.cfg['DATASET']['NAME']
+        self.seed = self.cfg['RNG_SEED']
+        self.lSet = lSet.astype(int)
+        self.uSet = uSet.astype(int)
+        self.relevant_indices = np.concatenate([self.lSet, self.uSet]).astype(int)
+        self.budget = budgetSize
+        self._set_unit_assignment()
+        self._resolve_cost_func()
 
-    def gpu_compute_dists(self,M1,M2):
-        """
-        Computes L2 norm square on gpu
-        Assume 
-        M1: M x D matrix
-        M2: N x D matrix
+        self.unit_index_map = {u: i for i, u in enumerate(self.units)}
 
-        output: M x N matrix
-        """
-        M1_norm = (M1**2).sum(1).reshape(-1,1)
+        self.unit_to_indices = {
+            u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
+            for u in self.units
+        }
+        self.labeled_unit_vector = self._initialize_labeled_unit_vector()
 
-        M2_t = torch.transpose(M2, 0, 1)
-        M2_norm = (M2**2).sum(1).reshape(1,-1)
-        dists = M1_norm + M2_norm - 2.0 * torch.mm(M1, M2_t)
-        return dists
+    def _set_unit_assignment(self):
+        self.unit_assignment = np.array(self.cfg.UNITS.UNIT_ASSIGNMENT) if self.cfg.UNITS.UNIT_ASSIGNMENT is not None else np.arange(len(self.relevant_indices))
+        self.unit_assignment = self.unit_assignment[self.relevant_indices]
 
-    def get_predictions(self, clf_model, idx_set, dataset):
+        self.units = np.unique(self.unit_assignment)
+        self.points_per_unit = self.cfg.UNITS.POINTS_PER_UNIT if self.cfg.UNITS.POINTS_PER_UNIT is not None else None
 
-        clf_model.cuda(self.cuda_id)
-        #Used by bald acquisition
-        # if self.cfg.TRAIN.DATASET == "IMAGENET":
-        #     tempIdxSetLoader = imagenet_loader.construct_loader_no_aug(cfg=self.cfg, indices=idx_set, isDistributed=False, isShuffle=False, isVaalSampling=False)
-        # else:
-        tempIdxSetLoader = self.dataObj.getSequentialDataLoader(indexes=idx_set, batch_size=int(self.cfg.TRAIN.BATCH_SIZE/self.cfg.NUM_GPUS),data=dataset)
-        tempIdxSetLoader.dataset.no_aug = True
-        preds = []
-        for i, (x, _) in enumerate(tqdm(tempIdxSetLoader, desc="Collecting predictions in get_predictions function")):
-            with torch.no_grad():
-                x = x.cuda(self.cuda_id)
-                x = x.type(torch.cuda.FloatTensor)
+    def _resolve_cost_func(self):
+        cost_func_type = self.cfg.COST.FN
+        self.cost_func_type = cost_func_type
+        assert cost_func_type in COST_FNS, f"Invalid cost function type: {cost_func_type}"
 
-                temp_pred = clf_model(x)
+        self.cost_func = COST_FNS[cost_func_type]
 
-                #To get probabilities
-                temp_pred = torch.nn.functional.softmax(temp_pred,dim=1)
-                preds.append(temp_pred.cpu().numpy())
+        if cost_func_type == "pointwise_by_array":
+            if self.cfg.COST.UNIT_COST_PATH is not None:
+                with open(self.cfg.COST.UNIT_COST_PATH, "rb") as f:
+                    self.cost_dict = dill.load(f)
+                self.cost_array = np.array([self.cost_dict[u] for u in self.units])
+            elif self.cfg.COST.ARRAY is not None:
+                self.cost_array = np.array(self.cfg.COST.ARRAY)
+                self.cost_array = self.cost_array[self.relevant_indices]
+            else:
+                raise(AssertionError)
 
-        preds = np.concatenate(preds, axis=0)
-        tempIdxSetLoader.dataset.no_aug = False
-        return preds
+            self.cost_func = lambda s: cost.pointwise_by_array(s, self.cost_array)
 
 
-    def random(self, uSet, budgetSize):
-        """
-        Chooses <budgetSize> number of data points randomly from uSet.
-        
-        NOTE: The returned uSet is modified such that it does not contain active datapoints.
+    def _compute_labeled_cost(self, labeled_unit_vector):
+        return self.cost_func(labeled_unit_vector)
 
-        INPUT
-        ------
+    def _initialize_labeled_unit_vector(self):
+        labeled_unit_vector = np.zeros(len(self.units), dtype=bool)
 
-        uSet: np.ndarray, It describes the index set of unlabelled set.
+        for i, u in enumerate(self.units):
+            indices = self.unit_to_indices[u]
+            if any(idx in self.lSet for idx in indices):
+                labeled_unit_vector[i] = True
+        return labeled_unit_vector
 
-        budgetSize: int, The number of active data points to be chosen for active learning.
+    def random(self, strategy=None):
+        #self.cost_func_type = cfg.COST.FN
+        if self.cost_func_type == 'uniform':
+            return self.random_uniform()
+        elif strategy == 'point':
+            return self.random_point_cost_aware()
+        else:
+            return self.random_unit_cost_aware() #will sample points if units are points
 
-        OUTPUT
-        -------
-
-        Returns activeSet, uSet   
-        """
-
-        np.random.seed(self.cfg.RNG_SEED)
-
-        assert isinstance(uSet, np.ndarray), "Expected uSet of type np.ndarray whereas provided is dtype:{}".format(type(uSet))
-        assert isinstance(budgetSize,int), "Expected budgetSize of type int whereas provided is dtype:{}".format(type(budgetSize))
-        assert budgetSize > 0, "Expected a positive budgetSize"
-        assert budgetSize < len(uSet), "BudgetSet cannot exceed length of unlabelled set. Length of unlabelled set: {} and budgetSize: {}"\
-            .format(len(uSet), budgetSize)
-
-        tempIdx = [i for i in range(len(uSet))]
+    def random_uniform(self):
+        tempIdx = [i for i in range(len(self.uSet))]
         np.random.shuffle(tempIdx)
-        activeSet = uSet[tempIdx[0:budgetSize]]
-        uSet = uSet[tempIdx[budgetSize:]]
+        activeSet = self.uSet[tempIdx[0:self.budget]]
+        uSet = self.uSet[tempIdx[self.budget:]]
         return activeSet, uSet
+    
+    def random_point_cost_aware(self):
+        print("Running point-wise random selection...")
+        np.random.seed(self.seed)
+
+        lSet = set(self.lSet)
+        uSet = set(self.uSet)
+
+        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        labeled_units = set(self.unit_assignment[self.lSet])
+
+        all_unlabeled_points = list(uSet - lSet)
+        np.random.shuffle(all_unlabeled_points)
+
+        selected = []
+
+        for idx in all_unlabeled_points:
+            unit = self.unit_assignment[idx]
+            unit_idx = self.unit_index_map[unit]
+
+            #temporarily include
+            original = unit_inclusion_vector[unit_idx]
+            unit_inclusion_vector[unit_idx] = 1
+
+            #Check cost
+            if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+                #revert inclusion if over budget
+                unit_inclusion_vector[unit_idx] = original
+                break
+
+            selected.append(idx)
+            lSet.add(idx)
+            uSet.remove(idx)
+            labeled_units.add(unit)
+
+        activeSet = np.array(selected)
+        remainSet = np.array(sorted(uSet))
+        return activeSet, remainSet
+
+    
+    def random_unit_cost_aware(self):
+        print("Running unit-wise random selection...")
+        np.random.seed(self.seed)
+
+        lSet = set(self.lSet)
+        uSet = set(self.uSet)
+
+        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        labeled_units = set(self.unit_assignment[self.lSet])
+
+        selected = []
+        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector + self.budget):
+            non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
+            permuted_units = np.random.permutation(non_labeled_units)
+
+            for u in permuted_units:
+                unit_inclusion_vector[self.unit_index_map[u]] = 1
+                if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+                    unit_inclusion_vector[self.unit_index_map[u]] = 0
+                    break
+
+                # Get indices of points in the selected unit
+                unit_indices = self.unit_to_indices[u]
+
+                # Update sets
+                selected.extend(unit_indices)
+                lSet.update(unit_indices)
+                uSet.difference_update(unit_indices)
+                labeled_units.add(u)
+
+        activeSet = np.array(selected)
+        remainSet = np.array(sorted(uSet))
+        return activeSet, remainSet
+
+    def _set_groups(self):
+        assert self.cfg.GROUPS.GROUP_ASSIGNMENT is not None, "Group assignment must not be none for poprisk utility function"
+
+        self.group_assignment = np.array(self.cfg.GROUPS.GROUP_ASSIGNMENT)
+
+        self.group_assignment = self.group_assignment[self.relevant_indices]
+
+
+    def stratified(self):
+        self._set_groups()
+        return self._representation_sampling("balanced")
+
+    def match_population_proportion(self):
+        self._set_groups()
+        return self._representation_sampling("match_population")
+
+    def _representation_sampling(self, strategy):
+        assert self.group_assignment is not None, "Group assignment must be provided for representation sampling"
+        np.random.seed(self.seed)
+
+        print(f"Starting representation sampling with strategy: {strategy}")
+        selected = []
+        all_groups = np.unique(self.group_assignment)
+        group_total = {g: np.sum(self.group_assignment == g) for g in all_groups}
+
+        print(f"All groups found: {all_groups}")
+        print(f"Group population sizes: {group_total}")
+
+        labeled_group_counts = dict(zip(*np.unique(self.group_assignment[list(self.lSet)], return_counts=True)))
+        for g in all_groups:
+            labeled_group_counts.setdefault(g, 0)
+
+        print(f"Initial labeled group counts: {labeled_group_counts}")
+
+        lSet = set(self.lSet)
+        uSet = set(self.uSet)
+
+        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+
+        step = 0
+        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector) + self.budget:
+            step += 1
+            print(f"\nStep {step}")
+            
+            if strategy == "balanced":
+                candidate_groups = sorted(labeled_group_counts, key=lambda g: labeled_group_counts[g])
+                print(f"Candidate groups (least labeled first): {candidate_groups}")
+            elif strategy == "match_population":
+                total_labeled = sum(labeled_group_counts.values()) or 1
+                pop_prop = {g: group_total[g] / sum(group_total.values()) for g in all_groups}
+                labeled_prop = {g: labeled_group_counts[g] / total_labeled for g in all_groups}
+                deviation = {g: abs(labeled_prop[g] - pop_prop[g]) for g in all_groups}
+                candidate_groups = sorted(deviation, key=deviation.get, reverse=True)
+                print(f"Candidate groups (by deviation from population prop): {candidate_groups}")
+
+            np.random.shuffle(candidate_groups)
+            print(f"Candidate groups after shuffle: {candidate_groups}")
+
+            chosen = None
+            for g in candidate_groups:
+                candidates = [idx for idx in uSet if self.group_assignment[idx] == g]
+                if candidates:
+                    chosen = np.random.choice(candidates)
+                    print(f"Chose index {chosen} from group {g}")
+                    break
+
+            assert chosen is not None, f"Selection failed"
+
+            unit_of_chosen = self.unit_assignment[chosen]
+            unit_idx = self.unit_index_map[unit_of_chosen]
+            unit_inclusion_vector[unit_idx] = 1  # mark unit as selected
+
+            if self.cost_func(unit_inclusion_vector) > self.cost_func(self.labeled_unit_vector) + self.budget:
+                print(f"Adding unit {unit_of_chosen} (idx {unit_idx}) would exceed budget")
+                unit_inclusion_vector[unit_idx] = 0
+                break 
+            
+            selected.append(chosen)
+            uSet.remove(chosen)
+            lSet.add(chosen)
+            labeled_group_counts[self.group_assignment[chosen]] += 1
+
+            print(f"Updated labeled_group_counts: {labeled_group_counts}")
+            print(f"Unit {unit_of_chosen} marked selected (index {unit_idx}).")
+
+        activeSet = np.array(selected)
+        remainSet = np.array(sorted(list(uSet)))
+        print(f"\n✅ Sampling finished. Total selected: {len(activeSet)}")
+        return activeSet, remainSet
+
+
+    def _unit_vector_to_active_set(self, unit_inclusion_vector):
+        selected_units = self.units[unit_inclusion_vector]
+        active_set = []
+        for u in selected_units:
+            available = self.unit_to_indices[u]
+            unlabeled = [idx for idx in available if idx in self.uSet]
+            if self.points_per_unit is None:
+                selected = unlabeled
+            elif len(unlabeled) <= self.points_per_unit:
+                selected = unlabeled
+            else:
+                selected = np.random.choice(unlabeled, size=self.points_per_unit, replace=False)
+            active_set.extend(selected)
+
+        active_set = np.array(sorted(set(active_set)))
+        remain_set = np.array(sorted(self.uSet - set(active_set)))
+        cost = self._compute_labeled_cost(unit_inclusion_vector)
+        return active_set, remain_set, cost

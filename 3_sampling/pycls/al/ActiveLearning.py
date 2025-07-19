@@ -14,7 +14,6 @@ class ActiveLearning:
 
     def __init__(self, dataObj, cfg):
         self.dataObj = dataObj
-        self.sampler = Sampling(dataObj=dataObj,cfg=cfg)
         self.cfg = cfg
         
     def sample_from_uSet(self, clf_model, lSet, uSet, supportingModels=None, **kwargs):
@@ -35,43 +34,24 @@ class ActiveLearning:
         assert self.cfg.ACTIVE_LEARNING.BUDGET_SIZE < len(uSet), "BudgetSet cannot exceed length of unlabelled set. Length of unlabelled set: {} and budgetSize: {}"\
         .format(len(uSet), self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
 
-        if self.cfg.ACTIVE_LEARNING.COST_AWARE == True:
+        if self.cfg.ACTIVE_LEARNING.OPT == True:
             from .opt import Opt
             opt = Opt(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
             opt.set_utility_func(self.cfg.ACTIVE_LEARNING.SAMPLING_FN)
                 
-            if self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["random"]:
-                activeSet, uSet, total_cost = opt.select_samples()
-                return activeSet, uSet #, total_cost
-            else:
-                activeSet, uSet, total_cost, probs, relevant_indices = opt.select_samples()
-                return activeSet, uSet #, total_cost, probs, relevant_indices 
+            activeSet, uSet = opt.select_samples()
+            return activeSet, uSet
 
+        self.sampler = Sampling(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
         if self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
-
-            activeSet, uSet = self.sampler.random(uSet=uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
-
-        elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN.startswith("typiclust"):
-            from .typiclust import TypiClust
-            is_scan = self.cfg.ACTIVE_LEARNING.SAMPLING_FN.endswith('dc')
-            tpc = TypiClust(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE, is_scan=is_scan)
-            activeSet, uSet = tpc.select_samples()
-        
-        elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() in ["inverse_typiclust", 'inversetypiclust']:
-            from .typiclust import TypiClust
-            is_scan = self.cfg.ACTIVE_LEARNING.SAMPLING_FN.endswith('dc')
-            tpc = TypiClust(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE, inverse=True, is_scan=is_scan)
-            activeSet, uSet = tpc.select_samples()
+            strategy = self.cfg.ACTIVE_LEARNING.RANDOM_STRATEGY
+            activeSet, uSet = self.sampler.random(strategy)
 
         elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["stratified"]:
-            from .representation import Representation
-            rep = Representation(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE, strategy="balanced")
-            activeSet, uSet = rep.select_samples()
+            activeSet, uSet = self.sampler.stratified()
 
         elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion"]:
-            from .representation import Representation
-            rep = Representation(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE, strategy="match_population")
-            activeSet, uSet = rep.select_samples()
+            activeSet, uSet = self.sampler.match_population_proportion()
 
         else:
             print(f"{self.cfg.ACTIVE_LEARNING.SAMPLING_FN} is either not implemented or there is some spelling mistake.")

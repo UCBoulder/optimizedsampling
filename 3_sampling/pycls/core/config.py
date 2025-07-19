@@ -82,8 +82,9 @@ _C.TEST.DATASET = ''
 # #  ACTIVE LEARNING options
 # #-------------------------------------------------------------------------------#
 _C.ACTIVE_LEARNING = CN()
-_C.ACTIVE_LEARNING.COST_AWARE = False
+_C.ACTIVE_LEARNING.OPT = False
 _C.ACTIVE_LEARNING.SAMPLING_FN = 'random'
+_C.ACTIVE_LEARNING.RANDOM_STRATEGY = 'unit'
 _C.ACTIVE_LEARNING.LSET_PATH = ''
 _C.ACTIVE_LEARNING.USET_PATH = ''
 
