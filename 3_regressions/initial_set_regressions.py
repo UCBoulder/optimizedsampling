@@ -94,36 +94,94 @@ def sampling_r2_scores(
 # --- Metadata parsers for each sampling type ---
 
 import re
+import os
 
 def parse_cluster_metadata(fname, sampled_indices, r2):
-    parts = fname.replace(".pkl", "").split("_")
+    base = os.path.basename(fname).replace(".pkl", "")
+    parts = base.split("_")
     return {
         "filename": fname,
-        "seed": parts[-1],
+        "seed": parts[-1],                      # 1
         "sample_size": len(sampled_indices),
-        "points_per_cluster": parts[-8],
-        "strata": parts[1],
-        "cluster": parts[3],
+        "points_per_cluster": parts[-4].replace("ppc", ""),  # "2ppc" → "2"
+        "strata": parts[3],                     # "county"
+        "cluster": parts[4],                    # "county"
         "r2": r2,
     }
 
 def parse_convenience_metadata(fname, sampled_indices, r2):
-    seed = None
-    # Determine source type
-    if "urban" in fname:
-        source = "urban_based"
-    elif "region" in fname:
-        source = "region_based"
-    else:
-        source = "unknown"
+    base = os.path.basename(fname).replace(".pkl", "")
+    parts = base.split("_")
 
-    return {
-        "filename": os.path.basename(fname),
-        "sample_size": len(sampled_indices),
-        "seed": seed,
-        "source": source,
-        "r2": r2,
-    }
+    # Get source from the directory
+    source = "unknown"
+    if "urban_based" in fname:
+        source = "urban_based"
+    elif "region_based" in fname:
+        source = "region_based"
+    elif "cluster_based" in fname:
+        source = "cluster_based"
+
+    # Extract common metadata
+    seed = parts[-1] if "seed" in parts else None
+    method = parts[-2] if "seed" in parts else None
+
+    # Initialize optional fields
+    cluster_type = None
+    points_per_cluster = None
+    num_clusters = None
+
+    num_urban = None
+    for part in parts:
+        match = re.match(r"top(\d+)", part)
+        if match:
+            num_urban = int(match.group(1))
+            break
+
+    if source == "cluster_based":
+        # Look for "cluster" in parts and get the type following it
+        if "cluster" in parts:
+            cluster_idx = parts.index("cluster")
+            cluster_type = parts[cluster_idx + 1]
+        
+        if "ppc" in parts:
+            ppc_idx = parts.index("ppc")
+            try:
+                points_per_cluster = int(parts[ppc_idx - 1])
+            except ValueError:
+                points_per_cluster = None
+        
+        if "clusters" in parts:
+            cluster_count_idx = parts.index("clusters")
+            try:
+                num_clusters = int(parts[cluster_count_idx - 1])
+            except ValueError:
+                num_clusters = None
+
+        return {
+            "filename": os.path.basename(fname),
+            "sample_size": len(sampled_indices),
+            "seed": seed,
+            "source": source,
+            "method": method,
+            "num_urban": num_urban,
+            "cluster_type": cluster_type,
+            "points_per_cluster": points_per_cluster,
+            "num_clusters": num_clusters,
+            "r2": r2,
+        }
+    else:
+        return {
+            "filename": os.path.basename(fname),
+            "sample_size": len(sampled_indices),
+            "seed": seed,
+            "source": source,
+            "method": method,
+            "num_urban": num_urban,
+            "r2": r2,
+        }
+
+
 
 def parse_random_metadata(fname, sampled_indices, r2):
     m = re.search(r"random_sample_(\d+)_points_seed_(\d+)\.pkl$", fname)

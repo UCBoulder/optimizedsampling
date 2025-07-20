@@ -60,6 +60,8 @@ def argparser():
     parser.add_argument('--unit_assignment_path', default=None, type=str)
     parser.add_argument('--unit_cost_path', default=None, type=str)
 
+    parser.add_argument('--region_assignment_path', default=None, type=str)
+
     parser.add_argument('--util_lambda', default=0.5, type=float)
 
     parser.add_argument('--similarity_matrix_path', default=None, type=str)
@@ -262,6 +264,20 @@ if __name__ == "__main__":
 
         if args.unit_cost_path:
             cfg.COST.UNIT_COST_PATH = args.unit_cost_path
+
+    if args.region_assignment_path:
+        with open(args.unit_assignment_path, "rb") as f:
+            loaded = dill.load(f)
+        if isinstance(loaded, dict):
+            idx_to_assignment = loaded
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        elif 'ids' in loaded:
+            idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        else:
+            assignments_ordered = loaded['assignments']
+
+        cfg.REGIONS.REGION_ASSIGNMENT = [str(x) for x in assignments_ordered]
 
     if args.util_lambda:
         cfg.ACTIVE_LEARNING.UTIL_LAMBDA = args.util_lambda

@@ -133,6 +133,13 @@ _C.UNITS.TYPE = None
 _C.UNITS.UNIT_ASSIGNMENT = None
 _C.UNITS.POINTS_PER_UNIT = None
 
+# #-------------------------------------------------------------------------------#
+# #  REGION options
+# #-------------------------------------------------------------------------------#
+_C.REGION = CN()
+_C.REGIONS.TYPE = None
+_C.REGIONS.REGION_ASSIGNMENT = None
+
 def assert_cfg():
     """Checks config values invariants."""
     assert _C.TRAIN.SPLIT in ['train', 'val', 'test'], \

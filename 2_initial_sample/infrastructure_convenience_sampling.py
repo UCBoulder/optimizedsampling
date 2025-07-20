@@ -3,10 +3,42 @@ import dill
 import numpy as np
 import geopandas as gpd
 import pandas as pd
-from shapely.ops import nearest_points
-from shapely.strtree import STRtree
-from geopy.distance import geodesic
 import matplotlib.pyplot as plt
+
+from sklearn.neighbors import BallTree
+from shapely.geometry import Point
+
+def compute_exact_geodesic_nn_balltree(points_geom, urban_geom):
+    """
+    Compute geodesic distances (in meters) from input geometries to their nearest
+    urban geometry using BallTree with haversine metric.
+
+    All geometries must be in EPSG:4326.
+    If inputs are not Points (e.g. Polygon or MultiPolygon), their centroids are used.
+    """
+    def ensure_points(geoms):
+        """Convert Polygon/MultiPolygon to centroid if necessary."""
+        return [geom.centroid if not geom.geom_type == "Point" else geom for geom in geoms]
+
+    # Ensure all are points
+    points_geom_clean = ensure_points(points_geom)
+    urban_geom_clean = ensure_points(urban_geom)
+
+    # Extract lat/lon and convert to radians
+    points_coords = np.array([[pt.y, pt.x] for pt in points_geom_clean])
+    urban_coords = np.array([[pt.y, pt.x] for pt in urban_geom_clean])
+
+    points_rad = np.radians(points_coords)
+    urban_rad = np.radians(urban_coords)
+
+    # BallTree NN query with haversine distance
+    tree = BallTree(urban_rad, metric='haversine')
+    dist_rad, _ = tree.query(points_rad, k=1)
+
+    # Convert to meters
+    dist_m = dist_rad.flatten() * 6371000  # Earth radius in meters
+
+    return dist_m
 
 class UrbanConvenienceSampler:
     def __init__(self, 
@@ -26,18 +58,16 @@ class UrbanConvenienceSampler:
         self.gdf_urban_top = gdf_urban.to_crs(crs).nlargest(n_urban, pop_col)  # assuming urban areas have a POP column
         self.crs = crs
         self.n_urban = n_urban
-        self.distances_dir = distances_dir.format(n_urban=n_urban)
+        if distances_dir is not None:
+            self.distances_dir = distances_dir.format(n_urban=n_urban)
 
         cluster_col_str = '_'.join(cluster_col) if isinstance(cluster_col, list) else cluster_col
         self.cluster_distance_dir = cluster_distances_dir.format(n_urban=n_urban, cluster_col=cluster_col_str)
 
         self.points_per_cluster = points_per_cluster
 
-        if isinstance(cluster_col, list):
-            self.admin_ids_keys = cluster_col
-        else:
-            self.admin_ids_keys = [cluster_col]
-
+        self.admin_name = cluster_col[0] if isinstance(cluster_col, list) else cluster_col
+        self.admin_ids = admin_ids
 
         if cluster_col is not None:
             if isinstance(cluster_col, list):
@@ -55,32 +85,33 @@ class UrbanConvenienceSampler:
 
     def _load_or_compute_distances(self):
         save_path = self.distances_dir
+
         if os.path.exists(save_path):
             print(f"Loading precomputed distances from {save_path}...")
             with open(save_path, "rb") as f:
                 dist_dict = dill.load(f)
             distance_map = dist_dict["distances_to_urban_area"]
-            self.distances = self.gdf_points[self.id_col].astype(str).map(distance_map)
+            self.distances = distance_map  # Keep as dict
+            # Map distances back to GeoDataFrame column as array for convenience
+            self.gdf_points["distance"] = self.gdf_points[self.id_col].astype(str).map(distance_map).to_numpy()
         else:
-            print("Computing distances using spatial index...")
-            tree = STRtree(self.gdf_urban_top.geometry.values)
-            urban_geoms = self.gdf_urban_top.geometry.values
-            def arc_distance_to_urban(polygon):
-                centroid = polygon.centroid  #use the centroid of the polygon
-                nearest_geom = tree.nearest(centroid)
-                nearest_pt = nearest_points(centroid, tree.geometries.take(nearest_geom))[1]
-                return geodesic((centroid.y, centroid.x), (nearest_pt.y, nearest_pt.x)).meters
-            self.distances = self.gdf_points.geometry.apply(arc_distance_to_urban).to_numpy()
+            print("Computing distances using BallTree haversine nearest neighbor...")
+            cluster_centroids = self.gdf_points.geometry
+            urban_centroids = self.gdf_urban_top.to_crs("+proj=cea").geometry.centroid.to_crs("EPSG:4326")
+            
+            distances_array = compute_exact_geodesic_nn_balltree(cluster_centroids, urban_centroids)
 
-            id_array = self.gdf_points[self.id_col].astype(str).to_numpy()
-            distance_dict = dict(zip(id_array, self.distances))
+            ids = self.gdf_points[self.id_col].astype(str).to_numpy()
+            distance_map = dict(zip(ids, distances_array))
+            self.distances = distance_map
+            self.gdf_points["distance"] = distances_array
 
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, "wb") as f:
-                dill.dump({"distances_to_urban_area": distance_dict}, f)
+                dill.dump({"distances_to_urban_area": distance_map}, f)
 
-            print(f"Saved distances for {len(distance_dict)} points to {save_path}")
-        self.gdf_points["distance"] = self.distances
+            print(f"Saved distances for {len(distance_map)} points to {save_path}")
+
 
     def _load_or_compute_cluster_distances(self):
         save_path = self.cluster_distance_dir
@@ -90,28 +121,25 @@ class UrbanConvenienceSampler:
             with open(save_path, "rb") as f:
                 dist_dict = dill.load(f)
             distance_map = dist_dict["distances_to_urban_area"]
-            self.gdf_clusters["distance"] = self.gdf_clusters.index.astype(str).map(distance_map)
-            self.cluster_distances = self.gdf_clusters["distance"]
+            self.cluster_distances = distance_map  # Keep as dict
+            self.gdf_clusters["distance"] = self.gdf_clusters.index.astype(str).map(distance_map).to_numpy()
         else:
-            print("Computing cluster distances using spatial index...")
-            tree = STRtree(self.gdf_urban_top.geometry.values)
+            print("Computing cluster distances using BallTree haversine nearest neighbor...")
+            cluster_centroids = self.gdf_clusters.to_crs("+proj=cea").geometry.centroid.to_crs("EPSG:4326")
+            urban_centroids = self.gdf_urban_top.to_crs("+proj=cea").geometry.centroid.to_crs("EPSG:4326")
 
-            def arc_distance_to_urban(geom):
-                centroid = geom.centroid
-                nearest_geom = tree.nearest(centroid)
-                nearest_pt = nearest_points(centroid, tree.geometries.take(nearest_geom))[1]
-                return geodesic((centroid.y, centroid.x), (nearest_pt.y, nearest_pt.x)).meters
+            distances_array = compute_exact_geodesic_nn_balltree(cluster_centroids, urban_centroids)
 
-            self.gdf_clusters["distance"] = self.gdf_clusters.geometry.apply(arc_distance_to_urban)
-            self.cluster_distances = self.gdf_clusters["distance"]
-
-            distance_dict = dict(zip(self.gdf_clusters.index.astype(str), self.cluster_distances))
+            cluster_ids = self.gdf_clusters.index.astype(str).to_numpy()
+            distance_map = dict(zip(cluster_ids, distances_array))
+            self.cluster_distances = distance_map
+            self.gdf_clusters["distance"] = distances_array
 
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, "wb") as f:
-                dill.dump({"distances_to_urban_area": distance_dict}, f)
+                dill.dump({"distances_to_urban_area": distance_map}, f)
 
-            print(f"Saved cluster distances for {len(distance_dict)} clusters to {save_path}")
+            print(f"Saved cluster distances for {len(distance_map)} clusters to {save_path}")
 
 
     def sample(self, n_samples, method="deterministic", temp=0.025, seed=42):
@@ -146,7 +174,6 @@ class UrbanConvenienceSampler:
         assert self.cluster_col is not None and self.points_per_cluster is not None, \
             "Both cluster_col and points_per_cluster must be defined."
 
-        n_clusters = total_sample_size // self.points_per_cluster
         if total_sample_size % self.points_per_cluster != 0:
             raise ValueError("Total sample size must be divisible by points_per_cluster.")
 
@@ -155,53 +182,60 @@ class UrbanConvenienceSampler:
         self.seed = seed
         np.random.seed(seed)
 
-        # Filter out clusters that don't have enough points
-        valid_clusters = [
-            c for c in self.cluster_distances.index
-            if len(self.gdf_points[self.gdf_points[self.cluster_col] == c]) >= self.points_per_cluster
+        # Step 1: Filter clusters with at least 1 point
+        eligible_clusters = [
+            c for c in self.cluster_distances.keys()
+            if len(self.gdf_points[self.gdf_points[self.cluster_col] == c]) > 0
         ]
 
-        if len(valid_clusters) < n_clusters:
-            raise ValueError(f"Not enough valid clusters with at least {self.points_per_cluster} points. "
-                            f"Needed: {n_clusters}, Available: {len(valid_clusters)}")
+        cluster_distances = pd.Series(self.cluster_distances)
+        cluster_distances = cluster_distances.loc[eligible_clusters]
 
-        cluster_distances = self.cluster_distances.loc[valid_clusters]
-
+        # Step 2: Rank or sample clusters
         if method == "deterministic":
-            sampled_clusters = cluster_distances.nsmallest(n_clusters).index.tolist()
+            sorted_clusters = cluster_distances.nsmallest(len(cluster_distances)).index.tolist()
         else:
-            # Min-max scale to [0, 1]
             norm_dists = (cluster_distances - cluster_distances.min()) / (cluster_distances.max() - cluster_distances.min())
             scores = -norm_dists / temp
-            exp_scores = np.exp(scores - np.max(scores))  #softmax numerically stable
+            exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
-            sampled_clusters = np.random.default_rng(seed).choice(
-                cluster_distances.index, size=n_clusters, replace=False, p=probs
+            sorted_clusters = np.random.default_rng(seed).choice(
+                cluster_distances.index, size=len(cluster_distances), replace=False, p=probs
             )
 
-        sampled_df = self.gdf_points[self.gdf_points[self.cluster_col].isin(sampled_clusters)].copy()
-        print(sampled_df.groupby(self.cluster_col).size())
+        # Step 3: Sample points from clusters until total exceeds desired sample size
+        sampled_points = []
+        selected_clusters = []
+        points_collected = 0
 
-        # Sample fixed number of points per cluster
-        sampled_gdf = sampled_df.groupby(self.cluster_col).apply(
-            lambda g: g.sample(n=self.points_per_cluster, random_state=seed)
-        ).reset_index(drop=True)
+        for c in sorted_clusters:
+            cluster_df = self.gdf_points[self.gdf_points[self.cluster_col] == c]
+            sampled_points.append(cluster_df)
+            selected_clusters.append(c)
+            points_collected += len(cluster_df)
+            
+            if points_collected >= total_sample_size:
+                break
+
+        # Step 4: Combine and randomly subsample to exactly total_sample_size
+        combined_df = pd.concat(sampled_points, axis=0).reset_index(drop=True)
+
+        if len(combined_df) < total_sample_size:
+            raise ValueError(f"Insufficient total points: needed {total_sample_size}, got {len(combined_df)}")
+
+        sampled_gdf = combined_df.sample(n=total_sample_size, random_state=seed)
+
+        # Finalize
         self.sampled_gdf = sampled_gdf
         self.sampled_ids = sampled_gdf[self.id_col].tolist()
         self.sample_size = len(self.sampled_ids)
-        self.sampled_clusters = sampled_clusters
+        self.sampled_clusters = selected_clusters
 
 
     def save_sampled_ids(self, out_path):
-        if hasattr(self, "cluster_col"):
+        if hasattr(self, "cluster_col") and self.cluster_col is not None:
             subfolder = 'cluster_based'
-            # CLUSTER-BASED SAMPLING
-            if isinstance(self.cluster_col, str) and self.cluster_col == 'combined_cluster_id':
-                # Use joined admin ids for the cluster columns
-                cluster_admin_name = '_'.join([ADMIN_IDS[c] for c in self.admin_ids_keys])
-            else:
-                cluster_admin_name = ADMIN_IDS.get(self.cluster_col, self.cluster_col)
-            file_name = f"IDS_cluster_{cluster_admin_name}_{self.points_per_cluster}_ppc_{len(self.sampled_clusters)}_clusters_{self.sample_size}_size_{self.method}_seed_{self.seed}.pkl"
+            file_name = f"IDS_top{self.n_urban}_urban_cluster_{self.admin_name}_{self.points_per_cluster}_ppc_{len(self.sampled_clusters)}_clusters_{self.sample_size}_size_{self.method}_seed_{self.seed}.pkl"
         else:
             # URBAN-BASED SAMPLING
             subfolder = "urban_based"
@@ -234,16 +268,10 @@ class UrbanConvenienceSampler:
         self.gdf_points.plot(ax=ax, color='#cccccc', markersize=5, label='All Points', zorder=1, alpha=0.6)
         self.sampled_gdf.plot(ax=ax, color='#d62728', markersize=5, label=f'Sampled ({self.sample_size})', zorder=3, alpha=0.8)
 
-        if hasattr(self, "cluster_col"):
+        if hasattr(self, "cluster_col") and self.cluster_col is not None:
             # CLUSTER-BASED SAMPLING
-            if isinstance(self.cluster_col, str) and self.cluster_col == 'combined_cluster_id':
-                # Use joined admin ids for the cluster columns
-                cluster_admin_name = '_'.join([ADMIN_IDS[c] for c in self.admin_ids_keys])
-            else:
-                cluster_admin_name = ADMIN_IDS.get(self.cluster_col, self.cluster_col)
-
             title = f'Convenience Sampling Cluster\n({len(self.sampled_clusters)} clusters × {self.points_per_cluster} points)'
-            filename = f'cluster_{cluster_admin_name}_{self.points_per_cluster}_ppc_{len(self.sampled_clusters)}_clusters_{self.method}_{self.sample_size}_size_seed_{self.seed}.png'
+            filename = f'top{self.n_urban}_urban_areas_cluster_{self.admin_name}_{self.points_per_cluster}_ppc_{len(self.sampled_clusters)}_clusters_{self.method}_{self.sample_size}_size_seed_{self.seed}.png'
         else:
             title = f'Convenience Sampling Urban\n({self.n_urban} urban areas; {self.num_samples} points)'
             filename = f'top{self.n_urban}_urban_areas_{self.num_samples}_points_{self.method}_{self.sample_size}_size_seed_{self.seed}.png'
@@ -261,6 +289,7 @@ class UrbanConvenienceSampler:
         print(f"Saved plot to {save_path}")
 
 if __name__ == "__main__":
+
     ADMIN_IDS = {
         'STATEFP': 'state',
         'STATE_NAME': 'state',
@@ -269,52 +298,193 @@ if __name__ == "__main__":
     }
 
     cluster_col = ['COUNTY_NAME', 'COUNTYFP']
-  # or another appropriate cluster ID
-    points_per_cluster = 5   # example value, adjust as needed
+    cluster_name = 'county'
+    # or another appropriate cluster ID
     id_col="id"
+
+    for label in ['population', 'treecover']:
+        for points_per_cluster in [5, 10]:
+            gdf_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson"
+            gdf = gpd.read_file(gdf_path)
+
+            for n_urban in [20, 50]:
+                pop_col = 'POP'
+                gdf_urban_path = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp'
+                gdf_urban = gpd.read_file(gdf_urban_path)
+
+                cluster_distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/{cluster_name}_distance_to_top{n_urban}_urban.pkl'
+
+                country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
+                exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
+
+                out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling'
+
+                method = 'probabilistic'
+                temp = 0.025 if label == "population" else 0.001
+
+                for desired_sample_size in range(100, 1100, 100):
+                    for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
+                        # Cluster Convenience Sampler (NEW)
+                        print("Initializing ClusterConvenienceSampler...")
+                        sampler = UrbanConvenienceSampler(  # make sure you have this class
+                            gdf_points=gdf,
+                            id_col=id_col,
+                            pop_col=pop_col,
+                            cluster_col=cluster_col,
+                            points_per_cluster=points_per_cluster,
+                            gdf_urban=gdf_urban,
+                            n_urban=n_urban,
+                            distances_dir=None,
+                            cluster_distances_dir=cluster_distances_dir,
+                            admin_ids=ADMIN_IDS
+                        )
+            
+                        sampler.sample_by_clusters(
+                            total_sample_size=desired_sample_size,
+                            method=method,
+                            temp=temp,
+                            seed=seed
+                        )
+                        sampler.save_sampled_ids(out_path)
+                        sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
+
+    id_col = 'id'
+    ADMIN_IDS = {
+        'STATEFP': 'state',
+        'STATE_NAME': 'state',
+        'COUNTYFP': 'county',
+        'COUNTY_NAME': 'county'
+    }
 
     for label in ['population', 'treecover']:
         gdf_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson"
         gdf = gpd.read_file(gdf_path)
 
-        n_urban = 10
-        pop_col = 'POP'
-        gdf_urban_path = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp'
-        gdf_urban = gpd.read_file(gdf_urban_path)
+        for n_urban in [10, 20, 50]:
+            pop_col = 'POP'
+            gdf_urban_path = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp'
+            gdf_urban = gpd.read_file(gdf_urban_path)
 
-        distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_to_top{n_urban}_urban.pkl'
-        cluster_distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/cluster_distance_to_top{n_urban}_urban.pkl'
+            distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_to_top{n_urban}_urban.pkl'
 
-        country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
-        exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
+            country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp'
+            exclude_names = ['Alaska', 'Hawaii', 'Puerto Rico']
 
-        out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling'
+            out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling'
 
-        method = 'probabilistic'
-        temp = 0.025 if label == "population" else 0.001
+            print("Reading GeoDataFrame...")
+            gdf = gpd.read_file(gdf_path)
 
-        for desired_sample_size in range(100, 1100, 100):
+            method = 'probabilistic'
+            if label=="population":
+                temp=0.025
+            else:
+                temp=0.001
+            for desired_sample_size in range(100, 1100, 100):
+                for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
+
+                    print("Initializing UrbanConvenienceSampler...")
+                    sampler = UrbanConvenienceSampler(
+                        id_col=id_col,
+                        gdf_points=gdf,
+                        gdf_urban=gdf_urban,
+                        n_urban=n_urban,
+                        pop_col=pop_col,
+                        distances_dir=distances_dir
+                    )
+
+                    sampler.sample(n_samples=desired_sample_size, method=method, temp=temp, seed=seed)
+                    sampler.save_sampled_ids(out_path)
+                    sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
+
+    ADMIN_IDS = {
+    'pc11_s_id': 'state',
+    'pc11_d_id': 'district',
+    'pc11_sd_id': 'subdistrict'
+    }
+
+    cluster_col = 'pc11_d_id'
+    # or another appropriate cluster ID
+    id_col="id"
+    id_col = 'condensed_shrug_id'
+
+    for points_per_cluster in [20, 30, 50]:
+        gdf_path = '/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson'
+        gdf = gpd.read_file(gdf_path)
+
+        for n_urban in [10, 20, 50]:
+            pop_col = 'pc11_pca_tot_p_combined'
+
+            distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/india_secc/distance_to_top{n_urban}_urban.pkl'
+            cluster_distances_dir = f'/home/libe2152/optimizedsampling/0_data/distancesindia_secc/{cluster_name}_distance_to_top{n_urban}_urban.pkl'
+
+            country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
+            country_name = 'India'
+
+            out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling'
+
+            method = 'probabilistic'
+            temp = 0.025
+
+            for desired_sample_size in range(1000, 6000, 1000):
+                for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
+                    # Cluster Convenience Sampler (NEW)
+                    print("Initializing ClusterConvenienceSampler...")
+                    sampler = UrbanConvenienceSampler(  # make sure you have this class
+                        gdf_points=gdf,
+                        id_col=id_col,
+                        pop_col=pop_col,
+                        cluster_col=cluster_col,
+                        points_per_cluster=points_per_cluster,
+                        gdf_urban=gdf,
+                        n_urban=n_urban,
+                        distances_dir=distances_dir,
+                        cluster_distances_dir=cluster_distances_dir,
+                        admin_ids=ADMIN_IDS
+                    )
+
+                    sampler.sample_by_clusters(
+                        total_sample_size=desired_sample_size,
+                        method=method,
+                        temp=temp,
+                        seed=seed
+                    )
+                    sampler.save_sampled_ids(out_path)
+                    sampler.plot(country_shape_file=country_shape_file, country_name=country_name)
+
+    ADMIN_IDS = {
+        'pc11_s_id': 'state',
+        'pc11_d_id': 'district',
+        'pc11_sd_id': 'subdistrict'
+    }
+
+    id_col = 'condensed_shrug_id'
+    gdf_path = '/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson'
+    pop_col = 'pc11_pca_tot_p_combined'
+    country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
+    country_name = 'India'
+    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling'
+
+    print("Reading GeoDataFrame...")
+    gdf = gpd.read_file(gdf_path)
+
+    method = 'probabilistic'
+    temp=0.025
+    for n_urban in [20, 50]:
+        distances_dir = f'/home/libe2152/optimizedsampling/0_data/distances/india_secc/distance_to_top{n_urban}_urban.pkl'
+        for desired_sample_size in range(1000, 6000, 1000):
             for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
-                # Cluster Convenience Sampler (NEW)
-                print("Initializing ClusterConvenienceSampler...")
-                sampler = UrbanConvenienceSampler(  # make sure you have this class
-                    gdf_points=gdf,
+
+                print("Initializing UrbanConvenienceSampler...")
+                sampler = UrbanConvenienceSampler(
                     id_col=id_col,
-                    pop_col=pop_col,
-                    cluster_col=cluster_col,
-                    points_per_cluster=points_per_cluster,
-                    gdf_urban=gdf_urban,
+                    gdf_points=gdf,
+                    gdf_urban=gdf,
                     n_urban=n_urban,
-                    distances_dir=distances_dir,
-                    cluster_distances_dir=cluster_distances_dir,
-                    admin_ids=ADMIN_IDS
+                    pop_col=pop_col,
+                    distances_dir=distances_dir
                 )
 
-                sampler.sample_by_clusters(
-                    total_sample_size=desired_sample_size,
-                    method=method,
-                    temp=temp,
-                    seed=seed
-                )
+                sampler.sample(n_samples=desired_sample_size, method=method, temp=temp, seed=seed)
                 sampler.save_sampled_ids(out_path)
-                sampler.plot(country_shape_file=country_shape_file, exclude_names=exclude_names)
+                sampler.plot(country_shape_file=country_shape_file, country_name=country_name)

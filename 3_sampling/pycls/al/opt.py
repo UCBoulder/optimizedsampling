@@ -21,13 +21,13 @@ UTILITY_FNS = {
 COST_FNS = {
     "uniform": cost.uniform,
     "pointwise_by_array": cost.pointwise_by_array,
-    "unit_aware_pointwise_cost": cost.unit_aware_pointwise_cost
+    "region_aware_unit_cost": cost.region_aware_unit_cost
 }
 
 NP_COST_FNS = {
     "uniform": np_cost.uniform,
     "pointwise_by_array": np_cost.pointwise_by_array,
-    "unit_aware_pointwise_cost": np_cost.unit_aware_pointwise_cost
+    "region_aware_unit_cost": np_cost.region_aware_unit_cost
 }
 
 class Opt:
@@ -61,6 +61,10 @@ class Opt:
         else:
             unit_assignment = np.arange(len(self.relevant_indices))
         return unit_assignment[self.relevant_indices]
+
+    def _set_region_assignment(self):
+        assert self.cfg.REGION.REGION_ASSIGNMENT is not None, "Need to specify region assignment in config"
+        self.region_assignment = np.array(self.cfg.REGION.REGION_ASSIGNMENT)
     
     def _compute_unit_to_indices(self):
         return {
@@ -138,6 +142,16 @@ class Opt:
 
             self.cost_func = lambda s: cost.pointwise_by_array(s, self.cost_array)
             self.np_cost_func = lambda s: np_cost.pointwise_by_array(s, self.cost_array)
+
+        elif cost_func_type == "region_aware_unit_cost":
+            in_labeled_set_array = np.array([int(idx in set(self.lSet)) for idx in self.relevant_indices])
+            self._set_region_assignment()
+
+            labeled_regions = set(self.region_assignment[self.lSet])
+            in_labeled_region_array = [self.region_assignment[i] in labeled_regions for i in range(len(self.relevant_indices))]
+
+            self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_array, in_labeled_region_array)
+            self.np_cost_func = lambda s: np_cost.region_aware_unit_cost(s, in_labeled_set_array, in_labeled_region_array)
 
     def solve_opt(self):
         assert self.utility_func_type != "Random", "Please do not use the optimization function for random selection"
