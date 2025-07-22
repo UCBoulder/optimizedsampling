@@ -7,15 +7,6 @@ def random(s):
 def greedy(s):
     return cp.sum(s)
 
-def stratified(s, groups):
-    unique_groups = np.unique(groups)
-    
-    group_sizes = cp.array([cp.sum(s[groups == g]) for g in unique_groups])
-    
-    # risk per group: l*(1/sqrt(nj)) + (1-l)*(1/sqrt(n))
-    group_risks = l / cp.sqrt(group_sizes) + (1 - l) / cp.sqrt(total_size) #not weighted like next objective
-    return -cp.sum(group_risks) #negative since opt will maximize this
-
 #Workshop paper objective (from rep. matters paper)
 def pop_risk(s, units, groups, l=0.5):
     """

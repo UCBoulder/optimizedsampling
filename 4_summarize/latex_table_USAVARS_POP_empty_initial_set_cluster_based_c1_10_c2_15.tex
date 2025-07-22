@@ -1,0 +1,17 @@
+\begin{table}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lccccc}%
+\hline%
+Init Info & Budget & \multicolumn{1}{c}{Random}&\multicolumn{1}{c}{Greedy Low-Cost}&\multicolumn{1}{c}{PopRisk ($\lambda = 0.5$)}&\multicolumn{1}{c}{Similarity}\\%
+ &  & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std)\\%
+\hline%
+\multirow{3}{*}{\shortstack[l]{No Initial Set \\ No Initial Set \\ (Init $R^2$ = --)}} & 100 & 0.25 ± 0.00 & 0.08 ± 0.08 & 0.08 ± 0.00 & --\\%
+& 500 & 0.25 ± 0.08 & 0.43 ± 0.05 & 0.49 ± 0.03 & --\\%
+& 1000 & 0.31 ± 0.10 & 0.51 ± 0.01 & 0.54 ± 0.01 & --\\%
+\hline%
+\end{tabular}%
+\caption{Updated $R^2$ for USAVARS_POP with initial set \texttt{empty_initial_set} and cost \texttt{cluster_based_c1_10_c2_15}.}
+\label{tab:USAVARS_POP_empty_initial_set_cluster_based_c1_10_c2_15}
+\end{table}

@@ -46,7 +46,7 @@ class ClusterSampler:
         
         # Store original cluster_col for metadata/naming
         self.cluster_col_name = cluster_col
-        
+
         # Handle cluster_col as list or string
         if isinstance(cluster_col, list):
             # Save keys for naming/metadata
@@ -122,6 +122,7 @@ class ClusterSampler:
         Sample clusters one by one using PPS until total sampled points >= target_points.
         Returns sampled points and list of clusters sampled.
         """
+        assert isinstance(self.cluster_col, str), "Something went wrong"
         all_counts = gdf[self.cluster_col].value_counts()
 
         if len(all_counts) == 0:
@@ -248,9 +249,17 @@ class ClusterSampler:
 
         # Create cluster name string for metadata / filenames
         if len(self.cluster_col_keys) > 1:
-            cluster_name_str = "_".join([self.ADMIN_IDS.get(k, k) for k in self.cluster_col_keys])
+            county_keys = {'COUNTYFP', 'COUNTY_NAME'}
+
+            if any(k in county_keys for k in self.cluster_col_keys):
+                cluster_name_str = "county"
+            else:
+                cluster_name_str = "_".join([self.ADMIN_IDS.get(k, k) for k in self.cluster_col_keys])
+
+            print(f"Clusters: {cluster_name_str}")
         else:
             cluster_name_str = self.ADMIN_IDS.get(self.cluster_col_name, self.cluster_col_name)
+            print(f"Clusters: {cluster_name_str}")
         
         if hasattr(self, 'n_strata') and self.n_strata is not None:
             strata_str = f"{self.n_strata}_{self.ADMIN_IDS.get(self.strata_col, self.strata_col)}"
@@ -261,6 +270,8 @@ class ClusterSampler:
 
         self.out_path = os.path.join(full_out_dir, file_name)
         os.makedirs(os.path.dirname(self.out_path), exist_ok=True)
+
+        assert not any(pd.isna(x) for x in self.sampled_ids), "Something went wrong, NaN values found in sampled_ids"
 
         sampling_metadata = {
             "sampled_ids": self.sampled_ids,
@@ -324,37 +335,35 @@ class ClusterSampler:
 
 if __name__=="__main__":
     ADMIN_IDS = {
-        'pc11_s_id': 'state',
-        'pc11_d_id': 'district',
-        'pc11_sd_id': 'subdistrict'
+        'STATEFP': 'state',
+        'STATE_NAME': 'state',
+        'COUNTYFP': 'county',
+        'COUNTY_NAME': 'county'
     }
 
-    data_path = "/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson"
+    data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
     gdf = gpd.read_file(data_path)
+    gdf['EA'] = gdf['combined_adm_id']
+    gdf['prefecture'] = gdf['admin_2']
+    gdf['region'] = gdf['admin_1']
 
-    country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
-    country_name = 'India'
+    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling'
 
-    strata_col = 'pc11_s_id'
-    cluster_col = 'pc11_d_id'
+    country_shape_file = '/home/libe2152/togo/data/shapefiles/openAfrica/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp'
 
-    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling'
+    strata_col = 'prefecture'
+    cluster_col = 'EA'
 
-    sampler = ClusterSampler(gdf, id_col='condensed_shrug_id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
-
-    for n_strata in [5, 10]:
-        for points_per_cluster in [20, 30, 50]:
-            sampler.cluster_col = cluster_col
-            #sampler.merge_small_strata(points_per_cluster)
-            #sampler.merge_small_clusters(points_per_cluster)
-            for total_sample_size in range(1000, 6000, 1000):
-                
-                for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
-                    try:
-                        sampler.sample(total_sample_size, points_per_cluster, seed, n_strata=n_strata)
-                        sampler.save_sampled_ids(out_path)
-                        sampler.plot(country_shape_file=country_shape_file, country_name=country_name)
-                    except Exception as e:
-                        print(e)
-                        from IPython import embed; embed()
-                    sampler.reset_sample()
+    n_strata = 5
+    for points_per_cluster in [5, 10, 25]:
+        sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
+        for total_sample_size in range(100, 1100, 100):
+            
+            for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
+                try:
+                    sampler.sample(total_sample_size, points_per_cluster, seed, n_strata=n_strata)
+                    sampler.save_sampled_ids(out_path)
+                    sampler.plot(country_shape_file=country_shape_file)
+                except Exception as e:
+                    print(e)
+                sampler.reset_sample()

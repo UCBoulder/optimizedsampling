@@ -47,13 +47,21 @@ class Opt:
         self.unit_to_indices = self._compute_unit_to_indices()
         self.points_per_unit = self.cfg.UNITS.POINTS_PER_UNIT if self.cfg.UNITS.POINTS_PER_UNIT is not None else None
 
-        # Mappings for reuse
-        self.unit_index_map = {u: i for i, u in enumerate(self.units)}
-
-        self.labeled_units = self._compute_labeled_units()
-        self.labeled_unit_inclusion_vector = self._compute_labeled_unit_inclusion_vector()
+        self.labeled_unit_vector, self.labeled_unit_set = self._initialize_labeled_units()
 
         self._resolve_cost_func()
+
+    def _initialize_labeled_units(self):
+        labeled_unit_vector = np.zeros(len(self.units), dtype=bool)
+        labeled_unit_list = []
+
+        for i, u in enumerate(self.units):
+            indices = self.unit_to_indices[u]
+            if any(idx in self.lSet for idx in indices):
+                labeled_unit_vector[i] = True
+                labeled_unit_list.append(str(u))
+        labeled_unit_set = set(labeled_unit_list)
+        return labeled_unit_vector, labeled_unit_set
 
     def _init_unit_assignment(self):
         if self.cfg.UNITS.UNIT_ASSIGNMENT is not None:
@@ -63,34 +71,33 @@ class Opt:
         return unit_assignment[self.relevant_indices]
 
     def _set_region_assignment(self):
-        assert self.cfg.REGION.REGION_ASSIGNMENT is not None, "Need to specify region assignment in config"
-        self.region_assignment = np.array(self.cfg.REGION.REGION_ASSIGNMENT)
+        assert self.cfg.REGIONS.REGION_ASSIGNMENT is not None, "Need to specify region assignment in config"
+        self.region_assignment = np.array(self.cfg.REGIONS.REGION_ASSIGNMENT)[self.relevant_indices]
+
+        self.region_assignment_per_unit = self._get_region_per_unit()
+        self.region_array_per_unit = np.array([self.region_assignment_per_unit[u] for u in self.units])
+
+    def _get_region_per_unit(self):
+        region_per_unit = {}
+
+        for u in self.units:
+            indices = np.where(self.unit_assignment == u)[0]
+            regions = self.region_assignment[indices]
+            unique_regions = np.unique(regions)
+
+            if len(unique_regions) > 1:
+                raise ValueError(f"Unit {u} has inconsistent region assignments: {unique_regions}")
+            
+            region_per_unit[u] = unique_regions[0]
+
+        return region_per_unit
     
     def _compute_unit_to_indices(self):
         return {
-            u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
+            u: self.relevant_indices[self.unit_assignment == u]
             for u in self.units
         }
         #note, will need to adjust if the cost function is unit_aware_pointwise
-
-    def _compute_labeled_units(self):
-        labeled_set = set(self.lSet)
-
-        return [
-            u for u in self.units
-            if np.any([idx in labeled_set for idx in self.relevant_indices[self.unit_assignment == u]])
-        ]
-
-    def _compute_labeled_unit_inclusion_vector(self):
-        labeled_set = set(self.lSet)
-        vec = np.zeros(len(self.units), dtype=bool)
-
-        for i, u in enumerate(self.units):
-            unit_point_indices = self.relevant_indices[self.unit_assignment == u]
-            if np.any([idx in labeled_set for idx in unit_point_indices]):
-                vec[i] = True
-        return vec
-
 
     def set_utility_func(self, utility_func_type):
         if utility_func_type not in UTILITY_FNS:
@@ -144,14 +151,22 @@ class Opt:
             self.np_cost_func = lambda s: np_cost.pointwise_by_array(s, self.cost_array)
 
         elif cost_func_type == "region_aware_unit_cost":
-            in_labeled_set_array = np.array([int(idx in set(self.lSet)) for idx in self.relevant_indices])
+            in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
             self._set_region_assignment()
 
             labeled_regions = set(self.region_assignment[self.lSet])
-            in_labeled_region_array = [self.region_assignment[i] in labeled_regions for i in range(len(self.relevant_indices))]
+            in_labeled_regions_unit_array = [self.region_assignment_per_unit[u] in labeled_regions for u in self.units]
 
-            self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_array, in_labeled_region_array)
-            self.np_cost_func = lambda s: np_cost.region_aware_unit_cost(s, in_labeled_set_array, in_labeled_region_array)
+            cost_kwargs = {}
+            if self.cfg.REGIONS.IN_REGION_UNIT_COST is not None:
+                cost_kwargs["c1"] = self.cfg.REGIONS.IN_REGION_UNIT_COST
+            if self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST is not None:
+                cost_kwargs["c2"] = self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST
+            
+
+            self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
+            self.np_cost_func = lambda s: np_cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
+
 
     def solve_opt(self):
         assert self.utility_func_type != "Random", "Please do not use the optimization function for random selection"
@@ -159,14 +174,7 @@ class Opt:
         labeled_set = set(self.lSet)
 
         #make labeled inclusion vector of units
-        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
-
-        for i, u in enumerate(self.units):
-            unit_point_indices = self.relevant_indices[self.unit_assignment == u]
-            labeled_mask = np.array([idx in labeled_set for idx in unit_point_indices])
-            
-            if np.any(labeled_mask):
-                unit_inclusion_vector[i] = True
+        unit_inclusion_vector = self.labeled_unit_vector.copy()
 
         n = len(self.units)
         s = cp.Variable(n, nonneg=True)
@@ -234,33 +242,41 @@ class Opt:
         assert hasattr(self, "utility_func") and self.utility_func is not None, "Need to specify utility function"
 
         np.random.seed(self.seed)
-        unit_inclusion_vector = self.labeled_unit_inclusion_vector.copy()
+        unit_inclusion_vector = self.labeled_unit_vector.copy()
 
-        probs = self._load_probabilities()
-        if probs is None:
-            probs = self.solve_opt()
-            self._save_probabilities(probs)
+        #probs = self._load_probabilities()
+        #if probs is None:
+        probs = self.solve_opt()
+        #self._save_probabilities(probs)
 
-        indices = np.arange(len(self.units))
-        np.random.shuffle(indices)
+        # Create and shuffle unit indices
+        shuffled_unit_indices = np.arange(len(self.units))
+        np.random.shuffle(shuffled_unit_indices)
 
-        probs = probs[indices] #shuffle the same way
+        # Shuffle probs to match the unit order
+        probs = probs[shuffled_unit_indices]
+        probs = np.clip(probs, 0.0, 1.0)  # handle floating point issues
 
-        for i in range(len(indices)):
+        for i in range(len(shuffled_unit_indices)):
             draw = np.random.binomial(1, probs[i])
+            unit_idx = shuffled_unit_indices[i]  # original index in dataset
+
             if draw == 1:
-                unit_inclusion_vector[i] = 1
+                unit_inclusion_vector[unit_idx] = 1
                 total_cost = self.np_cost_func(unit_inclusion_vector)
-                if total_cost > self.budget + self.np_cost_func(self.labeled_unit_inclusion_vector):
-                    unit_inclusion_vector[i] = 0
+
+                if total_cost > self.budget + self.np_cost_func(self.labeled_unit_vector):
+                    unit_inclusion_vector[unit_idx] = 0
                     break
 
         selected_units = self.units[unit_inclusion_vector.astype(bool)]
-        selected_units = np.setdiff1d(selected_units, self.labeled_units)
+        labeled_units_array = np.array(list(self.labeled_unit_set), dtype=selected_units.dtype)
+        selected_units = np.setdiff1d(selected_units, labeled_units_array)
 
         activeSet = []
         for u in selected_units:
             available_idxs = self.unit_to_indices[u]
+            print(f"Available Indices: {available_idxs}")
             unlabeled_idxs = [idx for idx in available_idxs if idx in self.uSet]
 
             if self.points_per_unit is None:
@@ -270,6 +286,7 @@ class Opt:
             else:
                 selected_points = np.random.choice(unlabeled_idxs, size=self.points_per_unit, replace=False)
 
+            print(f"Adding {selected_points} to activeSet")
             activeSet.extend(selected_points)
 
         activeSet = np.array(sorted(set(activeSet)))

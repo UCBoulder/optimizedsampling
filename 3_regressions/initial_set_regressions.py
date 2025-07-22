@@ -50,7 +50,7 @@ def sampling_r2_scores(
             full_path = os.path.join(sampling_dir, fname)
             try:
                 with open(full_path, "rb") as f:
-                    sampled_ids = dill.load(f)
+                    sampled_ids = dill.load(f)['sampled_ids']
                 sampled_ids = [str(x) for x in sampled_ids]
             except Exception as e:
                 if verbose:
@@ -60,6 +60,7 @@ def sampling_r2_scores(
             sampled_indices = [id_to_index[i] for i in sampled_ids if i in id_to_index]
 
             if len(sampled_indices) < min_samples:
+                from IPython import embed; embed()
                 if verbose:
                     print(f"[SKIP] Not enough samples ({len(sampled_indices)}) in {fname}")
                 continue
@@ -227,8 +228,9 @@ if __name__ == "__main__":
     for label in ['population', 'treecover']:
 
         features_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
-        cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/cluster_sampling"
-        convenience_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling"
+        cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/cluster_sampling/randomstrata"
+        convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based"
+        convenience_sampling_cluster_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/cluster_based"
         random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling"
 
         results_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}"
@@ -245,7 +247,15 @@ if __name__ == "__main__":
         # Run convenience sampling R2 scores
         convenience_sampling_r2_scores(
             features_path=features_path,
-            sampling_dir=convenience_sampling_dir,
+            sampling_dir=convenience_sampling_urban_dir,
+            results_dir=results_dir,
+            ridge_regression_fn=ridge_regression,
+            verbose=True,
+        )
+
+        convenience_sampling_r2_scores(
+            features_path=features_path,
+            sampling_dir=convenience_sampling_cluster_dir,
             results_dir=results_dir,
             ridge_regression_fn=ridge_regression,
             verbose=True,

@@ -1,0 +1,17 @@
+\begin{table}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lccccc}%
+\hline%
+Init Info & Budget & \multicolumn{1}{c}{Random}&\multicolumn{1}{c}{Greedy Low-Cost}&\multicolumn{1}{c}{PopRisk ($\lambda = 0.5$)}&\multicolumn{1}{c}{Similarity}\\%
+ &  & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std)\\%
+\hline%
+\multirow{3}{*}{\shortstack[l]{Initial Setting \\ Top50 Urban 100 Points \\ (Init $R^2$ = 0.09 ± 0.02)}} & 100 & 0.14 ± 0.07 & 0.27 ± 0.09 & 0.27 ± 0.06 & --\\%
+& 500 & 0.36 ± 0.06 & 0.49 ± 0.02 & 0.48 ± 0.02 & --\\%
+& 1000 & 0.44 ± 0.03 & 0.57 ± 0.01 & 0.55 ± 0.01 & --\\%
+\hline%
+\end{tabular}%
+\caption{Updated $R^2$ for USAVARS_POP with initial set \texttt{top50_urban_100_points} and cost \texttt{convenience_based_top50_urban}.}
+\label{tab:USAVARS_POP_top50_urban_100_points_convenience_based_top50_urban}
+\end{table}

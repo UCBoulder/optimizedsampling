@@ -66,7 +66,7 @@ def compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, dist_path, id_
         point_geoms,
         urban_geoms
     )
-
+    from IPython import embed; embed()
     id_array = gdf_points[id_col].astype(str).to_numpy()
     distance_dict = dict(zip(id_array, distances))
 
@@ -202,168 +202,22 @@ def save_cost_array(ids, costs, out_path):
 
 # === Example Usage ===
 if __name__ == "__main__":
-    # for N_urban in [10, 20, 50]:
+    gdf_points = gpd.read_file(f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson")
 
-    #     for label in ["population", "treecover"]:
-    #         print(f"\n=== Processing label: {label} ===")
+    lome_lat = 6.12874
+    lome_lon = 1.22154
+    city_point = Point(lome_lon, lome_lat)
+    gdf_urban_top = gpd.GeoDataFrame({'geometry': [city_point]}, crs='EPSG:4326')
 
-    #         # Load training data
-    #         print("Loading training data...")
-    #         with open(f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
-    #             arrs = dill.load(f)
+    # Compute distance-based cost
+    dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/togo/distance_to_top1_urban.pkl")
+    from IPython import embed; embed()
+    dists = np.array([dist_dict[i] for i in gdf_points['id']])
+    print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
-    #         invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
-    #         ids_train = arrs['ids_train']
-    #         valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
-    #         ids = ids_train[valid_idxs]
-    #         latlons = arrs['latlons_train'][valid_idxs]
+    costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
+    print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
 
-    #         print(f"Loaded {len(ids)} valid points.")
-
-    #         points = [Point(lon, lat) for lat, lon in latlons]
-    #         gdf_points = gpd.GeoDataFrame({'id': ids}, geometry=points, crs="EPSG:4326")
-
-    #         # Load urban area polygons
-    #         print("Loading urban areas...")
-    #         urban_areas_path = "/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp"
-    #         gdf_urban = gpd.read_file(urban_areas_path).to_crs("EPSG:4326")
-    #         gdf_urban_top = gdf_urban.nlargest(N_urban, 'POP').copy()
-    #         print(f"Selected top {N_urban} urban areas by population.")
-
-    #         # Compute distance-based cost
-    #         dist_dict =compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_to_top{N_urban}_urban.pkl")
-    #         dists = np.array([dist_dict[i] for i in ids])
-
-    #         print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
-
-    #         costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-    #         print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
-
-    #         # Save
-    #         out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/distance_based_costs_top{N_urban}_urban.pkl"
-    #         save_cost_array(ids, costs, out_path)
-
-    # for N_urban in [10, 20, 50]:
-
-    #     for label in ["population", "treecover"]:
-    #         gdf_points = gpd.read_file(f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson")
-    #         gdf_counties = gpd.read_file("/home/libe2152/optimizedsampling/0_data/boundaries/us/us_county_2015/tl_2015_us_county.shp")
-    #         gdf_counties['COUNTY_NAME'] = gdf_counties['NAME']
-
-    #         # Load urban area polygons
-    #         print("Loading urban areas...")
-    #         urban_areas_path = "/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp"
-    #         gdf_urban = gpd.read_file(urban_areas_path).to_crs("EPSG:4326")
-    #         gdf_urban_top = gdf_urban.nlargest(N_urban, 'POP').copy()
-    #         print(f"Selected top {N_urban} urban areas by population.")
-
-    #         cluster_cols = ['COUNTY_NAME', 'COUNTYFP']
-    #         cluster_name = 'county'
-
-    #         # Step 1: Create combined cluster IDs in both DataFrames
-    #         gdf_counties['combined_cluster_id'] = gdf_counties[cluster_cols].astype(str).agg('_'.join, axis=1)
-    #         gdf_points['combined_cluster_id'] = gdf_points[cluster_cols].astype(str).agg('_'.join, axis=1)
-
-    #         cluster_col = 'combined_cluster_id'
-
-    #         # Step 2: Create gdf_clusters with one geometry per unique cluster ID
-    #         # This assumes gdf_counties contains the desired geometries
-    #         gdf_clusters = (
-    #             gdf_counties[[cluster_col, 'geometry']]
-    #             .drop_duplicates(subset=cluster_col)
-    #             .set_index(cluster_col)
-    #             .to_crs("EPSG:4326")
-    #             .copy()
-    #         )
-
-    #         cluster_ids = gdf_clusters.index.tolist()
-
-    #         # Compute distance-based cost
-    #         dist_dict = compute_or_load_cluster_centroid_distances_to_urban(gdf_clusters, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/{cluster_name}_distance_to_top{N_urban}_urban.pkl")
-    #         dists = np.array([dist_dict[i] for i in cluster_ids])
-    #         print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
-
-    #         costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-    #         print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
-
-    #         # Save
-    #         out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/{cluster_name}_distance_based_costs_top{N_urban}_urban.pkl"
-    #         save_cost_array(cluster_ids, costs, out_path)
-
-    for N_urban in [10, 20, 50]:
-        # Load training data
-        print("Loading training data...")
-        with open(f"/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl", "rb") as f:
-            arrs = dill.load(f)
-
-        ids = arrs['ids_train']
-        geometries = arrs['geometries_train']
-
-        gdf_points = gpd.GeoDataFrame({'id': ids}, geometry=geometries, crs="EPSG:4326")
-
-        # Load urban area polygons
-        print("Loading urban areas...")
-        gdf_path = '/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson'
-        gdf_urban = gpd.read_file(gdf_path)
-
-        pop_col = 'pc11_pca_tot_p_combined'
-        gdf_urban_top = gdf_urban.nlargest(N_urban, pop_col).copy()
-        print(f"Selected top {N_urban} urban areas by population.")
-        # Compute distance-based cost
-        dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/india_secc/distance_to_top{N_urban}_urban.pkl",
-                                                       id_col='id')
-        dists = np.array([dist_dict[str(i)] for i in ids])
-        print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
-
-        costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-        print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
-
-        # Save
-        out_path = f"/home/libe2152/optimizedsampling/0_data/costs/india_secc/convenience_costs/distance_based_costs_top{N_urban}_urban.pkl"
-        save_cost_array(ids, costs, out_path)
-
-    for N_urban in [10, 20, 50]:
-
-        data_path = "/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson"
-        gdf_points = gpd.read_file(data_path)
-
-        country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
-        country_name = 'India'
-
-        strata_col = 'pc11_s_id'
-        cluster_col = 'pc11_d_id'
-        cluster_name = 'district'
-
-        # Load urban area polygons
-        print("Loading urban areas...")
-        gdf_path = '/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson'
-        gdf_urban = gpd.read_file(gdf_path)
-
-        pop_col = 'pc11_pca_tot_p_combined'
-        gdf_urban_top = gdf_urban.nlargest(N_urban, pop_col).copy()
-        print(f"Selected top {N_urban} urban areas by population.")
-
-        if isinstance(cluster_col, list):
-            # Create combined cluster ID by joining string values of the columns
-            combined_ids = gdf_points[cluster_col].astype(str).agg('_'.join, axis=1)
-            gdf_points['combined_cluster_id'] = combined_ids
-            cluster_col = 'combined_cluster_id'
-        else:
-            cluster_col = cluster_col
-
-        gdf_clusters = gdf_points[[cluster_col, 'geometry']].drop_duplicates(cluster_col).set_index(cluster_col).copy()
-        gdf_clusters = gdf_clusters.to_crs("EPSG:4326")
-        cluster_ids = gdf_clusters.index.unique().tolist()
-
-        # Compute distance-based cost
-        dist_dict = compute_or_load_cluster_centroid_distances_to_urban(gdf_clusters, gdf_urban_top, 
-                                                                        f"/home/libe2152/optimizedsampling/0_data/distances/india_secc/{cluster_name}_distance_to_top{N_urban}_urban.pkl")
-        dists = np.array([dist_dict[i] for i in cluster_ids])
-        print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
-
-        costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-        print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
-
-        # Save
-        out_path = f"/home/libe2152/optimizedsampling/0_data/costs/india_secc/convenience_costs/{cluster_name}_distance_based_costs_top{N_urban}_urban.pkl"
-        save_cost_array(cluster_ids, costs, out_path)
+    # Save
+    out_path = f"/home/libe2152/optimizedsampling/0_data/costs/togo/convenience_costs/distance_based_costs_top1_urban.pkl"
+    save_cost_array(gdf_points['id'], costs, out_path)

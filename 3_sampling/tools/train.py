@@ -3,7 +3,6 @@ import sys
 import argparse
 import numpy as np
 import dill
-import json
 from datetime import datetime
 
 from sklearn.pipeline import Pipeline
@@ -41,10 +40,10 @@ def argparser():
     parser.add_argument('--cfg', dest='cfg_file', required=True, type=str)
     parser.add_argument('--exp-name', required=True, type=str)
     parser.add_argument('--sampling_fn', required=True, type=str)
-    parser.add_argument('--random_strategy', default=None, type=str)
+    #parser.add_argument('--random_strategy', default=None, type=str)
     parser.add_argument('--budget', required=True, type=int)
     parser.add_argument('--initial_size', default=0, type=int)
-    parser.add_argument('--id-path', default=None, type=str)
+    parser.add_argument('--id_path', default=None, type=str)
     parser.add_argument('--seed', required=True, type=int)
     parser.add_argument('--initial_set_str', default="empty_initial_set", type=str)
 
@@ -61,6 +60,8 @@ def argparser():
     parser.add_argument('--unit_cost_path', default=None, type=str)
 
     parser.add_argument('--region_assignment_path', default=None, type=str)
+    parser.add_argument('--in_region_unit_cost', default=None, type=int)
+    parser.add_argument('--out_of_region_unit_cost', default=None, type=int)
 
     parser.add_argument('--util_lambda', default=0.5, type=float)
 
@@ -81,15 +82,21 @@ def main(cfg):
         exp_dir = now.strftime('%Y%m%d_%H%M%S')
     else:
         seed_str = f"seed_{cfg.RNG_SEED}"
-        base_dir = (f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/opt/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
+
+        if cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion", "poprisk"]:
+            sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}/{cfg.GROUPS.GROUP_TYPE}"
+        else:
+            sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}"
+
+        base_dir = (f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/opt/{sampling_str}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
                     if cfg.ACTIVE_LEARNING.OPT
-                    else f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/{cfg.ACTIVE_LEARNING.SAMPLING_FN}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}")
+                    else f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/{sampling_str}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}")
 
         # Add random_strategy subfolder if cost_name is cluster_based and sampling_fn is random
-        if cfg.COST.NAME == "cluster_based" and cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
-            random_strategy = getattr(cfg.ACTIVE_LEARNING, "RANDOM_STRATEGY", None)
-            if random_strategy:
-                base_dir = f"{base_dir}/{random_strategy}"
+        # if cfg.COST.NAME == "cluster_based" and cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
+        #     random_strategy = getattr(cfg.ACTIVE_LEARNING, "RANDOM_STRATEGY", None)
+        #     if random_strategy:
+        #         base_dir = f"{base_dir}/{random_strategy}"
 
         # Append util_lambda if sampling_fn is poprisk
         if cfg.ACTIVE_LEARNING.SAMPLING_FN == "poprisk":
@@ -136,23 +143,24 @@ def main(cfg):
     X_test, y_test = test_data[:][0], test_data[:][1]
 
     if len(lSet) > 0:
+        n_splits = 5
         logger.info("Training ridge regression on initial set...")
         lSet = lSet.astype(int)
         uSet = uSet.astype(int)
         X_train, y_train = train_data[lSet][0], train_data[lSet][1]
 
-        pipeline = Pipeline([
-            ('scaler', StandardScaler()),
-            ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
-        ])
-        pipeline.fit(X_train, y_train)
-        r2 = evaluate_r2(pipeline, X_test, y_test)
-        logger.info(f"Initial R² score: {r2:.4f}")
+        if n_splits > X_train.shape[0]:
+            print("Not enough samples...")
+        else:
+            pipeline = Pipeline([
+                ('scaler', StandardScaler()),
+                ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=n_splits, shuffle=True, random_state=42)))
+            ])
+            pipeline.fit(X_train, y_train)
+            r2 = evaluate_r2(pipeline, X_test, y_test)
+            logger.info(f"Initial R² score: {r2:.4f}")
 
-        summary_path = os.path.join(cfg.INITIAL_SET_DIR, "episode_0/summary.json")
-        os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-        with open(summary_path, "w") as f:
-            json.dump({'test_r2': r2}, f)
+        train_data.plot_subset_on_map(lSet, save_path=f"{exp_dir}/lSet_plot.png")
     else:
         logger.info("Initial labeled set is empty; skipping to subset selection.")
 
@@ -160,25 +168,33 @@ def main(cfg):
     al_obj = ActiveLearning(data_obj, cfg)
     model = pipeline if lSet.size > 0 else None
     activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data)
+    print(f"Sampled {len(activeSet)} points!")
+    train_data.plot_subset_on_map(activeSet, save_path=f"{exp_dir}/activeSet_plot.png")
 
     logger.info(f"Selected {len(activeSet)} new samples.")
     data_obj.saveSets(lSet, uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_0'))
 
     lSet_updated = np.concatenate((lSet, activeSet))
     lSet_updated = lSet_updated.astype(int)
+    train_data.plot_subset_on_map(lSet_updated, save_path=f"{exp_dir}/lSet_updated_plot.png")
 
 
     # Train again on the updated labeled set
     if lSet_updated.size > 0:
+        n_splits = 5
         logger.info("Training ridge regression on updated labeled set...")
         X_train_updated, y_train_updated = train_data[lSet_updated][0], train_data[lSet_updated][1]
-        pipeline = Pipeline([
-            ('scaler', StandardScaler()),
-            ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
-        ])
-        pipeline.fit(X_train_updated, y_train_updated)
-        r2_updated = evaluate_r2(pipeline, X_test, y_test)
-        logger.info(f"Updated R² score: {r2_updated:.4f}")
+
+        if n_splits > X_train_updated.shape[0]:
+            print("Not enough samples...")
+        else:
+            pipeline = Pipeline([
+                ('scaler', StandardScaler()),
+                ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+            ])
+            pipeline.fit(X_train_updated, y_train_updated)
+            r2_updated = evaluate_r2(pipeline, X_test, y_test)
+            logger.info(f"Updated R² score: {r2_updated:.4f}")
 
     data_obj.saveSets(lSet_updated, new_uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
 
@@ -188,7 +204,7 @@ if __name__ == "__main__":
     cfg.merge_from_file(args.cfg_file)
     cfg.EXP_NAME = args.exp_name
     cfg.ACTIVE_LEARNING.SAMPLING_FN = args.sampling_fn
-    cfg.ACTIVE_LEARNING.RANDOM_STRATEGY = args.random_strategy
+    #cfg.ACTIVE_LEARNING.RANDOM_STRATEGY = args.random_strategy
     cfg.ACTIVE_LEARNING.BUDGET_SIZE = args.budget
     cfg.INITIAL_SET.STR = args.initial_set_str
     cfg.RNG_SEED = args.seed
@@ -200,7 +216,13 @@ if __name__ == "__main__":
 
     if args.id_path:
         with open(args.id_path, "rb") as f:
-            ids = dill.load(f)
+            arrs = dill.load(f)
+
+        if isinstance(arrs, dict) and "sampled_ids" in arrs:
+            ids = arrs["sampled_ids"]
+        else:
+            ids = arrs  # assume it's a plain list or array
+
         cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
     else:
         cfg.LSET_IDS = []
@@ -266,7 +288,7 @@ if __name__ == "__main__":
             cfg.COST.UNIT_COST_PATH = args.unit_cost_path
 
     if args.region_assignment_path:
-        with open(args.unit_assignment_path, "rb") as f:
+        with open(args.region_assignment_path, "rb") as f:
             loaded = dill.load(f)
         if isinstance(loaded, dict):
             idx_to_assignment = loaded
@@ -278,6 +300,12 @@ if __name__ == "__main__":
             assignments_ordered = loaded['assignments']
 
         cfg.REGIONS.REGION_ASSIGNMENT = [str(x) for x in assignments_ordered]
+
+        if args.in_region_unit_cost:
+            cfg.REGIONS.IN_REGION_UNIT_COST = args.in_region_unit_cost
+        
+        if args.out_of_region_unit_cost:
+            cfg.REGIONS.OUT_OF_REGION_UNIT_COST = args.out_of_region_unit_cost
 
     if args.util_lambda:
         cfg.ACTIVE_LEARNING.UTIL_LAMBDA = args.util_lambda

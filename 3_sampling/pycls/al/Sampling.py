@@ -6,7 +6,7 @@ from . import cost
 COST_FNS = {
     "uniform": cost.uniform,
     "pointwise_by_array": cost.pointwise_by_array,
-    "unit_aware_pointwise_cost": cost.unit_aware_pointwise_cost
+    "region_aware_unit_cost": cost.region_aware_unit_cost
 }
 
 class Sampling:
@@ -19,7 +19,6 @@ class Sampling:
         self.relevant_indices = np.concatenate([self.lSet, self.uSet]).astype(int)
         self.budget = budgetSize
         self._set_unit_assignment()
-        self._resolve_cost_func()
 
         self.unit_index_map = {u: i for i, u in enumerate(self.units)}
 
@@ -27,7 +26,21 @@ class Sampling:
             u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
             for u in self.units
         }
-        self.labeled_unit_vector = self._initialize_labeled_unit_vector()
+        self.labeled_unit_vector, self.labeled_unit_set = self._initialize_labeled_units()
+
+        self._resolve_cost_func()
+
+    def _initialize_labeled_units(self):
+        labeled_unit_vector = np.zeros(len(self.units), dtype=bool)
+        labeled_unit_set = []
+
+        for i, u in enumerate(self.units):
+            indices = self.unit_to_indices[u]
+            if any(idx in self.lSet for idx in indices):
+                labeled_unit_vector[i] = True
+                labeled_unit_set.append(u)
+        labeled_unit_set = set(labeled_unit_set)
+        return labeled_unit_vector, labeled_unit_set
 
     def _set_unit_assignment(self):
         self.unit_assignment = np.array(self.cfg.UNITS.UNIT_ASSIGNMENT) if self.cfg.UNITS.UNIT_ASSIGNMENT is not None else np.arange(len(self.relevant_indices))
@@ -35,6 +48,29 @@ class Sampling:
 
         self.units = np.unique(self.unit_assignment)
         self.points_per_unit = self.cfg.UNITS.POINTS_PER_UNIT if self.cfg.UNITS.POINTS_PER_UNIT is not None else None
+
+    def _set_region_assignment(self):
+        assert self.cfg.REGIONS.REGION_ASSIGNMENT is not None, "Need to specify region assignment in config"
+        self.region_assignment = np.array(self.cfg.REGIONS.REGION_ASSIGNMENT)[self.relevant_indices]
+
+        self.region_assignment_per_unit = self._get_region_per_unit()
+        self.region_array_per_unit = np.array([self.region_assignment_per_unit[u] for u in self.units])
+
+    def _get_region_per_unit(self):
+        region_per_unit = {}
+
+        for u in self.units:
+            indices = np.where(self.unit_assignment == u)[0]
+            regions = self.region_assignment[indices]
+            unique_regions = np.unique(regions)
+
+            if len(unique_regions) > 1:
+                raise ValueError(f"Unit {u} has inconsistent region assignments: {unique_regions}")
+            
+            region_per_unit[u] = unique_regions[0]
+
+        return region_per_unit
+
 
     def _resolve_cost_func(self):
         cost_func_type = self.cfg.COST.FN
@@ -56,20 +92,26 @@ class Sampling:
 
             self.cost_func = lambda s: cost.pointwise_by_array(s, self.cost_array)
 
+        elif cost_func_type == "region_aware_unit_cost":
+            in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
+            self._set_region_assignment()
+
+            labeled_regions = set(self.region_assignment[self.lSet])
+            in_labeled_regions_unit_array = [self.region_assignment_per_unit[u] in labeled_regions for u in self.units]
+
+            cost_kwargs = {}
+            if self.cfg.REGIONS.IN_REGION_UNIT_COST is not None:
+                cost_kwargs["c1"] = self.cfg.REGIONS.IN_REGION_UNIT_COST
+            if self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST is not None:
+                cost_kwargs["c2"] = self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST
+
+            self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
+
 
     def _compute_labeled_cost(self, labeled_unit_vector):
         return self.cost_func(labeled_unit_vector)
 
-    def _initialize_labeled_unit_vector(self):
-        labeled_unit_vector = np.zeros(len(self.units), dtype=bool)
-
-        for i, u in enumerate(self.units):
-            indices = self.unit_to_indices[u]
-            if any(idx in self.lSet for idx in indices):
-                labeled_unit_vector[i] = True
-        return labeled_unit_vector
-
-    def random(self, strategy=None):
+    def random(self, strategy='point'):
         #self.cost_func_type = cfg.COST.FN
         if self.cost_func_type == 'uniform':
             return self.random_uniform()
@@ -79,6 +121,7 @@ class Sampling:
             return self.random_unit_cost_aware() #will sample points if units are points
 
     def random_uniform(self):
+        print("Running uniform cost random selection")
         tempIdx = [i for i in range(len(self.uSet))]
         np.random.shuffle(tempIdx)
         activeSet = self.uSet[tempIdx[0:self.budget]]
@@ -92,7 +135,7 @@ class Sampling:
         lSet = set(self.lSet)
         uSet = set(self.uSet)
 
-        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        unit_inclusion_vector = self.labeled_unit_vector.copy()
         labeled_units = set(self.unit_assignment[self.lSet])
 
         all_unlabeled_points = list(uSet - lSet)
@@ -131,11 +174,11 @@ class Sampling:
         lSet = set(self.lSet)
         uSet = set(self.uSet)
 
-        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        unit_inclusion_vector = self.labeled_unit_vector.copy()
         labeled_units = set(self.unit_assignment[self.lSet])
 
         selected = []
-        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector + self.budget):
+        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector) + self.budget:
             non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
             permuted_units = np.random.permutation(non_labeled_units)
 
@@ -195,7 +238,7 @@ class Sampling:
         lSet = set(self.lSet)
         uSet = set(self.uSet)
 
-        unit_inclusion_vector = np.zeros(len(self.units), dtype=bool)
+        unit_inclusion_vector = self.labeled_unit_vector.copy()
 
         step = 0
         while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector) + self.budget:

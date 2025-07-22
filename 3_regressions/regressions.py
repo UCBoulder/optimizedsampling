@@ -54,4 +54,28 @@ def ridge_regression(X_train,
     return r2
 
 
-            
+if __name__ == "__main__":
+    import dill
+
+    with open("/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl", "rb") as f:
+        arrs = dill.load(f)
+    full_ids = arrs['ids_train']
+    X_train_full = arrs['X_train']
+    y_train_full = arrs['y_train']
+    X_test = arrs['X_test']
+    y_test = arrs['y_test']
+
+    id_to_index = {str(id_): i for i, id_ in enumerate(full_ids)}
+
+    file_path = "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/randomstrata/sample_5_state_district_desired_20ppc_3000_size_seed_1.pkl"
+
+    with open(file_path, "rb") as f:
+        sampled_ids = dill.load(f)['sampled_ids']
+    sampled_ids = [str(x) for x in sampled_ids]
+    sampled_indices = [id_to_index[i] for i in sampled_ids if i in id_to_index]
+
+    X_subset = X_train_full[sampled_indices]
+    y_subset = y_train_full[sampled_indices]
+
+    r2 = ridge_regression(X_subset, y_subset, X_test, y_test)
+    from IPython import embed; embed()

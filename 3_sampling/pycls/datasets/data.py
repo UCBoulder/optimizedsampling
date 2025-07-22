@@ -12,6 +12,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import pycls.utils.logging as lu
 from pycls.datasets.usavars import USAVars
 from pycls.datasets.india_secc import IndiaSECC
+from pycls.datasets.togo_soil_fertility import TogoSoilFertility
 
 logger = lu.get_logger(__name__)
 
@@ -172,6 +173,10 @@ class Data:
         elif self.dataset == "INDIA_SECC":
             india_secc = IndiaSECC(root='/share/india_secc', isTrain=isTrain)
             return india_secc, len(india_secc)
+    
+        elif self.dataset == "TOGO":
+            togo_soil_fertility = TogoSoilFertility(root='/share/togo', isTrain=isTrain)
+            return togo_soil_fertility, len(togo_soil_fertility)
 
         else:
             print("Either the specified {} dataset is not added or there is no if condition in getDataset function of Data class".format(self.dataset))

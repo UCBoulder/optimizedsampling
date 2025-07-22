@@ -84,7 +84,7 @@ _C.TEST.DATASET = ''
 _C.ACTIVE_LEARNING = CN()
 _C.ACTIVE_LEARNING.OPT = False
 _C.ACTIVE_LEARNING.SAMPLING_FN = 'random'
-_C.ACTIVE_LEARNING.RANDOM_STRATEGY = 'unit'
+_C.ACTIVE_LEARNING.RANDOM_STRATEGY = 'point'
 _C.ACTIVE_LEARNING.LSET_PATH = ''
 _C.ACTIVE_LEARNING.USET_PATH = ''
 
@@ -101,7 +101,7 @@ _C.DATASET.NAME = None
 # For Tiny ImageNet dataset, ROOT_DIR must be set to the dataset folder ("data/tiny-imagenet-200/"). For others, the outder "data" folder where all datasets can be stored is expected.
 _C.DATASET.ROOT_DIR = None
 # Accepted Datasets
-_C.DATASET.ACCEPTED = ['USAVARS_POP', 'USAVARS_TC', 'USAVARS_EL', 'USAVARS_INC', 'INDIA_SECC']
+_C.DATASET.ACCEPTED = ['USAVARS_POP', 'USAVARS_TC', 'USAVARS_EL', 'USAVARS_INC', 'INDIA_SECC', 'TOGO']
 
 # #-------------------------------------------------------------------------------#
 # #  INITIAL SET options
@@ -136,9 +136,11 @@ _C.UNITS.POINTS_PER_UNIT = None
 # #-------------------------------------------------------------------------------#
 # #  REGION options
 # #-------------------------------------------------------------------------------#
-_C.REGION = CN()
+_C.REGIONS = CN()
 _C.REGIONS.TYPE = None
 _C.REGIONS.REGION_ASSIGNMENT = None
+_C.REGIONS.IN_REGION_UNIT_COST = None
+_C.REGIONS.OUT_OF_REGION_UNIT_COST = None
 
 def assert_cfg():
     """Checks config values invariants."""

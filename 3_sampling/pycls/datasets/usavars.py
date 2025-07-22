@@ -11,6 +11,7 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import rasterio
 import torch
 from matplotlib.figure import Figure
@@ -272,5 +273,59 @@ class USAVars(NonGeoDataset):
 
         if suptitle is not None:
             plt.suptitle(suptitle)
+
+        return fig
+
+    def plot_subset_on_map(
+        self,
+        indices: Sequence[int],
+        country_shape_file: str = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp',
+        country_name: str | None = None,
+        exclude_names: list[str] = ['Alaska', 'Hawaii', 'Puerto Rico'],
+        point_color: str = 'red',
+        point_size: float = 5,
+        title: str | None = None,
+        save_path: str | None = None
+    ) -> Figure:
+        """
+        Plot selected lat/lon points on a country shapefile.
+
+        Args:
+            indices: list of indices in self.latlons to plot.
+            country_shape_file: path to a shapefile for plotting the country boundary.
+            country_name: optional name to filter a specific country (must match shapefile's attribute).
+            exclude_names: optional list of names to exclude (e.g., overseas territories).
+            point_color: color of plotted points.
+            point_size: size of plotted points.
+            title: optional title for the plot.
+
+        Returns:
+            A matplotlib Figure showing the points on the map.
+        """
+        print("Plotting latlon subset...")
+        # Load the country shapefile
+        country = gpd.read_file(country_shape_file)
+
+        if country_name is not None and 'NAME' in country.columns:
+            country = country[country['NAME'] == country_name]
+
+        if exclude_names:
+            country = country[~country['name'].isin(exclude_names)]
+
+        # Create GeoDataFrame of selected lat/lons
+        latlons_subset = self.latlons[indices]
+        points_gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(latlons_subset[:, 1], latlons_subset[:, 0]), crs='EPSG:4326')
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 10))
+        country.plot(ax=ax, edgecolor='black', facecolor='none')
+        points_gdf.plot(ax=ax, color=point_color, markersize=point_size)
+
+        ax.set_axis_off()
+        if title:
+            ax.set_title(title, fontsize=14)
+
+        if save_path:
+            fig.savefig(save_path, dpi=300)
 
         return fig

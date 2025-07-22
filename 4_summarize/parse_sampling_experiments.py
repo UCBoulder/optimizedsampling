@@ -2,147 +2,191 @@ import os
 import re
 import pandas as pd
 import numpy as np
-from glob import glob
 from collections import defaultdict
-from pylatex import Document, Section, Tabular, MultiColumn, MultiRow, NoEscape
 
-base_dir = "/home/libe2152/optimizedsampling/0_output"
-log_filename = "stdout.log"
+# === CONFIGURATION ===
+LOG_FILENAME = "stdout.log"
+BASE_DIR = "/home/libe2152/optimizedsampling/0_output"
 
-# Regex patterns
+# === REGEX ===
 initial_r2_re = re.compile(r"Initial R² score: ([0-9.]+)")
 updated_r2_re = re.compile(r"Updated R² score: ([0-9.]+)")
 seed_re = re.compile(r"_seed_\d+")
 
-# Data structure
-results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list)})
-
-# Walk all log files
-for root, dirs, files in os.walk(base_dir):
-    if log_filename in files:
-        log_path = os.path.join(root, log_filename)
-
-        with open(log_path, "r") as f:
-            content = f.read()
-
-        # Parse R² scores
-        initial_r2_match = initial_r2_re.search(content)
-        updated_r2_match = updated_r2_re.search(content)
-
-        initial_r2 = float(initial_r2_match.group(1)) if initial_r2_match else None
-        updated_r2 = float(updated_r2_match.group(1)) if updated_r2_match else None
-
-        # Parse path elements
-        path_parts = root.split('/')
-        dataset = path_parts[5]
-        init_set_full = path_parts[6]
-
-        # Normalize initial set name (remove _seed_#)
-        init_set_base = seed_re.sub("", init_set_full)
-
-        if "cost_aware" in path_parts:
-            idx = path_parts.index("cost_aware")
-            method = path_parts[idx + 1]
-            budget = path_parts[idx + 2].replace("budget_", "")
-        else:
-            idx = len(path_parts) - 3
-            method = path_parts[idx]
-            budget = path_parts[idx + 1].replace("budget_", "")
-
-        key = (dataset, init_set_base, budget)
-
-        # Collect results
-        if initial_r2 is not None:
-            results[key]["initial_r2"].append(initial_r2)
-        if updated_r2 is not None:
-            results[key]["methods"][method].append(updated_r2)
-
-# Construct output table
-rows = []
-for (dataset, init_set_base, budget), data in results.items():
-    row = {
-        "dataset": dataset,
-        "initial_set": init_set_base,
-        "budget": int(budget),
-    }
-
-    if data["initial_r2"]:
-        initial_r2_vals = np.array(data["initial_r2"])
-        row["initial_r2_mean"] = round(initial_r2_vals.mean(), 2)
-        row["initial_r2_se"] = round(initial_r2_vals.std(ddof=1) / np.sqrt(len(initial_r2_vals)), 2)
-
-    for method, r2_vals in data["methods"].items():
-        if r2_vals:
-            r2_array = np.array(r2_vals)
-            row[f"{method}_updated_r2_mean"] = round(r2_array.mean(), 2)
-            row[f"{method}_updated_r2_se"] = round(r2_array.std(ddof=1) / np.sqrt(len(r2_array)), 2)
-
-    rows.append(row)
-
-# Save CSV
-df = pd.DataFrame(rows)
-df.sort_values(by=["dataset", "initial_set", "budget"], inplace=True)
-
-output_path = "aggregated_r2_by_initialset_with_ste.csv"
-df.to_csv(output_path, index=False)
-print(f"✅ Saved to {output_path}")
-
-df = pd.read_csv("aggregated_r2_by_initialset_with_ste.csv")
-method_labels = {
+# === METHOD LABELS FOR LATEX ===
+METHOD_LABELS = {
     "random": "Random",
-    "poprisk": "PopRisk ($\\lambda = 0.5$)",
-    "matchpopprop": "Proportional Stratified",
-    "stratified": "Stratified"
+    "greedycost": "Greedy Low-Cost",
+    "poprisk_0.5": "PopRisk ($\\lambda = 0.5$)",
+    "similarity": "Similarity",
 }
 
+# === FUNCTION DEFINITIONS ===
 
-def format_r2(mean, se):
-    if pd.notnull(mean) and pd.notnull(se):
-        return f"{mean:.2f} ± {se:.2f}"
+def parse_log_file(log_path, root):
+    with open(log_path, "r") as f:
+        content = f.read()
+
+    initial_r2 = updated_r2 = None
+    if (m := initial_r2_re.search(content)):
+        initial_r2 = float(m.group(1))
+    if (m := updated_r2_re.search(content)):
+        updated_r2 = float(m.group(1))
+
+    path_parts = root.split("/")
+    dataset = path_parts[5]
+
+    if path_parts[6] == "empty_initial_set":
+        init_set_base = "empty_initial_set"
+        cost_type = path_parts[7]
+        method_base_idx = 8
     else:
-        return "--"
+        init_set_full = path_parts[7]
+        init_set_base = seed_re.sub("", init_set_full)
+        cost_type = path_parts[8]
+        method_base_idx = 9
 
-for dataset_name, group_df in df.groupby("dataset"):
+    if "opt" in path_parts:
+        idx = path_parts.index("opt")
+        method = path_parts[idx + 1]
+        if method == "poprisk":
+            budget = path_parts[idx + 3].replace("budget_", "")
+            lambda_val = path_parts[idx + 4].replace("util_lambda_", "")
+            method = f"{method}_{lambda_val}"
+        else:
+            budget = path_parts[idx + 2].replace("budget_", "")
+    else:
+        method = path_parts[method_base_idx]
+        if method == "match_population_proportion":
+            budget = path_parts[method_base_idx + 2].replace("budget_", "")
+        else:
+            budget = path_parts[method_base_idx + 1].replace("budget_", "")
+
+    key = (dataset, init_set_base, cost_type, budget)
+    return key, method, initial_r2, updated_r2
+
+def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
+    results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list)})
+
+    for root, dirs, files in os.walk(base_dir):
+        if log_filename in files:
+            log_path = os.path.join(root, log_filename)
+            try:
+                key, method, initial_r2, updated_r2 = parse_log_file(log_path, root)
+            except Exception as e:
+                print(f"❌ Failed to parse {log_path}: {e}")
+                continue
+
+            if initial_r2 is not None:
+                results[key]["initial_r2"].append(initial_r2)
+            if updated_r2 is not None:
+                results[key]["methods"][method].append(updated_r2)
+
+    return results
+
+def build_filtered_df(results_dict, dataset, init_set, cost_type):
+    rows = []
+    for (ds, iset, ctype, budget), data in results_dict.items():
+        if (ds, iset, ctype) != (dataset, init_set, cost_type):
+            continue
+
+        row = {
+            "dataset": ds,
+            "initial_set": iset,
+            "cost_type": ctype,
+            "budget": int(budget),
+        }
+
+        if data["initial_r2"]:
+            arr = np.array(data["initial_r2"])
+            row["initial_r2_mean"] = round(arr.mean(), 2)
+            row["initial_r2_std"] = round(arr.std(), 2)
+
+        for method, vals in data["methods"].items():
+            if vals:
+                arr = np.array(vals)
+                row[f"{method}_updated_r2_mean"] = round(arr.mean(), 2)
+                row[f"{method}_updated_r2_std"] = round(arr.std(), 2)
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows).sort_values("budget")
+    return df
+
+def format_r2(mean, std):
+    return f"{mean:.2f} ± {std:.2f}" if pd.notnull(mean) and pd.notnull(std) else "--"
+
+def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
+    def prettify_name(s): return s.replace("_", " ").title()
+    def label_for_init(init): return {
+        "cluster_sampling": "Cluster Sampling",
+        "empty_initial_set": "No Initial Set",
+    }.get(init, "Initial Setting")
+    
+    def detail_for_init(init): return {
+        "cluster_sampling": "$k$ Points Per Cluster; Total size $M$",
+        "empty_initial_set": "No Initial Set",
+    }.get(init, prettify_name(init))
+
+    first_row = df.iloc[0]
+    init_r2 = format_r2(first_row.get("initial_r2_mean"), first_row.get("initial_r2_std"))
+    init_label = label_for_init(init_set)
+    init_detail = detail_for_init(init_set)
+    multirow_n = len(df)
+    left_col_text = f"\\multirow{{{multirow_n}}}{{*}}{{\\shortstack[l]{{{init_label} \\\\ {init_detail} \\\\ (Init $R^2$ = {init_r2})}}}}"
+
     lines = []
-
-    lines.append("\\begin{table*}[t!]")
+    lines.append("\\begin{table}[t!]")
     lines.append("\\centering")
     lines.append("\\small")
     lines.append("\\setlength{\\tabcolsep}{6pt}")
-    lines.append("\\begin{tabular}{ll" + "c" * len(method_labels) + "}%" )
-    lines.append("\\hline%")
-    
-    # Header rows
-    method_names = [f"\\multicolumn{{1}}{{c}}{{{name}}}" for name in method_labels.values()]
-    lines.append("\\multirow{2}{*}{Initial Set}&\\multirow{2}{*}{Budget}&" + "&".join(method_names) + "\\\\%")
-    lines.append("&&" + "&".join(["($R^2$ ± SE)"] * len(method_labels)) + "\\\\%")
+    lines.append("\\begin{tabular}{l" + "c" * (1 + len(method_labels)) + "}%" )
     lines.append("\\hline%")
 
-    for init_set, init_df in group_df.groupby("initial_set"):
-        init_df = init_df.sort_values(by="budget")
-        init_r2 = init_df.iloc[0].get("initial_r2_mean", None)
-        init_se = init_df.iloc[0].get("initial_r2_se", None)
+    method_names = [f"\\multicolumn{{1}}{{c}}{{{label}}}" for label in method_labels.values()]
+    lines.append("Init Info & Budget & " + "&".join(method_names) + "\\\\%")
+    lines.append(" &  & " + " & ".join(["($R^2$ ± Std)"] * len(method_labels)) + "\\\\%")
+    lines.append("\\hline%")
 
-        # format multirow header
-        init_r2_text = f"(Init $R^2$ = {init_r2:.4f} ± {init_se:.4f})" if pd.notnull(init_r2) else "--"
-        init_label = init_set.replace("_", " ").title()
-        multirow_label = f"\\multirow{{{len(init_df)}}}{{*}}{{\\shortstack[l]{{{init_label}\\\\{init_r2_text}}}}}"
+    for i, (_, row) in enumerate(df.iterrows()):
+        budget = int(row["budget"])
+        cells = [
+            format_r2(row.get(f"{m}_updated_r2_mean"), row.get(f"{m}_updated_r2_std"))
+            for m in method_labels
+        ]
+        if i == 0:
+            lines.append(f"{left_col_text} & {budget} & " + " & ".join(cells) + "\\\\%")
+        else:
+            lines.append(f"& {budget} & " + " & ".join(cells) + "\\\\%")
 
-        for i, (_, row) in enumerate(init_df.iterrows()):
-            budget = int(row["budget"])
-            r2_values = [format_r2(row.get(f"{m}_updated_r2_mean"), row.get(f"{m}_updated_r2_se")) for m in method_labels]
-            line = f"{multirow_label if i == 0 else ''}&{budget}&" + "&".join(r2_values) + "\\\\%"
-            lines.append(line)
-
-        lines.append("\\hline%")
-
+    lines.append("\\hline%")
     lines.append("\\end{tabular}%")
-    lines.append(f"\\caption{{Updated $R^2$ scores for the {dataset_name.upper()} Population dataset across budgets and initial sets. Initial $R^2$ shown under each setting.}}")
-    lines.append(f"\\label{{{{tab:{dataset_name.lower()}_pop_r2}}}}")
-    lines.append("\\end{table*}")
+    lines.append(f"\\caption{{Updated $R^2$ for {dataset.upper()} with initial set \\texttt{{{init_set}}} and cost \\texttt{{{cost_type}}}.}}")
+    lines.append(f"\\label{{tab:{dataset}_{init_set}_{cost_type}}}")
+    lines.append("\\end{table}")
 
-    tex_path = f"output_latex_table_{dataset_name}.tex"
+    tex_path = f"latex_table_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
+    print(f"📄 LaTeX table written to: {tex_path}")
 
-    print(f"✅ Saved LaTeX code for dataset '{dataset_name}' to {tex_path}")
+
+def save_csv(df, dataset, init_set, cost_type):
+    path = f"aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"
+    df.to_csv(path, index=False)
+    print(f"📊 CSV saved to: {path}")
+
+
+if __name__ == "__main__":
+    results = aggregate_results()
+
+    # Group all available (dataset, initial_set, cost_type)
+    keys = set((ds, iset, ctype) for (ds, iset, ctype, _) in results)
+
+    for dataset, init_set, cost_type in sorted(keys):
+        df = build_filtered_df(results, dataset, init_set, cost_type)
+        if df.empty:
+            print(f"⚠️ Skipping empty table for: {dataset}, {init_set}, {cost_type}")
+            continue
+        save_csv(df, dataset, init_set, cost_type)
+        generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
