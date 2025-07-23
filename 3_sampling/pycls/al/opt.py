@@ -66,9 +66,10 @@ class Opt:
     def _init_unit_assignment(self):
         if self.cfg.UNITS.UNIT_ASSIGNMENT is not None:
             unit_assignment = np.array(self.cfg.UNITS.UNIT_ASSIGNMENT)
+            unit_assignment = unit_assignment[self.relevant_indices]
         else:
-            unit_assignment = np.arange(len(self.relevant_indices))
-        return unit_assignment[self.relevant_indices]
+            unit_assignment = self.relevant_indices.copy()
+        return unit_assignment
 
     def _set_region_assignment(self):
         assert self.cfg.REGIONS.REGION_ASSIGNMENT is not None, "Need to specify region assignment in config"
@@ -143,7 +144,7 @@ class Opt:
                 self.cost_array = np.array([self.cost_dict[u] for u in self.units])
             elif self.cfg.COST.ARRAY is not None:
                 self.cost_array = np.array(self.cfg.COST.ARRAY)
-                self.cost_array = self.cost_array[self.relevant_indices]
+                self.cost_array = self.cost_array[self.units]
             else:
                 raise(AssertionError)
 
@@ -154,7 +155,7 @@ class Opt:
             in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
             self._set_region_assignment()
 
-            labeled_regions = set(self.region_assignment[self.lSet])
+            labeled_regions = set(self.region_assignment[:len(self.lSet)])
             in_labeled_regions_unit_array = [self.region_assignment_per_unit[u] in labeled_regions for u in self.units]
 
             cost_kwargs = {}
@@ -162,7 +163,6 @@ class Opt:
                 cost_kwargs["c1"] = self.cfg.REGIONS.IN_REGION_UNIT_COST
             if self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST is not None:
                 cost_kwargs["c2"] = self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST
-            
 
             self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
             self.np_cost_func = lambda s: np_cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
@@ -170,8 +170,6 @@ class Opt:
 
     def solve_opt(self):
         assert self.utility_func_type != "Random", "Please do not use the optimization function for random selection"
-
-        labeled_set = set(self.lSet)
 
         #make labeled inclusion vector of units
         unit_inclusion_vector = self.labeled_unit_vector.copy()
@@ -206,7 +204,7 @@ class Opt:
         return s.value
 
     def _load_probabilities(self):
-        prob_path = os.path.join(self.cfg.EXP_DIR, "probabilities.pkl")
+        prob_path = os.path.join(self.cfg.SAMPLING_DIR, f"probabilities_seed_{self.seed}.pkl")
         if os.path.exists(prob_path):
             print("Loading probabilities from file...")
             with open(prob_path, "rb") as f:
@@ -223,7 +221,7 @@ class Opt:
 
 
     def _save_probabilities(self, probs):
-        prob_path = os.path.join(self.cfg.EXP_DIR, "probabilities.pkl")
+        prob_path = os.path.join(self.cfg.SAMPLING_DIR, f"probabilities_seed_{self.seed}.pkl")
         with open(prob_path, "wb") as f:
             dill.dump({"ids": self.units, "probs": probs}, f)
 
@@ -244,26 +242,25 @@ class Opt:
         np.random.seed(self.seed)
         unit_inclusion_vector = self.labeled_unit_vector.copy()
 
-        #probs = self._load_probabilities()
-        #if probs is None:
-        probs = self.solve_opt()
-        #self._save_probabilities(probs)
+        probs = self._load_probabilities()
+        if probs is None:
+            probs = self.solve_opt()
+            probs = np.clip(probs, 0.0, 1.0) # handle floating point issues
+            self._save_probabilities(probs)
 
-        # Create and shuffle unit indices
         shuffled_unit_indices = np.arange(len(self.units))
         np.random.shuffle(shuffled_unit_indices)
 
-        # Shuffle probs to match the unit order
-        probs = probs[shuffled_unit_indices]
-        probs = np.clip(probs, 0.0, 1.0)  # handle floating point issues
+        probs_shuffled = probs[shuffled_unit_indices]
 
         for i in range(len(shuffled_unit_indices)):
-            draw = np.random.binomial(1, probs[i])
+            draw = np.random.binomial(1, probs_shuffled[i])
             unit_idx = shuffled_unit_indices[i]  # original index in dataset
 
             if draw == 1:
                 unit_inclusion_vector[unit_idx] = 1
                 total_cost = self.np_cost_func(unit_inclusion_vector)
+                print(f"Total Cost: {total_cost}")
 
                 if total_cost > self.budget + self.np_cost_func(self.labeled_unit_vector):
                     unit_inclusion_vector[unit_idx] = 0

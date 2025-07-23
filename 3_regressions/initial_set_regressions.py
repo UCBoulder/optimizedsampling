@@ -50,8 +50,11 @@ def sampling_r2_scores(
             full_path = os.path.join(sampling_dir, fname)
             try:
                 with open(full_path, "rb") as f:
-                    sampled_ids = dill.load(f)['sampled_ids']
-                sampled_ids = [str(x) for x in sampled_ids]
+                    if "india" in full_path:
+                        sampled_ids = dill.load(f)
+                    else:
+                        sampled_ids = dill.load(f)['sampled_ids']
+                    sampled_ids = [str(x) for x in sampled_ids] 
             except Exception as e:
                 if verbose:
                     print(f"[WARNING] Failed to load {fname}: {e}")
@@ -225,47 +228,45 @@ def random_sampling_r2_scores(*args, **kwargs):
 if __name__ == "__main__":
     from regressions import ridge_regression
 
-    for label in ['population', 'treecover']:
+    features_path = f"/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl"
+    cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/randomstrata"
+    convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/urban_based"
+    convenience_sampling_region_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/cluster_based"
+    random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/random_sampling"
 
-        features_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
-        cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/cluster_sampling/randomstrata"
-        convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based"
-        convenience_sampling_cluster_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/cluster_based"
-        random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling"
+    results_dir = f"/home/libe2152/optimizedsampling/0_results/india_secc"
 
-        results_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}"
+    # # Run cluster sampling R2 scores
+    # cluster_sampling_r2_scores(
+    #     features_path=features_path,
+    #     sampling_dir=cluster_sampling_dir,
+    #     results_dir=results_dir,
+    #     ridge_regression_fn=ridge_regression,
+    #     verbose=True,
+    # )
 
-        # Run cluster sampling R2 scores
-        cluster_sampling_r2_scores(
-            features_path=features_path,
-            sampling_dir=cluster_sampling_dir,
-            results_dir=results_dir,
-            ridge_regression_fn=ridge_regression,
-            verbose=True,
-        )
+    # # Run convenience sampling R2 scores
+    convenience_sampling_r2_scores(
+        features_path=features_path,
+        sampling_dir=convenience_sampling_urban_dir,
+        results_dir=results_dir,
+        ridge_regression_fn=ridge_regression,
+        verbose=True,
+    )
 
-        # Run convenience sampling R2 scores
-        convenience_sampling_r2_scores(
-            features_path=features_path,
-            sampling_dir=convenience_sampling_urban_dir,
-            results_dir=results_dir,
-            ridge_regression_fn=ridge_regression,
-            verbose=True,
-        )
+    # convenience_sampling_r2_scores(
+    #     features_path=features_path,
+    #     sampling_dir=convenience_sampling_region_dir,
+    #     results_dir=results_dir,
+    #     ridge_regression_fn=ridge_regression,
+    #     verbose=True,
+    # )
 
-        convenience_sampling_r2_scores(
-            features_path=features_path,
-            sampling_dir=convenience_sampling_cluster_dir,
-            results_dir=results_dir,
-            ridge_regression_fn=ridge_regression,
-            verbose=True,
-        )
-
-        # Run random sampling R2 scores
-        random_sampling_r2_scores(
-            features_path=features_path,
-            sampling_dir=random_sampling_dir,
-            results_dir=results_dir,
-            ridge_regression_fn=ridge_regression,
-            verbose=True,
-        )
+    # Run random sampling R2 scores
+    # random_sampling_r2_scores(
+    #     features_path=features_path,
+    #     sampling_dir=random_sampling_dir,
+    #     results_dir=results_dir,
+    #     ridge_regression_fn=ridge_regression,
+    #     verbose=True,
+    # )

@@ -1,4 +1,0 @@
-dataset,initial_set,cost_type,budget,random_updated_r2_mean,random_updated_r2_std,poprisk_0.5_updated_r2_mean,poprisk_0.5_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
-USAVARS_POP,empty_initial_set,uniform,100,0.34,0.0,0.42,0.0,0.41,0.0
-USAVARS_POP,empty_initial_set,uniform,500,0.56,0.0,0.55,0.0,0.58,0.0
-USAVARS_POP,empty_initial_set,uniform,1000,0.59,0.0,0.61,0.0,0.6,0.0

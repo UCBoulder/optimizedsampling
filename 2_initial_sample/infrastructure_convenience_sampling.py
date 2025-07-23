@@ -303,6 +303,9 @@ if __name__ == "__main__":
 
     data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
     gdf = gpd.read_file(data_path)
+    train_ids = pd.read_csv('/share/togo/splits/train_ids.csv').astype(str)
+    gdf = gdf[gdf['id'].astype(str).isin(train_ids.iloc[:, 0])].copy()
+    
     gdf['EA'] = gdf['combined_adm_id']
     gdf['prefecture'] = gdf['admin_2']
     gdf['region'] = gdf['admin_1']

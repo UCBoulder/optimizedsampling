@@ -46,7 +46,7 @@ class TogoSoilFertility(NonGeoDataset):
         self._ensure_splits_exist()
         self.df = self._apply_split()
 
-        self.ids = self.df[unique_id_col].values
+        self.ids = self.df[unique_id_col].astype(str).values
         self.y = self.df[label_col].values.astype(np.float32)
 
         # Features = all other outcome columns (optional)

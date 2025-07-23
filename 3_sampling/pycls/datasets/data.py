@@ -254,6 +254,8 @@ class Data:
             return self.makeLUVSets_from_ids_usavars(ids, data, save_dir)
         elif self.dataset == "INDIA_SECC":
             return self.makeLUVSets_from_ids_india_secc(ids, data, save_dir)
+        elif self.dataset == "TOGO":
+            return self.makeLUVSets_from_ids_india_secc(ids, data, save_dir)
         else:
             raise ValueError("method not yet implemented")
         return
@@ -311,7 +313,10 @@ class Data:
         valSet = []
 
         ids_to_idxs = {data.ids[i]:i for i in range(len(data))}
-        labeled_idxs = [ids_to_idxs[id_] for id_ in ids]
+        try:
+            labeled_idxs = [ids_to_idxs[id_] for id_ in ids]
+        except Exception as e:
+            from IPython import embed; embed()
         unlabeled_idxs = [i for id_, i in ids_to_idxs.items() if id_ not in ids]
         
         #Check there should be no overlap with train and val data
@@ -339,6 +344,8 @@ class Data:
         np.save(f'{save_dir}/valSet.npy', valSet)
         
         return f'{save_dir}/lSet.npy', f'{save_dir}/uSet.npy', f'{save_dir}/valSet.npy'
+    
+    
 
     def makeTVSets(self, val_split_ratio, data, seed_id, save_dir):
         """

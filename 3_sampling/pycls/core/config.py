@@ -30,6 +30,7 @@ _C.EXP_DIR = ''
 _C.EXP_ROOT = ''
 # Initial Set Directory
 _C.INITIAL_SET_DIR = ''
+_C.SAMPLING_DIR = ''
 # Episode directory
 _C.EPISODE_DIR = ''
 # Config destination (in OUT_DIR)

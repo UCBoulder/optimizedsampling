@@ -18,6 +18,7 @@ METHOD_LABELS = {
     "random": "Random",
     "greedycost": "Greedy Low-Cost",
     "poprisk_0.5": "PopRisk ($\\lambda = 0.5$)",
+    "poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
 }
 
@@ -35,6 +36,7 @@ def parse_log_file(log_path, root):
 
     path_parts = root.split("/")
     dataset = path_parts[5]
+    seed = path_parts[-1].split("_")[1]
 
     if path_parts[6] == "empty_initial_set":
         init_set_base = "empty_initial_set"
@@ -63,25 +65,26 @@ def parse_log_file(log_path, root):
             budget = path_parts[method_base_idx + 1].replace("budget_", "")
 
     key = (dataset, init_set_base, cost_type, budget)
-    return key, method, initial_r2, updated_r2
+    return key, method, initial_r2, updated_r2, seed
 
 def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
-    results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list)})
+    results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list), "seeds": set()})
 
     for root, dirs, files in os.walk(base_dir):
         if log_filename in files:
             log_path = os.path.join(root, log_filename)
             try:
-                key, method, initial_r2, updated_r2 = parse_log_file(log_path, root)
+                key, method, initial_r2, updated_r2, seed = parse_log_file(log_path, root)
             except Exception as e:
-                print(f"❌ Failed to parse {log_path}: {e}")
+                print(f"Failed to parse {log_path}: {e}")
                 continue
 
-            if initial_r2 is not None:
+            if initial_r2 is not None and seed not in results[key]["seeds"]:
                 results[key]["initial_r2"].append(initial_r2)
+                results[key]["seeds"].add(seed)
             if updated_r2 is not None:
                 results[key]["methods"][method].append(updated_r2)
-
+    from IPython import embed; embed()
     return results
 
 def build_filtered_df(results_dict, dataset, init_set, cost_type):
@@ -144,7 +147,7 @@ def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
     lines.append("\\hline%")
 
     method_names = [f"\\multicolumn{{1}}{{c}}{{{label}}}" for label in method_labels.values()]
-    lines.append("Init Info & Budget & " + "&".join(method_names) + "\\\\%")
+    lines.append("Problem Setting & Budget & " + "&".join(method_names) + "\\\\%")
     lines.append(" &  & " + " & ".join(["($R^2$ ± Std)"] * len(method_labels)) + "\\\\%")
     lines.append("\\hline%")
 
@@ -186,7 +189,7 @@ if __name__ == "__main__":
     for dataset, init_set, cost_type in sorted(keys):
         df = build_filtered_df(results, dataset, init_set, cost_type)
         if df.empty:
-            print(f"⚠️ Skipping empty table for: {dataset}, {init_set}, {cost_type}")
+            print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
             continue
         save_csv(df, dataset, init_set, cost_type)
         generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)

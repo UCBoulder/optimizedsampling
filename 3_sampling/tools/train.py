@@ -3,6 +3,7 @@ import sys
 import argparse
 import numpy as np
 import dill
+import json
 from datetime import datetime
 
 from sklearn.pipeline import Pipeline
@@ -110,12 +111,11 @@ def main(cfg):
         else:
             exp_dir = base_dir
 
-
-
     exp_dir = os.path.join(dataset_dir, exp_dir)
     os.makedirs(exp_dir, exist_ok=True)
     cfg.EXP_DIR = exp_dir
     cfg.INITIAL_SET_DIR = os.path.join(dataset_dir, cfg.INITIAL_SET.STR)
+    cfg.SAMPLING_DIR = os.path.join(dataset_dir, base_dir)
     dump_cfg(cfg)
 
     lu.setup_logging(cfg)
@@ -126,6 +126,10 @@ def main(cfg):
     train_data, _ = data_obj.getDataset(isTrain=True)
     test_data, _ = data_obj.getDataset(isTrain=False)
 
+    model = Pipeline([
+        ('scaler', StandardScaler()),
+        ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+    ])
 
     if cfg.LSET_IDS:
         lSet_path, uSet_path, valSet_path = data_obj.makeLUVSets_from_ids(cfg.LSET_IDS, data=train_data, save_dir=cfg.EXP_DIR)
@@ -143,30 +147,38 @@ def main(cfg):
     X_test, y_test = test_data[:][0], test_data[:][1]
 
     if len(lSet) > 0:
-        n_splits = 5
-        logger.info("Training ridge regression on initial set...")
-        lSet = lSet.astype(int)
-        uSet = uSet.astype(int)
-        X_train, y_train = train_data[lSet][0], train_data[lSet][1]
+        initial_set_r2_path = f"{cfg.INITIAL_SET_DIR}/initial_set_r2_seed_{cfg.RNG_SEED}.json"
+        if os.path.exists(initial_set_r2_path):
 
-        if n_splits > X_train.shape[0]:
-            print("Not enough samples...")
-        else:
-            pipeline = Pipeline([
-                ('scaler', StandardScaler()),
-                ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=n_splits, shuffle=True, random_state=42)))
-            ])
-            pipeline.fit(X_train, y_train)
-            r2 = evaluate_r2(pipeline, X_test, y_test)
+            print("Loading initial set r2 performance...")
+            with open(initial_set_r2_path, "r") as f:
+                r2 = json.load(f)
             logger.info(f"Initial R² score: {r2:.4f}")
+        else:
+            n_splits = 5
+            print("Training ridge regression on initial set...")
+            logger.info("Training ridge regression on initial set...")
+            lSet = lSet.astype(int)
+            uSet = uSet.astype(int)
+            X_train, y_train = train_data[lSet][0], train_data[lSet][1]
 
-        train_data.plot_subset_on_map(lSet, save_path=f"{exp_dir}/lSet_plot.png")
+            if X_train.shape[0] < 5:
+                print("Not enough samples...")
+            else:
+                model.fit(X_train, y_train)
+                r2 = evaluate_r2(model, X_test, y_test)
+                logger.info(f"Initial R² score: {r2:.4f}")
+
+                os.makedirs(cfg.INITIAL_SET_DIR, exist_ok=True)
+                with open(initial_set_r2_path, "w") as f:
+                    json.dump(r2, f)
+
+            train_data.plot_subset_on_map(lSet, save_path=f"{cfg.INITIAL_SET_DIR}/lSet_plot.png")
     else:
         logger.info("Initial labeled set is empty; skipping to subset selection.")
 
     logger.info("Starting subset selection...")
     al_obj = ActiveLearning(data_obj, cfg)
-    model = pipeline if lSet.size > 0 else None
     activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data)
     print(f"Sampled {len(activeSet)} points!")
     train_data.plot_subset_on_map(activeSet, save_path=f"{exp_dir}/activeSet_plot.png")
@@ -178,6 +190,10 @@ def main(cfg):
     lSet_updated = lSet_updated.astype(int)
     train_data.plot_subset_on_map(lSet_updated, save_path=f"{exp_dir}/lSet_updated_plot.png")
 
+    model = Pipeline([
+        ('scaler', StandardScaler()),
+        ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+    ])
 
     # Train again on the updated labeled set
     if lSet_updated.size > 0:
@@ -188,45 +204,45 @@ def main(cfg):
         if n_splits > X_train_updated.shape[0]:
             print("Not enough samples...")
         else:
-            pipeline = Pipeline([
-                ('scaler', StandardScaler()),
-                ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
-            ])
-            pipeline.fit(X_train_updated, y_train_updated)
-            r2_updated = evaluate_r2(pipeline, X_test, y_test)
+            model.fit(X_train_updated, y_train_updated)
+            r2_updated = evaluate_r2(model, X_test, y_test)
             logger.info(f"Updated R² score: {r2_updated:.4f}")
 
     data_obj.saveSets(lSet_updated, new_uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
 
-
-if __name__ == "__main__":
+def main_wrapper():
+    # === Parse Arguments ===
     args = argparser().parse_args()
+
+    # === Load Configuration ===
     cfg.merge_from_file(args.cfg_file)
     cfg.EXP_NAME = args.exp_name
     cfg.ACTIVE_LEARNING.SAMPLING_FN = args.sampling_fn
-    #cfg.ACTIVE_LEARNING.RANDOM_STRATEGY = args.random_strategy
     cfg.ACTIVE_LEARNING.BUDGET_SIZE = args.budget
     cfg.INITIAL_SET.STR = args.initial_set_str
     cfg.RNG_SEED = args.seed
 
+    # Ensure root directory is absolute
     cfg.DATASET.ROOT_DIR = os.path.abspath(cfg.DATASET.ROOT_DIR)
+
+    # === Load Dataset ===
     data_obj = Data(cfg)
     train_data, _ = data_obj.getDataset(isTrain=True)
     test_data, _ = data_obj.getDataset(isTrain=False)
 
+    # === Load Initial Labeled Set IDs (Optional) ===
     if args.id_path:
         with open(args.id_path, "rb") as f:
             arrs = dill.load(f)
-
         if isinstance(arrs, dict) and "sampled_ids" in arrs:
             ids = arrs["sampled_ids"]
         else:
-            ids = arrs  # assume it's a plain list or array
-
+            ids = arrs  # assume list or array
         cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
     else:
         cfg.LSET_IDS = []
 
+    # === Configure Cost Function ===
     if args.cost_func:
         cfg.COST.FN = args.cost_func
         cfg.COST.NAME = args.cost_name or args.cost_func
@@ -234,83 +250,94 @@ if __name__ == "__main__":
         cfg.COST.FN = 'uniform'
         cfg.COST.NAME = 'uniform'
 
-    if args.sampling_fn in ['greedycost', 'poprisk', 'similarity', 'diversity']:
-        cfg.ACTIVE_LEARNING.OPT = True
-    else:
-        cfg.ACTIVE_LEARNING.OPT = False
+    # === Optimization Flag for Some Strategies ===
+    cfg.ACTIVE_LEARNING.OPT = args.sampling_fn in [
+        'greedycost', 'poprisk', 'similarity', 'diversity'
+    ]
 
+    # === Load Cost Array (Optional) ===
     if args.cost_array_path:
         with open(args.cost_array_path, "rb") as f:
             loaded = dill.load(f)
+
         if 'ids' in loaded:
             idx_to_cost = dict(zip(loaded['ids'], loaded['costs']))
-            # train_data has indices
             cost_array = [idx_to_cost[idx] for idx in train_data.ids]
         else:
             cost_array = loaded['assignments']
+
         cfg.COST.ARRAY = [float(x) for x in cost_array]
 
+    # === Load Group Assignments (Optional) ===
     if args.group_assignment_path:
         cfg.GROUPS.GROUP_TYPE = args.group_type
+
         with open(args.group_assignment_path, "rb") as f:
             loaded = dill.load(f)
+
         if isinstance(loaded, dict):
             idx_to_assignment = loaded
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         elif 'ids' in loaded:
             idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
-            # train_data has indices
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         else:
-            assignments_ordered = loaded['assignments']
+            idx_to_assignment = dict(zip(train_data.ids, loaded['assignments']))
 
+        assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         cfg.GROUPS.GROUP_ASSIGNMENT = [str(x) for x in assignments_ordered]
 
-
+    # === Load Unit Assignments (Optional) ===
     if args.unit_assignment_path:
         cfg.UNITS.UNIT_TYPE = args.unit_type
+
         with open(args.unit_assignment_path, "rb") as f:
             loaded = dill.load(f)
+
         if isinstance(loaded, dict):
             idx_to_assignment = loaded
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         elif 'ids' in loaded:
             idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         else:
-            assignments_ordered = loaded['assignments']
+            idx_to_assignment = dict(zip(train_data.ids, loaded['assignments']))
 
+        assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         cfg.UNITS.UNIT_ASSIGNMENT = [str(x) for x in assignments_ordered]
-
         cfg.UNITS.POINTS_PER_UNIT = args.points_per_unit
 
         if args.unit_cost_path:
             cfg.COST.UNIT_COST_PATH = args.unit_cost_path
 
+    # === Load Region Assignments (Optional) ===
     if args.region_assignment_path:
         with open(args.region_assignment_path, "rb") as f:
             loaded = dill.load(f)
+
         if isinstance(loaded, dict):
             idx_to_assignment = loaded
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         elif 'ids' in loaded:
             idx_to_assignment = dict(zip(loaded['ids'], loaded['assignments']))
-            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         else:
-            assignments_ordered = loaded['assignments']
+            idx_to_assignment = dict(zip(train_data.ids, loaded['assignments']))
 
+        assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         cfg.REGIONS.REGION_ASSIGNMENT = [str(x) for x in assignments_ordered]
 
+        # Optional region cost settings
         if args.in_region_unit_cost:
             cfg.REGIONS.IN_REGION_UNIT_COST = args.in_region_unit_cost
-        
+
         if args.out_of_region_unit_cost:
             cfg.REGIONS.OUT_OF_REGION_UNIT_COST = args.out_of_region_unit_cost
 
+    # === Optional Utility Lambda Setting ===
     if args.util_lambda:
         cfg.ACTIVE_LEARNING.UTIL_LAMBDA = args.util_lambda
 
+    # === Optional Paths for Similarity/Distance Matrices ===
     cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH = args.similarity_matrix_path
     cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = args.distance_matrix_path
 
+    # === Run Main Experiment ===
     main(cfg)
+
+if __name__ == "__main__":
+    main_wrapper()
