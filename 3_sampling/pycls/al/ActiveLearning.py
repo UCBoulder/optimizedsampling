@@ -47,6 +47,10 @@ class ActiveLearning:
             #strategy = self.cfg.ACTIVE_LEARNING.RANDOM_STRATEGY
             activeSet, uSet = self.sampler.random()
 
+        elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "random_unit":
+            #strategy = self.cfg.ACTIVE_LEARNING.RANDOM_STRATEGY
+            activeSet, uSet = self.sampler.random_unit_cost_aware()
+
         elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["stratified"]:
             activeSet, uSet = self.sampler.stratified()
 

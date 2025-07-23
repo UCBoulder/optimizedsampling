@@ -23,7 +23,7 @@ class Sampling:
         self.unit_index_map = {u: i for i, u in enumerate(self.units)}
 
         self.unit_to_indices = {
-            u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
+            u: self.relevant_indices[self.unit_assignment == u]
             for u in self.units
         }
         self.labeled_unit_vector, self.labeled_unit_set = self._initialize_labeled_units()
@@ -178,27 +178,39 @@ class Sampling:
         labeled_units = set(self.unit_assignment[self.lSet])
 
         selected = []
-        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector) + self.budget:
-            non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
-            permuted_units = np.random.permutation(non_labeled_units)
+        non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
+        permuted_units = np.random.permutation(non_labeled_units)
 
-            for u in permuted_units:
-                unit_inclusion_vector[self.unit_index_map[u]] = 1
-                if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
-                    unit_inclusion_vector[self.unit_index_map[u]] = 0
-                    break
+        for u in permuted_units:
+            print(u)
+            unit_inclusion_vector[self.unit_index_map[u]] = 1
+            if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+                print(self.cost_func(unit_inclusion_vector))
+                print(self.budget) 
+                print(self.cost_func(self.labeled_unit_vector))
+                print("exceeded budget")
+                unit_inclusion_vector[self.unit_index_map[u]] = 0
+                break
 
-                # Get indices of points in the selected unit
-                unit_indices = self.unit_to_indices[u]
+            #get indices of points in the selected unit
+            unit_indices = self.unit_to_indices[u]
 
-                # Update sets
-                selected.extend(unit_indices)
-                lSet.update(unit_indices)
-                uSet.difference_update(unit_indices)
-                labeled_units.add(u)
+            if self.points_per_unit is None:
+                selected_points = unit_indices
+            elif len(unit_indices) <= self.points_per_unit:
+                selected_points = unit_indices
+            else:
+                selected_points = np.random.choice(unit_indices, size=self.points_per_unit, replace=False)
+
+            #update sets
+            selected.extend(selected_points)
+            lSet.update(selected_points)
+            uSet.difference_update(selected_points)
+            labeled_units.add(u)
 
         activeSet = np.array(selected)
         remainSet = np.array(sorted(uSet))
+        from IPython import embed; embed()
         return activeSet, remainSet
 
     def _set_groups(self):

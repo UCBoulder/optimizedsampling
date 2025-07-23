@@ -119,7 +119,7 @@ class Opt:
             similarity_matrix = np.load(self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH)['arr_0']
             similarity_matrix = similarity_matrix[self.relevant_indices, :]
 
-            self.utility_func = lambda s: util.similarity(s, similarity_matrix)
+            self.utility_func = lambda s: util.similarity(s, self.unit_assignment, similarity_matrix)
 
         elif utility_func_type == "diversity":
             assert self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH is not None, "Need to specify distance matrix path"

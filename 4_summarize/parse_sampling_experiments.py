@@ -84,7 +84,6 @@ def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
                 results[key]["seeds"].add(seed)
             if updated_r2 is not None:
                 results[key]["methods"][method].append(updated_r2)
-    from IPython import embed; embed()
     return results
 
 def build_filtered_df(results_dict, dataset, init_set, cost_type):

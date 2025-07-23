@@ -1,0 +1,20 @@
+\begin{table}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcccccc}%
+\hline%
+Problem Setting & Budget & \multicolumn{1}{c}{Random}&\multicolumn{1}{c}{Greedy Low-Cost}&\multicolumn{1}{c}{PopRisk ($\lambda = 0.5$)}&\multicolumn{1}{c}{PopRisk ($\lambda = 0.1$)}&\multicolumn{1}{c}{Similarity}\\%
+ &  & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std) & ($R^2$ ± Std)\\%
+\hline%
+\multirow{6}{*}{\shortstack[l]{Initial Setting \\ Top20 Urban 200 Points \\ (Init $R^2$ = 0.65 ± 0.02)}} & 50 & 0.66 ± 0.00 & 0.65 ± 0.02 & 0.64 ± 0.03 & -- & 0.67 ± 0.00\\%
+& 75 & 0.70 ± 0.02 & 0.63 ± 0.01 & 0.64 ± 0.02 & -- & 0.63 ± 0.01\\%
+& 100 & 0.72 ± 0.01 & 0.64 ± 0.02 & 0.65 ± 0.02 & -- & 0.63 ± 0.01\\%
+& 250 & 0.73 ± 0.01 & 0.66 ± 0.01 & 0.63 ± 0.02 & -- & 0.66 ± 0.00\\%
+& 500 & 0.76 ± 0.02 & 0.66 ± 0.02 & 0.68 ± 0.01 & -- & 0.65 ± 0.00\\%
+& 1000 & 0.79 ± 0.01 & 0.72 ± 0.01 & 0.71 ± 0.02 & -- & 0.74 ± 0.00\\%
+\hline%
+\end{tabular}%
+\caption{Updated $R^2$ for USAVARS_TC with initial set \texttt{top20_urban_200_points} and cost \texttt{convenience_based_top20_urban}.}
+\label{tab:USAVARS_TC_top20_urban_200_points_convenience_based_top20_urban}
+\end{table}

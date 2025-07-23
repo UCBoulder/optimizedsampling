@@ -43,8 +43,18 @@ def pop_risk(s, units, groups, l=0.5):
     weighted_risks = cp.multiply(group_weights, group_risks)
     return -cp.sum(weighted_risks) #negative since opt will maximize this
 
-def similarity(s, similarity_matrix):
-    test_similarity = similarity_matrix.sum(axis=1) #this sums the similarity for now, might want to change to softmax
+def similarity(s, units, similarity_matrix):
+    unique_units = np.unique(units)
+    n_units = len(unique_units)
+
+    n_test = similarity_matrix.shape[1]
+    similarity_per_unit = np.zeros((n_units, n_test))
+
+    for i, unit in enumerate(unique_units):
+        mask = units == unit
+        similarity_per_unit[i] = similarity_matrix[mask].sum(axis=0) 
+
+    test_similarity = similarity_per_unit.sum(axis=1) #this sums the similarity for now, might want to change to softmax
     return s @ test_similarity
 
 def diversity(s, distance_matrix):
