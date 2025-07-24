@@ -2,4 +2,4 @@
 # RNG_SEED: 1
 DATASET:
   NAME: INDIA_SECC
-  ROOT_DIR: '/share/india_secc'
+  ROOT_DIR: '/media/volume/geo_sampling_data/optimizedsampling/india_secc'

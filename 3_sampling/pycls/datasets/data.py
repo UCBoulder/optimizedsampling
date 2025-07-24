@@ -171,7 +171,7 @@ class Data:
             return usavars_inc, len(usavars_inc)
 
         elif self.dataset == "INDIA_SECC":
-            india_secc = IndiaSECC(root='/share/india_secc', isTrain=isTrain)
+            india_secc = IndiaSECC(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain)
             return india_secc, len(india_secc)
     
         elif self.dataset == "TOGO":

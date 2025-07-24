@@ -23,7 +23,7 @@ cfg = _C
 # Number of GPUs to use (applies to both training and testing)
 _C.NUM_GPUS = 1
 # Output directory (will be created at the projec root)
-_C.OUT_DIR = '/home/libe2152/optimizedsampling/0_output'
+_C.OUT_DIR = './0_output'
 # Experiment directory
 _C.EXP_DIR = ''
 # Higher Level Experiment directory without seed

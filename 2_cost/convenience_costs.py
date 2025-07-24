@@ -66,7 +66,6 @@ def compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, dist_path, id_
         point_geoms,
         urban_geoms
     )
-    from IPython import embed; embed()
     id_array = gdf_points[id_col].astype(str).to_numpy()
     distance_dict = dict(zip(id_array, distances))
 
@@ -202,22 +201,21 @@ def save_cost_array(ids, costs, out_path):
 
 # === Example Usage ===
 if __name__ == "__main__":
-    gdf_points = gpd.read_file(f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson")
+    gdf_points = gpd.read_file(f"/media/volume/geo_sampling_data/optimizedsampling/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
+    gdf_points = gdf_points.to_crs("EPSG:4326")
+    n_urban = 20
+    pop_col = 'pc11_pca_tot_p_combined'
 
-    lome_lat = 6.12874
-    lome_lon = 1.22154
-    city_point = Point(lome_lon, lome_lat)
-    gdf_urban_top = gpd.GeoDataFrame({'geometry': [city_point]}, crs='EPSG:4326')
+    gdf_urban_top = gdf_points.nlargest(n_urban, pop_col)
 
     # Compute distance-based cost
-    dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/togo/distance_to_top1_urban.pkl")
-    from IPython import embed; embed()
-    dists = np.array([dist_dict[i] for i in gdf_points['id']])
+    dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"costs/india_secc/distance_to_top{n_urban}_urban.pkl", id_col='condensed_shrug_id')
+    dists = np.array([dist_dict[str(i)] for i in gdf_points['condensed_shrug_id']])
     print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
     costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
     print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
 
     # Save
-    out_path = f"/home/libe2152/optimizedsampling/0_data/costs/togo/convenience_costs/distance_based_costs_top1_urban.pkl"
-    save_cost_array(gdf_points['id'], costs, out_path)
+    out_path = f"costs/india_secc/distance_based_costs_top{n_urban}_urban.pkl"
+    save_cost_array(gdf_points['condensed_shrug_id'], costs, out_path)

@@ -11,6 +11,9 @@ from sklearn.linear_model import RidgeCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import GridSearchCV
+
 import torch
 
 def add_path(path):
@@ -128,8 +131,22 @@ def main(cfg):
 
     model = Pipeline([
         ('scaler', StandardScaler()),
-        ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+        ('ridge', Ridge())
     ])
+
+    param_grid = {
+        'ridge__alpha': np.logspace(-5, 5, 10)
+    }
+
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    ridge_search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        scoring='r2',        
+        cv=cv,
+        n_jobs=-1                   #parallelize across folds
+    )
 
     if cfg.LSET_IDS:
         lSet_path, uSet_path, valSet_path = data_obj.makeLUVSets_from_ids(cfg.LSET_IDS, data=train_data, save_dir=cfg.EXP_DIR)
@@ -165,8 +182,8 @@ def main(cfg):
             if X_train.shape[0] < 5:
                 print("Not enough samples...")
             else:
-                model.fit(X_train, y_train)
-                r2 = evaluate_r2(model, X_test, y_test)
+                ridge_search.fit(X_train, y_train)
+                r2 = evaluate_r2(ridge_search, X_test, y_test)
                 logger.info(f"Initial R² score: {r2:.4f}")
 
                 os.makedirs(cfg.INITIAL_SET_DIR, exist_ok=True)
@@ -192,8 +209,22 @@ def main(cfg):
 
     model = Pipeline([
         ('scaler', StandardScaler()),
-        ('ridgecv', RidgeCV(alphas=np.logspace(-5, 5, 10), scoring='r2', cv=KFold(n_splits=5, shuffle=True, random_state=42)))
+        ('ridge', Ridge())
     ])
+
+    param_grid = {
+        'ridge__alpha': np.logspace(-5, 5, 10)
+    }
+
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    ridge_search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        scoring='r2',        
+        cv=cv,
+        n_jobs=-1                   #parallelize across folds
+    )
 
     # Train again on the updated labeled set
     if lSet_updated.size > 0:
@@ -204,8 +235,8 @@ def main(cfg):
         if n_splits > X_train_updated.shape[0]:
             print("Not enough samples...")
         else:
-            model.fit(X_train_updated, y_train_updated)
-            r2_updated = evaluate_r2(model, X_test, y_test)
+            ridge_search.fit(X_train_updated, y_train_updated)
+            r2_updated = evaluate_r2(ridge_search, X_test, y_test)
             logger.info(f"Updated R² score: {r2_updated:.4f}")
 
     data_obj.saveSets(lSet_updated, new_uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
