@@ -57,6 +57,7 @@ def argparser():
 
     parser.add_argument('--group_type', default=None, type=str)
     parser.add_argument('--group_assignment_path', default=None, type=str)
+    parser.add_argument('--ignore_groups', default=None, type=list)
 
     parser.add_argument('--unit_type', default=None, type=str)
     parser.add_argument('--points_per_unit', default=None, type=int)
@@ -73,7 +74,7 @@ def argparser():
     parser.add_argument('--distance_matrix_path', default=None, type=str)
     return parser
 
-def main(cfg):
+def main(cfg, train_data):
     cfg.OUT_DIR = os.path.abspath(cfg.OUT_DIR)
     os.makedirs(cfg.OUT_DIR, exist_ok=True)
 
@@ -95,6 +96,7 @@ def main(cfg):
         base_dir = (f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/opt/{sampling_str}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}"
                     if cfg.ACTIVE_LEARNING.OPT
                     else f"{cfg.INITIAL_SET.STR}/{cfg.COST.NAME}/{sampling_str}/budget_{cfg.ACTIVE_LEARNING.BUDGET_SIZE}")
+        print(base_dir)
 
         # Add random_strategy subfolder if cost_name is cluster_based and sampling_fn is random
         # if cfg.COST.NAME == "cluster_based" and cfg.ACTIVE_LEARNING.SAMPLING_FN == "random":
@@ -126,7 +128,7 @@ def main(cfg):
 
     cfg.DATASET.ROOT_DIR = os.path.abspath(cfg.DATASET.ROOT_DIR)
     data_obj = Data(cfg)
-    train_data, _ = data_obj.getDataset(isTrain=True)
+    #train_data, _ = data_obj.getDataset(isTrain=True)
     test_data, _ = data_obj.getDataset(isTrain=False)
 
     model = Pipeline([
@@ -170,6 +172,8 @@ def main(cfg):
             print("Loading initial set r2 performance...")
             with open(initial_set_r2_path, "r") as f:
                 r2 = json.load(f)
+            if isinstance(r2, dict):
+                r2 = r2['initial_set_r2']
             logger.info(f"Initial R² score: {r2:.4f}")
         else:
             n_splits = 5
@@ -259,7 +263,6 @@ def main_wrapper():
     # === Load Dataset ===
     data_obj = Data(cfg)
     train_data, _ = data_obj.getDataset(isTrain=True)
-    test_data, _ = data_obj.getDataset(isTrain=False)
 
     # === Load Initial Labeled Set IDs (Optional) ===
     if args.id_path:
@@ -316,6 +319,10 @@ def main_wrapper():
         assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
         cfg.GROUPS.GROUP_ASSIGNMENT = [str(x) for x in assignments_ordered]
 
+        if args.ignore_groups:
+            print("see arg ignored groups")
+            cfg.GROUPS.IGNORED_GROUPS = args.ignore_groups
+
     # === Load Unit Assignments (Optional) ===
     if args.unit_assignment_path:
         cfg.UNITS.UNIT_TYPE = args.unit_type
@@ -368,7 +375,7 @@ def main_wrapper():
     cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = args.distance_matrix_path
 
     # === Run Main Experiment ===
-    main(cfg)
+    main(cfg, train_data)
 
 if __name__ == "__main__":
     main_wrapper()

@@ -11,14 +11,37 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import rasterio
 import torch
 from matplotlib.figure import Figure
 from torch import Tensor
+import dill
 
 from torchgeo.datasets.geo import NonGeoDataset
-from torchgeo.datasets.errors import DatasetNotFoundError
+from torchgeo.datasets import DatasetNotFoundError
 from torchgeo.datasets.utils import Path, download_url, extract_archive
+
+invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+
+def load_from_pkl(label, split):
+    data_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
+
+    with open(data_path, "rb") as f:
+        arrs = dill.load(f)
+
+    X = arrs[f"X_{split}"]
+    y = arrs[f"y_{split}"]
+    latlons = arrs[f"latlons_{split}"]
+    ids = arrs[f"ids_{split}"]
+
+    valid_idxs = np.where(~np.isin(ids, invalid_ids))[0]
+    ids = ids[valid_idxs]
+    X = X[valid_idxs]
+    y = y[valid_idxs]
+    latlons = latlons[valid_idxs]
+
+    return X, y, latlons, ids
 
 
 class USAVars(NonGeoDataset):
@@ -42,7 +65,6 @@ class USAVars(NonGeoDataset):
     * tree cover
     * elevation
     * population density
-    * income
 
     If you use this dataset in your research, please cite the following paper:
 
@@ -86,13 +108,11 @@ class USAVars(NonGeoDataset):
         },
     }
 
-    ALL_LABELS = ('treecover', 'elevation', 'population', 'income')
-
     def __init__(
         self,
         root: Path = 'data',
-        split: str = 'train',
-        labels: Sequence[str] = ALL_LABELS,
+        isTrain: bool = True,
+        label: str = 'population',
         transforms: Callable[[dict[str, Tensor]], dict[str, Tensor]] | None = None,
         download: bool = False,
         checksum: bool = False,
@@ -113,14 +133,18 @@ class USAVars(NonGeoDataset):
             DatasetNotFoundError: If dataset is not found and *download* is False.
         """
         self.root = root
+        if isTrain:
+            self.split = 'train'
+        else:
+            self.split = 'test'
 
-        assert split in self.split_metadata
-        self.split = split
+        assert label in ('treecover', 'elevation', 'population', 'income'), "Label information does not exist."
 
-        for lab in labels:
-            assert lab in self.ALL_LABELS
+        self.label = label
+        self.label_dfs = {
+            self.label: pd.read_csv(os.path.join(self.root, self.label + ".csv"), index_col="ID")
+        }
 
-        self.labels = labels
         self.transforms = transforms
         self.download = download
         self.checksum = checksum
@@ -129,10 +153,7 @@ class USAVars(NonGeoDataset):
 
         self.files = self._load_files()
 
-        self.label_dfs = {
-            lab: pd.read_csv(os.path.join(self.root, lab + '.csv'), index_col='ID')
-            for lab in self.labels
-        }
+        self.X, self.y, self.latlons, self.ids = load_from_pkl(self.label, self.split)
 
 
     def __getitem__(self, index: int) -> dict[str, Tensor]:
@@ -144,23 +165,7 @@ class USAVars(NonGeoDataset):
         Returns:
             data and label at that index
         """
-        tif_file = self.files[index]
-        id_ = tif_file[5:-4]
-
-        sample = {
-            'labels': Tensor(
-                [self.label_dfs[lab].loc[id_][lab] for lab in self.labels]
-            ),
-            'name': tif_file,
-            'image': self._load_image(os.path.join(self.root, 'uar', tif_file)),
-            'centroid_lat': Tensor([self.label_dfs[self.labels[0]].loc[id_]['lat']]),
-            'centroid_lon': Tensor([self.label_dfs[self.labels[0]].loc[id_]['lon']]),
-        }
-
-        if self.transforms is not None:
-            sample = self.transforms(sample)
-
-        return sample
+        return self.X[index], self.y[index], self.latlons[index], self.ids[index]
 
 
     def __len__(self) -> int:
@@ -169,7 +174,7 @@ class USAVars(NonGeoDataset):
         Returns:
             length of the dataset
         """
-        return len(self.files)
+        return self.X.shape[0]
 
 
     def _load_files(self) -> list[str]:
@@ -200,12 +205,12 @@ class USAVars(NonGeoDataset):
         split_pathname = os.path.join(self.root, '*_split.txt')
 
         csv_split_count = (len(glob.glob(csv_pathname)), len(glob.glob(split_pathname)))
-        if glob.glob(pathname) and csv_split_count == (7, 3):
+        if glob.glob(pathname) and csv_split_count == (8, 3):
             return
 
         # Check if the zip files have already been downloaded
         pathname = os.path.join(self.root, self.dirname + '.zip')
-        if glob.glob(pathname) and csv_split_count == (7, 3):
+        if glob.glob(pathname) and csv_split_count == (8, 3):
             self._extract()
             return
 
@@ -268,5 +273,59 @@ class USAVars(NonGeoDataset):
 
         if suptitle is not None:
             plt.suptitle(suptitle)
+
+        return fig
+
+    def plot_subset_on_map(
+        self,
+        indices: Sequence[int],
+        country_shape_file: str = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp',
+        country_name: str | None = None,
+        exclude_names: list[str] = ['Alaska', 'Hawaii', 'Puerto Rico'],
+        point_color: str = 'red',
+        point_size: float = 5,
+        title: str | None = None,
+        save_path: str | None = None
+    ) -> Figure:
+        """
+        Plot selected lat/lon points on a country shapefile.
+
+        Args:
+            indices: list of indices in self.latlons to plot.
+            country_shape_file: path to a shapefile for plotting the country boundary.
+            country_name: optional name to filter a specific country (must match shapefile's attribute).
+            exclude_names: optional list of names to exclude (e.g., overseas territories).
+            point_color: color of plotted points.
+            point_size: size of plotted points.
+            title: optional title for the plot.
+
+        Returns:
+            A matplotlib Figure showing the points on the map.
+        """
+        print("Plotting latlon subset...")
+        # Load the country shapefile
+        country = gpd.read_file(country_shape_file)
+
+        if country_name is not None and 'NAME' in country.columns:
+            country = country[country['NAME'] == country_name]
+
+        if exclude_names:
+            country = country[~country['name'].isin(exclude_names)]
+
+        # Create GeoDataFrame of selected lat/lons
+        latlons_subset = self.latlons[indices]
+        points_gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(latlons_subset[:, 1], latlons_subset[:, 0]), crs='EPSG:4326')
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 10))
+        country.plot(ax=ax, edgecolor='black', facecolor='none')
+        points_gdf.plot(ax=ax, color=point_color, markersize=point_size)
+
+        ax.set_axis_off()
+        if title:
+            ax.set_title(title, fontsize=14)
+
+        if save_path:
+            fig.savefig(save_path, dpi=300)
 
         return fig

@@ -1,4 +1,6 @@
 import dill
+import json
+import os
 import numpy as np
 
 from . import cost
@@ -23,7 +25,7 @@ class Sampling:
         self.unit_index_map = {u: i for i, u in enumerate(self.units)}
 
         self.unit_to_indices = {
-            u: self.relevant_indices[self.unit_assignment[self.relevant_indices] == u]
+            u: self.relevant_indices[self.unit_assignment == u]
             for u in self.units
         }
         self.labeled_unit_vector, self.labeled_unit_set = self._initialize_labeled_units()
@@ -178,24 +180,30 @@ class Sampling:
         labeled_units = set(self.unit_assignment[self.lSet])
 
         selected = []
-        while self.cost_func(unit_inclusion_vector) <= self.cost_func(self.labeled_unit_vector) + self.budget:
-            non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
-            permuted_units = np.random.permutation(non_labeled_units)
+        non_labeled_units = np.setdiff1d(self.units, list(labeled_units))
+        permuted_units = np.random.permutation(non_labeled_units)
 
-            for u in permuted_units:
-                unit_inclusion_vector[self.unit_index_map[u]] = 1
-                if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
-                    unit_inclusion_vector[self.unit_index_map[u]] = 0
-                    break
+        for u in permuted_units:
+            unit_inclusion_vector[self.unit_index_map[u]] = 1
+            if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+                unit_inclusion_vector[self.unit_index_map[u]] = 0
+                break
 
-                # Get indices of points in the selected unit
-                unit_indices = self.unit_to_indices[u]
+            #get indices of points in the selected unit
+            unit_indices = self.unit_to_indices[u]
 
-                # Update sets
-                selected.extend(unit_indices)
-                lSet.update(unit_indices)
-                uSet.difference_update(unit_indices)
-                labeled_units.add(u)
+            if self.points_per_unit is None:
+                selected_points = unit_indices
+            elif len(unit_indices) <= self.points_per_unit:
+                selected_points = unit_indices
+            else:
+                selected_points = np.random.choice(unit_indices, size=self.points_per_unit, replace=False)
+
+            #update sets
+            selected.extend(selected_points)
+            lSet.update(selected_points)
+            uSet.difference_update(selected_points)
+            labeled_units.add(u)
 
         activeSet = np.array(selected)
         remainSet = np.array(sorted(uSet))
@@ -288,7 +296,7 @@ class Sampling:
 
         activeSet = np.array(selected)
         remainSet = np.array(sorted(list(uSet)))
-        print(f"\n✅ Sampling finished. Total selected: {len(activeSet)}")
+        print(f"\nSampling finished. Total selected: {len(activeSet)}")
         return activeSet, remainSet
 
 
@@ -310,3 +318,63 @@ class Sampling:
         remain_set = np.array(sorted(self.uSet - set(active_set)))
         cost = self._compute_labeled_cost(unit_inclusion_vector)
         return active_set, remain_set, cost
+    
+    def _save_costs_metadata(self):
+        seed_dir = os.path.join(self.cfg.SAMPLING_DIR, f"seed_{self.seed}")
+        original_path = os.path.join(seed_dir, "episode_0", "lSet.npy")
+        new_path = os.path.join(seed_dir, "episode_1", "lSet.npy")
+
+        if not os.path.exists(original_path) or not os.path.exists(new_path):
+            raise FileNotFoundError("Missing lSet.npy file in expected location.")
+
+        original_labeled_set = np.load(original_path, allow_pickle=True)
+        new_labeled_set = np.load(new_path, allow_pickle=True)
+
+        def get_labeled_unit_vector(labeled_indices, units, unit_to_indices):
+            labeled_unit_vector = np.zeros(len(units), dtype=bool)
+            labeled_unit_list = []
+
+            labeled_indices_set = set(labeled_indices)  # for fast lookup
+
+            for i, u in enumerate(units):
+                indices = unit_to_indices[u]
+                if any(idx in labeled_indices_set for idx in indices):
+                    labeled_unit_vector[i] = True
+                    labeled_unit_list.append(str(u))
+
+            labeled_unit_set = set(labeled_unit_list)
+            return labeled_unit_vector, labeled_unit_set
+        
+        original_labeled_vector, original_labeled_unit_set = get_labeled_unit_vector(
+            original_labeled_set, self.units, self.unit_to_indices
+        )
+
+        new_labeled_vector, new_labeled_unit_set = get_labeled_unit_vector(
+            new_labeled_set, self.units, self.unit_to_indices
+        )
+
+        original_cost = self.cost_func(original_labeled_vector)
+        new_cost = self.cost_func(new_labeled_vector)
+
+        save_path = os.path.join(self.cfg.EXP_DIR, "selection_metadata.json")
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        # Load existing metadata (if the file exists)
+        if os.path.exists(save_path):
+            with open(save_path, "r") as f:
+                metadata = json.load(f)
+        else:
+            metadata = {}
+
+        # Update costs
+        metadata["total_sample_cost"] = float(new_cost)
+        metadata["labeled_sample_cost"] = float(original_cost)
+        metadata["seed"] = self.seed
+        metadata["num_selected_samples"] = len(new_labeled_unit_set) - len(original_labeled_unit_set)
+
+        # Save back
+        with open(save_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+        return original_cost

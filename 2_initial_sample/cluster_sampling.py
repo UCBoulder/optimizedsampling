@@ -181,6 +181,7 @@ class ClusterSampler:
             fixed_strata=fixed_strata,
             ignore_small_strata=ignore_small_strata
         )
+        print(f"[Sample] Sample sizes per stratum: {sample_sizes_per_stratum}")
 
         self.sampled_strata = list(sample_sizes_per_stratum.keys())
         self.sampled_clusters = {}
@@ -212,7 +213,7 @@ class ClusterSampler:
         self.sample_size = len(self.sampled_ids)
 
         self.desired_sample_size = total_sample_size
-        assert self.sample_size < total_sample_size, "Sample too big"
+        assert self.sample_size <= total_sample_size, "Sample too big"
         self.n_strata = n_strata if n_strata is not None else None
 
         self.seed = seed
@@ -330,82 +331,49 @@ class ClusterSampler:
         print(f"Saved plot to {save_path}")
 
 if __name__=="__main__":
-    # ADMIN_IDS = {
-    #     'EA': 'EA'
-    # }
-
-    # data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
-    # gdf = gpd.read_file(data_path)
-    # train_ids = pd.read_csv('/share/togo/splits/train_ids.csv').astype(str)
-    # train_id_set = set(train_ids.iloc[:, 0])
-    # gdf = gdf[gdf['id'].astype(str).isin(train_ids.iloc[:, 0])].copy()
-
-    # gdf['EA'] = gdf['combined_adm_id']
-    # gdf['prefecture'] = gdf['admin_2']
-    # gdf['region'] = gdf['admin_1']
-
-    # out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling'
-
-    # country_shape_file = '/home/libe2152/togo/data/shapefiles/openAfrica/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp'
-
-    # strata_col = 'prefecture'
-    # cluster_col = 'EA'
-
-    # n_strata = 25
-    # for points_per_cluster in [5, 10, 25]:
-    #     sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
-    #     for total_sample_size in range(100, 1100, 100):
-            
-    #         for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
-    #             try:
-    #                 sampler.sample(total_sample_size, points_per_cluster, seed, n_strata=n_strata)
-    #                 sampler.save_sampled_ids(out_path)
-
-    #                 # Assert that all sampled ids are in train_ids
-    #                 sampled_ids_set = set(map(str, sampler.sampled_ids))
-    #                 assert sampled_ids_set.issubset(train_id_set), (
-    #                     "Error: Some sampled IDs are not in train_ids!"
-    #                 )
-    #                 sampler.plot(country_shape_file=country_shape_file)
-    #             except Exception as e:
-    #                 from IPython import embed; embed()
-    #                 print(e)
-    #             sampler.reset_sample()
-
     ADMIN_IDS = {
-        'pc11_s_id': 'state',
-        'pc11_d_id': 'district',
-        'pc11_sd_id': 'subdistrict'
+        'canton': 'canton'
     }
 
-    data_path = "/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson"
+    data_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
     gdf = gpd.read_file(data_path)
+    train_ids = pd.read_csv('/share/togo/splits/train_ids.csv').astype(str)
+    train_id_set = set(train_ids.iloc[:, 0])
+    gdf = gdf[gdf['id'].astype(str).isin(train_ids.iloc[:, 0])].copy()
 
-    country_shape_file = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp'
-    country_name = 'India'
+    gdf['canton'] = gdf['combined_adm_id']
+    gdf['prefecture'] = gdf['admin_2']
+    gdf['region'] = gdf['admin_1']
 
-    strata_col = 'pc11_s_id'
-    cluster_col = 'pc11_d_id'
+    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling'
 
-    out_path = f'/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling'
+    country_shape_file = '/home/libe2152/togo/data/shapefiles/openAfrica/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp'
 
-    sampler = ClusterSampler(gdf, id_col='condensed_shrug_id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
+    strata_col = 'region'
+    cluster_col = 'canton'
 
-    n_strata = 5
     all_strata = gdf[strata_col].astype(str).unique()
+    all_strata = [s for s in all_strata if s != 'District of Columbia_11']
+    n_strata = 1
 
     np.random.seed(78910)
     fixed_strata = np.random.choice(all_strata, size=n_strata, replace=False)
 
-    for points_per_cluster in [20, 30, 50]:
-        sampler.cluster_col = cluster_col
-        for total_sample_size in range(1000, 6000, 1000):
+    for points_per_cluster in [10]:
+        sampler = ClusterSampler(gdf, id_col='id', strata_col=strata_col, cluster_col=cluster_col, ADMIN_IDS=ADMIN_IDS)
+        for total_sample_size in range(500, 1100, 100):
             
             for seed in [1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]:
                 try:
                     sampler.sample(total_sample_size, points_per_cluster, seed, fixed_strata=fixed_strata)
                     sampler.save_sampled_ids(out_path)
-                    sampler.plot(country_shape_file=country_shape_file, country_name=country_name)
+
+                    # Assert that all sampled ids are in train_ids
+                    sampled_ids_set = set(map(str, sampler.sampled_ids))
+                    assert sampled_ids_set.issubset(train_id_set), (
+                        "Error: Some sampled IDs are not in train_ids!"
+                    )
+                    sampler.plot(country_shape_file=country_shape_file)
                 except Exception as e:
                     print(e)
                     from IPython import embed; embed()

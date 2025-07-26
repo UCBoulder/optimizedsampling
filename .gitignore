@@ -13,3 +13,5 @@ __pycache__
 00_old_output2
 india_secc
 shapefiles
+00_output_from_jetstream
+*.tex

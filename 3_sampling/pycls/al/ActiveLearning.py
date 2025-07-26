@@ -47,6 +47,10 @@ class ActiveLearning:
             #strategy = self.cfg.ACTIVE_LEARNING.RANDOM_STRATEGY
             activeSet, uSet = self.sampler.random()
 
+        elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "random_unit":
+            #strategy = self.cfg.ACTIVE_LEARNING.RANDOM_STRATEGY
+            activeSet, uSet = self.sampler.random_unit_cost_aware()
+
         elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN in ["stratified"]:
             activeSet, uSet = self.sampler.stratified()
 
@@ -58,4 +62,28 @@ class ActiveLearning:
             raise NotImplementedError
 
         return activeSet, uSet
-        
+    
+    def save_selection_metadata(self, lSet, uSet, supportingModels=None, **kwargs):
+            """
+            Sample from uSet using cfg.ACTIVE_LEARNING.SAMPLING_FN.
+
+            INPUT
+            ------
+            clf_model: Reference of task classifier model class [Typically VGG]
+
+            supportingModels: List of models which are used for sampling process.
+
+            OUTPUT
+            -------
+            Returns activeSet, uSet
+            """
+
+            if self.cfg.ACTIVE_LEARNING.OPT == True:
+                from .opt import Opt
+                self.sampler = Opt(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
+            else:
+                self.sampler = Sampling(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
+
+            return self.sampler._save_costs_metadata()
+
+            

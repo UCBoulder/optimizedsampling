@@ -1,4 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_0.1_updated_r2_mean,poprisk_0.1_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
-USAVARS_POP,top50_urban_100_points,convenience_based_top50_urban,100,0.09,0.02,0.14,0.07,0.08,0.0,0.1,0.0
-USAVARS_POP,top50_urban_100_points,convenience_based_top50_urban,500,0.09,0.02,0.36,0.06,,,,
-USAVARS_POP,top50_urban_100_points,convenience_based_top50_urban,1000,0.09,0.02,0.44,0.03,,,,

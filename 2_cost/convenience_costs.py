@@ -6,9 +6,12 @@ import geopandas as gpd
 from sklearn.neighbors import BallTree
 from shapely.geometry import Point
 
+from sklearn.neighbors import BallTree
+import numpy as np
+
 def compute_exact_geodesic_nn_balltree(points_geom, urban_geom):
     """
-    Compute geodesic distances (in meters) from input geometries to their nearest
+    Compute geodesic distances (in kilometers) from input geometries to their nearest
     urban geometry using BallTree with haversine metric.
 
     All geometries must be in EPSG:4326.
@@ -16,7 +19,7 @@ def compute_exact_geodesic_nn_balltree(points_geom, urban_geom):
     """
     def ensure_points(geoms):
         """Convert Polygon/MultiPolygon to centroid if necessary."""
-        return [geom.centroid if not geom.geom_type == "Point" else geom for geom in geoms]
+        return [geom.centroid if geom.geom_type != "Point" else geom for geom in geoms]
 
     # Ensure all are points
     points_geom_clean = ensure_points(points_geom)
@@ -33,10 +36,10 @@ def compute_exact_geodesic_nn_balltree(points_geom, urban_geom):
     tree = BallTree(urban_rad, metric='haversine')
     dist_rad, _ = tree.query(points_rad, k=1)
 
-    # Convert to meters
-    dist_m = dist_rad.flatten() * 6371000  # Earth radius in meters
+    # Convert to kilometers
+    dist_km = dist_rad.flatten() * 6371.0  # Earth radius in km
 
-    return dist_m
+    return dist_km
 
 
 def compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, dist_path, id_col="id"):
@@ -113,7 +116,7 @@ def compute_or_load_cluster_centroid_distances_to_urban(gdf_clusters, gdf_urban_
     return distance_dict
 
 
-def dist_to_cost(distances, scale='sqrt', alpha=0.01, epsilon=1e-6):
+def dist_to_cost(distances, cap, scale='sqrt', alpha=0.1, epsilon=1e-6):
     """
     Convert distances to cost and normalize to match uniform cost scale.
     """
@@ -127,6 +130,8 @@ def dist_to_cost(distances, scale='sqrt', alpha=0.01, epsilon=1e-6):
         raw_costs = 1 + alpha * np.sqrt(distances)
     else:
         raise ValueError("Unsupported scale type")
+    
+    raw_costs = np.array([min(cap, cost) for cost in raw_costs])
 
     # Normalize so that mean cost is 1 (or another target)
     # normalized_costs = raw_costs / np.mean(raw_costs) * normalize_to_mean
@@ -201,21 +206,50 @@ def save_cost_array(ids, costs, out_path):
 
 # === Example Usage ===
 if __name__ == "__main__":
-    gdf_points = gpd.read_file(f"/media/volume/geo_sampling_data/optimizedsampling/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
-    gdf_points = gdf_points.to_crs("EPSG:4326")
-    n_urban = 20
-    pop_col = 'pc11_pca_tot_p_combined'
+    #usavars 
+    for label in ["population", "treecover"]:
+        for n_urban in [20, 50]:
+            gdf_points = gpd.read_file(f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson")
+            gdf_points = gdf_points.to_crs("EPSG:4326")
 
-    gdf_urban_top = gdf_points.nlargest(n_urban, pop_col)
+            pop_col = 'POP'
+            gdf_urban_path = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_urban_area_census_2020/tl_2020_us_uac20_with_pop.shp'
+            gdf_urban = gpd.read_file(gdf_urban_path)
+            gdf_urban = gdf_urban.to_crs("EPSG:4326")
+            gdf_urban_top = gdf_urban.nlargest(n_urban, pop_col)
 
-    # Compute distance-based cost
-    dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"costs/india_secc/distance_to_top{n_urban}_urban.pkl", id_col='condensed_shrug_id')
-    dists = np.array([dist_dict[str(i)] for i in gdf_points['condensed_shrug_id']])
-    print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
+            dist_dict_all = compute_or_load_distances_to_urban(gdf_points, gdf_urban, f"/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_km_to_all_urban.pkl")
 
-    costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-    print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
+            dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"/home/libe2152/optimizedsampling/0_data/distances/usavars/{label}/distance_km_to_top{n_urban}_urban.pkl")
+            dists_all = np.array([dist_dict_all[str(i)] for i in gdf_points['id']])
+            dists = np.array([dist_dict[str(i)] for i in gdf_points['id']])
+            print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
-    # Save
-    out_path = f"costs/india_secc/distance_based_costs_top{n_urban}_urban.pkl"
-    save_cost_array(gdf_points['condensed_shrug_id'], costs, out_path)
+            cap = 10000000
+            alpha=0.01
+            costs = dist_to_cost(dists, cap=cap, scale='linear', alpha=alpha)
+            print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
+
+            # Save
+            out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/linear_distance_km_based_costs_top{n_urban}_urban_{alpha}.pkl"
+            save_cost_array(gdf_points['id'], costs, out_path)
+
+    #india
+    # gdf_points = gpd.read_file(f"/media/volume/geo_sampling_data/optimizedsampling/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
+    # gdf_points = gdf_points.to_crs("EPSG:4326")
+    # n_urban = 20
+    # pop_col = 'pc11_pca_tot_p_combined'
+
+    # gdf_urban_top = gdf_points.nlargest(n_urban, pop_col)
+
+    # # Compute distance-based cost
+    # dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"costs/india_secc/distance_to_top{n_urban}_urban.pkl", id_col='condensed_shrug_id')
+    # dists = np.array([dist_dict[str(i)] for i in gdf_points['condensed_shrug_id']])
+    # print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
+
+    # costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
+    # print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
+
+    # # Save
+    # out_path = f"costs/india_secc/distance_based_costs_top{n_urban}_urban.pkl"
+    # save_cost_array(gdf_points['condensed_shrug_id'], costs, out_path)

@@ -193,7 +193,7 @@ class IndiaSECC(NonGeoDataset):
     def plot_subset_on_map(
         self,
         indices: Sequence[int],
-        country_shape_file: str = '/media/volume/geo_sampling_data/optimizedsampling/shapefiles/ne_10m_admin_0_countries.shp',
+        country_shape_file: str = '/home/libe2152/optimizedsampling/0_data/boundaries/world/ne_10m_admin_0_countries.shp',
         country_name: str = 'India',
         exclude_names: list[str] | None = None,
         point_color: str = 'red',

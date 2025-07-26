@@ -23,7 +23,7 @@ cfg = _C
 # Number of GPUs to use (applies to both training and testing)
 _C.NUM_GPUS = 1
 # Output directory (will be created at the projec root)
-_C.OUT_DIR = './0_output'
+_C.OUT_DIR = '../../0_output'
 # Experiment directory
 _C.EXP_DIR = ''
 # Higher Level Experiment directory without seed
@@ -125,6 +125,7 @@ _C.COST.UNIT_COST_PATH = None
 _C.GROUPS = CN()
 _C.GROUPS.GROUP_TYPE = None
 _C.GROUPS.GROUP_ASSIGNMENT = None
+_C.GROUPS.IGNORED_GROUPS = None
 
 # #-------------------------------------------------------------------------------#
 # #  BLOCK options

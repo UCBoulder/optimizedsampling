@@ -85,15 +85,15 @@ if __name__ == "__main__":
 
     utility_fns = {
         "size": greedy,
-        "pop_risk_0.5": lambda x, groups: pop_risk(x, groups, l=0.5),
-        "pop_risk_0": lambda x, groups: pop_risk(x, groups, l=0),
-        "pop_risk_0.01": lambda x, groups: pop_risk(x, groups, l=0.01),
-        "pop_risk_0.1": lambda x, groups: pop_risk(x, groups, l=0.1),
-        "pop_risk_0.9": lambda x, groups: pop_risk(x, groups, l=0.9),
-        "pop_risk_0.99": lambda x, groups: pop_risk(x, groups, l=0.99),
-        "pop_risk_1": lambda x, groups: pop_risk(x, groups, l=1),
+        "pop_risk_nlcd_0.5": lambda x, groups: pop_risk(x, groups, l=0.5),
+        "pop_risk_nlcd_0": lambda x, groups: pop_risk(x, groups, l=0),
+        "pop_risk_nlcd_0.01": lambda x, groups: pop_risk(x, groups, l=0.01),
+        "pop_risk_nlcd_0.1": lambda x, groups: pop_risk(x, groups, l=0.1),
+        "pop_risk_nlcd_0.9": lambda x, groups: pop_risk(x, groups, l=0.9),
+        "pop_risk_nlcd_0.99": lambda x, groups: pop_risk(x, groups, l=0.99),
+        "pop_risk_nlcd_1": lambda x, groups: pop_risk(x, groups, l=1),
         "similarity": similarity,
-        "diversity": diversity
+        #"diversity": diversity
     }
 
     invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -119,8 +119,8 @@ if __name__ == "__main__":
         similarity_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_test.npz"
         similarity_matrix = np.load(similarity_path)['arr_0']
 
-        distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npz"
-        distance_matrix = np.load(distance_path)['arr_0']
+        # distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npz"
+        # distance_matrix = np.load(distance_path)['arr_0']
 
         # Filter out invalid ids from groups and ids
         filtered_pairs = [(i, g) for i, g in zip(ids, groups) if i not in invalid_ids]
@@ -141,9 +141,10 @@ if __name__ == "__main__":
         results_list = []
 
         for sampling_type in sampling_types:
+            print(sampling_type)
             if sampling_type == "convenience_sampling":
                 # iterate over the two subfolders inside convenience_sampling
-                for subfolder in ["urban_based", "region_based"]:
+                for subfolder in ["urban_based"]:
                     dir_path = os.path.join(base_dir, sampling_type, subfolder)
                     if not os.path.isdir(dir_path):
                         print(f"[Warning] Directory does not exist: {dir_path}")
@@ -167,16 +168,52 @@ if __name__ == "__main__":
                                 utility_fns,
                                 group_dict,
                                 similarity_matrix = similarity_matrix,
-                                distance_matrix = distance_matrix
+                                #distance_matrix = distance_matrix
                             )
                             filename = os.path.basename(sampled_path)
                             sampling_label = f"{sampling_type}_{subfolder}"
                             results_list.append((filename, sampling_label, results))
+                            print(results)
 
                         except Exception as e:
                             print(f"[Error] Could not process {sampled_path}: {e}")
                             from IPython import embed; embed()
+            elif sampling_type == "cluster_sampling":
+                # iterate over the two subfolders inside cluster_sampling
+                for subfolder in ["fixedstrata_Idaho_16-Louisiana_22-Mississippi_28-New Mexico_35-Pennsylvania_42", "fixedstrata_Alabama_01-Colorado_08-Montana_30-New York_36-Ohio_39"]:
+                    dir_path = os.path.join(base_dir, sampling_type, subfolder)
+                    if not os.path.isdir(dir_path):
+                        print(f"[Warning] Directory does not exist: {dir_path}")
+                        continue
 
+                    pkl_files = glob(os.path.join(dir_path, "*.pkl"))
+
+                    for sampled_path in pkl_files:
+                        if not sampled_path.endswith("seed_1.pkl"):
+                            continue
+                        try:
+                            with open(sampled_path, "rb") as f:
+                                sampled_ids = dill.load(f)
+
+                            # Filter out invalid ids from sampled_ids
+                            sampled_ids = [id_ for id_ in sampled_ids if id_ not in invalid_ids]
+
+                            results = compute_utilities_from_ids(
+                                sampled_ids,
+                                all_ids,
+                                utility_fns,
+                                group_dict,
+                                similarity_matrix = similarity_matrix,
+                                #distance_matrix = distance_matrix
+                            )
+                            filename = os.path.basename(sampled_path)
+                            sampling_label = f"{sampling_type}_{subfolder}"
+                            results_list.append((filename, sampling_label, results))
+                            print(results)
+
+                        except Exception as e:
+                            print(f"[Error] Could not process {sampled_path}: {e}")
+                            from IPython import embed; embed()
             else:
                 # For cluster_sampling and random_sampling (no subfolders)
                 dir_path = os.path.join(base_dir, sampling_type)
@@ -202,10 +239,11 @@ if __name__ == "__main__":
                             utility_fns,
                             group_dict,
                             similarity_matrix = similarity_matrix,
-                            distance_matrix = distance_matrix
+                            #distance_matrix = distance_matrix
                         )
                         filename = os.path.basename(sampled_path)
                         results_list.append((filename, sampling_type, results))
+                        print(results)
 
                     except Exception as e:
                         print(f"[Error] Could not process {sampled_path}: {e}")
@@ -213,5 +251,5 @@ if __name__ == "__main__":
 
         save_utilities_results_to_csv(
             results_list,
-            f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/utilities_with_sim_and_div.csv"
+            f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/utilities.csv"
         )

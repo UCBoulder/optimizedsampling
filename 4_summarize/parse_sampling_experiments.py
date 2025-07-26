@@ -9,16 +9,20 @@ LOG_FILENAME = "stdout.log"
 BASE_DIR = "/home/libe2152/optimizedsampling/0_output"
 
 # === REGEX ===
-initial_r2_re = re.compile(r"Initial R² score: ([0-9.]+)")
-updated_r2_re = re.compile(r"Updated R² score: ([0-9.]+)")
+initial_r2_re = re.compile(r"Initial R² score: (-?[0-9.]+)")
+updated_r2_re = re.compile(r"Updated R² score: (-?[0-9.]+)")
+
 seed_re = re.compile(r"_seed_\d+")
+size_re = re.compile(r"Selected (\d+) new samples")
 
 # === METHOD LABELS FOR LATEX ===
 METHOD_LABELS = {
     "random": "Random",
     "greedycost": "Greedy Low-Cost",
-    "poprisk_0.5": "PopRisk ($\\lambda = 0.5$)",
-    "poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
+    "poprisk_nlcd_0.5": "PopRisk NLCD ($\\lambda = 0.5$)",
+    "poprisk_dists_from_top20_urban_tiers_0.5": "PopRisk Urban Tiers ($\\lambda = 0.5$)",
+    "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
+    #"poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
 }
 
@@ -28,11 +32,13 @@ def parse_log_file(log_path, root):
     with open(log_path, "r") as f:
         content = f.read()
 
-    initial_r2 = updated_r2 = None
+    initial_r2 = updated_r2 = size = None
     if (m := initial_r2_re.search(content)):
         initial_r2 = float(m.group(1))
     if (m := updated_r2_re.search(content)):
         updated_r2 = float(m.group(1))
+    if (m := size_re.search(content)):
+        size = float(m.group(1))
 
     path_parts = root.split("/")
     dataset = path_parts[5]
@@ -52,9 +58,10 @@ def parse_log_file(log_path, root):
         idx = path_parts.index("opt")
         method = path_parts[idx + 1]
         if method == "poprisk":
+            group_type = path_parts[idx + 2]
             budget = path_parts[idx + 3].replace("budget_", "")
             lambda_val = path_parts[idx + 4].replace("util_lambda_", "")
-            method = f"{method}_{lambda_val}"
+            method = f"{method}_{group_type}_{lambda_val}"
         else:
             budget = path_parts[idx + 2].replace("budget_", "")
     else:
@@ -63,18 +70,19 @@ def parse_log_file(log_path, root):
             budget = path_parts[method_base_idx + 2].replace("budget_", "")
         else:
             budget = path_parts[method_base_idx + 1].replace("budget_", "")
+    print(method)
 
     key = (dataset, init_set_base, cost_type, budget)
-    return key, method, initial_r2, updated_r2, seed
+    return key, method, size, initial_r2, updated_r2, seed
 
 def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
-    results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list), "seeds": set()})
+    results = defaultdict(lambda: {"initial_r2": [], "methods": defaultdict(list), "seeds": set(), "size": defaultdict(list)})
 
     for root, dirs, files in os.walk(base_dir):
         if log_filename in files:
             log_path = os.path.join(root, log_filename)
             try:
-                key, method, initial_r2, updated_r2, seed = parse_log_file(log_path, root)
+                key, method, size, initial_r2, updated_r2, seed = parse_log_file(log_path, root)
             except Exception as e:
                 print(f"Failed to parse {log_path}: {e}")
                 continue
@@ -84,7 +92,8 @@ def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
                 results[key]["seeds"].add(seed)
             if updated_r2 is not None:
                 results[key]["methods"][method].append(updated_r2)
-    from IPython import embed; embed()
+            if size is not None:
+                results[key]["size"][method].append(size)
     return results
 
 def build_filtered_df(results_dict, dataset, init_set, cost_type):
@@ -168,16 +177,76 @@ def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
     lines.append(f"\\label{{tab:{dataset}_{init_set}_{cost_type}}}")
     lines.append("\\end{table}")
 
-    tex_path = f"latex_table_{dataset}_{init_set}_{cost_type}.tex"
+    tex_path = f"latex_table_r2/latex_table_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
     print(f"📄 LaTeX table written to: {tex_path}")
 
 
 def save_csv(df, dataset, init_set, cost_type):
-    path = f"aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"
+    path = f"aggregated_r2/aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"
     df.to_csv(path, index=False)
     print(f"📊 CSV saved to: {path}")
+
+def generate_size_latex_table(results_dict, method_labels, dataset, init_set, cost_type):
+    rows = []
+    for (ds, iset, ctype, budget), data in results_dict.items():
+        if (ds, iset, ctype) != (dataset, init_set, cost_type):
+            continue
+
+        row = {
+            "budget": int(budget),
+        }
+
+        for method, vals in data["size"].items():
+            if vals:
+                arr = np.array(vals)
+                row[f"{method}_size_mean"] = round(arr.mean(), 1)
+                row[f"{method}_size_std"] = round(arr.std(), 1)
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows).sort_values("budget")
+    if df.empty:
+        print(f"No size data found for: {dataset}, {init_set}, {cost_type}")
+        return
+
+    # Generate LaTeX table
+    lines = []
+    lines.append("\\begin{table}[t!]")
+    lines.append("\\centering")
+    lines.append("\\small")
+    lines.append("\\setlength{\\tabcolsep}{6pt}")
+    lines.append("\\begin{tabular}{l" + "c" * len(method_labels) + "}%" )
+    lines.append("\\hline%")
+
+    method_names = [f"\\multicolumn{{1}}{{c}}{{{label}}}" for label in method_labels.values()]
+    lines.append("Budget & " + " & ".join(method_names) + "\\\\%")
+    lines.append(" & " + " & ".join(["(Size ± Std)"] * len(method_labels)) + "\\\\%")
+    lines.append("\\hline%")
+
+    for _, row in df.iterrows():
+        budget = int(row["budget"])
+        cells = []
+        for method in method_labels:
+            mean = row.get(f"{method}_size_mean")
+            std = row.get(f"{method}_size_std")
+            if pd.notnull(mean) and pd.notnull(std):
+                cells.append(f"{mean:.1f} ± {std:.1f}")
+            else:
+                cells.append("--")
+        lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
+
+    lines.append("\\hline%")
+    lines.append("\\end{tabular}%")
+    lines.append(f"\\caption{{Average number of selected samples for {dataset.upper()} with initial set \\texttt{{{init_set}}} and cost \\texttt{{{cost_type}}}.}}")
+    lines.append(f"\\label{{tab:{dataset}_{init_set}_{cost_type}_sizes}}")
+    lines.append("\\end{table}")
+
+    tex_path = f"latex_table_sizes/latex_table_sizes_{dataset}_{init_set}_{cost_type}.tex"
+    with open(tex_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"📄 Size LaTeX table written to: {tex_path}")
 
 
 if __name__ == "__main__":
@@ -187,9 +256,13 @@ if __name__ == "__main__":
     keys = set((ds, iset, ctype) for (ds, iset, ctype, _) in results)
 
     for dataset, init_set, cost_type in sorted(keys):
-        df = build_filtered_df(results, dataset, init_set, cost_type)
-        if df.empty:
-            print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
-            continue
-        save_csv(df, dataset, init_set, cost_type)
-        generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
+        try:
+            df = build_filtered_df(results, dataset, init_set, cost_type)
+            if df.empty:
+                print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
+                continue
+            save_csv(df, dataset, init_set, cost_type)
+            generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
+            generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
+        except Exception as e:
+            print(e)

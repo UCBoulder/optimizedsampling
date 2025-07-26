@@ -11,7 +11,7 @@ def summarize_cluster_sampling_r2(csv_path, sample_size, **kwargs):
     """
     df = pd.read_csv(csv_path)
     
-    # Filter by sample_size
+    # Filter by sample_size\
     filtered = df[df['sample_size'] == sample_size]
 
     if filtered.empty:
@@ -45,7 +45,7 @@ def summarize_convenience_sampling_r2(csv_path, sample_size, **kwargs):
     df = pd.read_csv(csv_path)
 
     # Filter by sample_size and method
-    filtered = df[(df['sample_size'] == sample_size) & (df['source'] == method)]
+    filtered = df[(df['sample_size'] == sample_size)]
 
     if filtered.empty:
         print("No matching data found.")
@@ -151,37 +151,37 @@ SUMMARY_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    # for label in ['population', 'treecover']:
-        # summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries"
-
-        # for sample_size in range(100, 1100, 100):
-        #     sampling_type = "cluster_sampling"
-        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-        #     for points_per_cluster in [2, 5, 10, 25]:
-        #         save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, points_per_cluster=points_per_cluster)
-
-        #     sampling_type = 'convenience_sampling'
-        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='urban_based')
-        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='region_based')
-
-        #     sampling_type = 'random_sampling'
-        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
-        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)
-
-        summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries"
+    for label in ['population', 'treecover']:
+        summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries"
 
         for sample_size in range(100, 1100, 100):
             sampling_type = "cluster_sampling"
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
             for points_per_cluster in [2, 5, 10, 25]:
                 save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, points_per_cluster=points_per_cluster)
 
             sampling_type = 'convenience_sampling'
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
             save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='urban_based')
             save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='region_based')
 
             sampling_type = 'random_sampling'
-            csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+            csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/{sampling_type}_r2_scores.csv"
             save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)
+
+        # summary_csv_dir = f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries"
+
+        # for sample_size in range(100, 1100, 100):
+        #     sampling_type = "cluster_sampling"
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+        #     for points_per_cluster in [2, 5, 10, 25]:
+        #         save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, points_per_cluster=points_per_cluster)
+
+        #     sampling_type = 'convenience_sampling'
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='urban_based')
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type, method='region_based')
+
+        #     sampling_type = 'random_sampling'
+        #     csv_path = f"/home/libe2152/optimizedsampling/0_results/india_secc/{sampling_type}_r2_scores.csv"
+        #     save_r2_summary(csv_path, sample_size, summary_csv_dir, sampling_type)

@@ -1,7 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_0.5_updated_r2_mean,poprisk_0.5_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,100,0.45,0.0,0.76,0.0,0.76,0.0,0.77,0.0
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,200,0.45,0.0,0.8,0.0,0.8,0.0,0.8,0.0
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,300,0.45,0.0,0.82,0.0,0.82,0.0,0.81,0.0
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,400,0.45,0.0,0.83,0.0,0.84,0.0,0.82,0.0
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,500,0.45,0.0,0.83,0.0,0.85,0.0,0.83,0.0
-USAVARS_TC,5_fixedstrata_10ppc_100_size,uniform,1000,0.45,0.0,0.86,0.0,0.85,0.0,0.87,0.0

@@ -1,0 +1,4 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_dists_from_urban_tiers_0.5_updated_r2_mean,poprisk_dists_from_urban_tiers_0.5_updated_r2_std,poprisk_nlcd_0.5_updated_r2_mean,poprisk_nlcd_0.5_updated_r2_std
+USAVARS_POP,top20_urban_100_points,convenience_based_linear_top20_urban_0.001,100,0.17,0.0,,,,,,
+USAVARS_POP,top20_urban_100_points,convenience_based_linear_top20_urban_0.001,1000,-0.18,0.22,-0.13,0.18,-0.13,0.09,-0.23,0.12
+USAVARS_POP,top20_urban_100_points,convenience_based_linear_top20_urban_0.001,10000,-0.18,0.22,0.2,0.1,-0.11,0.05,-0.29,0.01

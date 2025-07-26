@@ -1,0 +1,6 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std
+USAVARS_TC,top50_urban_100_points,convenience_based_top50_urban_0.01,10,0.52,0.16,0.53,0.18
+USAVARS_TC,top50_urban_100_points,convenience_based_top50_urban_0.01,50,0.52,0.16,0.61,0.08
+USAVARS_TC,top50_urban_100_points,convenience_based_top50_urban_0.01,100,0.52,0.16,0.66,0.08
+USAVARS_TC,top50_urban_100_points,convenience_based_top50_urban_0.01,500,0.52,0.16,0.77,0.02
+USAVARS_TC,top50_urban_100_points,convenience_based_top50_urban_0.01,1000,0.52,0.16,0.79,0.01

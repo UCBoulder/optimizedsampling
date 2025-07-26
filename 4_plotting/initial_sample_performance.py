@@ -2,39 +2,33 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Color Universal Design (CUD) palette for colorblind-friendly consistency
 SAMPLING_TYPE_COLORS = {
     "Cluster": "#E69F00",       # orange
     "Convenience\n(Urban)": "#56B4E9",   # sky blue
     "Random": "#009E73",        # green
-    "Convenience\n(Region)": "#F0E442",  # yellow
+    #"Convenience\n(Region)": "#F0E442",  # yellow
     # "": "#0072B2",      # blue
     # "": "#D55E00",       # vermillion
 }
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotation=30, set_y_lim=False):
+def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, set_y_lim=False):
     """
-    Plot R² boxplots across sampling methods using a dictionary of CSV paths,
-    using predefined colorblind-friendly colors from SAMPLING_TYPE_COLORS.
+    Plot R² boxplots across sampling methods using a dictionary of CSV paths
 
     Args:
-        csv_dict (dict): Keys are sampling type labels (e.g., "Cluster"), values are CSV file paths.
+        csv_dict (dict): Keys are sampling type labels, values are CSV file paths.
         sample_size (int): Sample size used in the experiments.
         save_path (str, optional): If provided, saves the plot to this path.
         rotation (int): Rotation angle for x-axis labels (default 30).
     """
     # Combine and label data
     dfs = []
-    for label, path in csv_dict.items():
+    for sampling_label, path in csv_dict.items():
         try:
             df = pd.read_csv(path)
             if 'r2' not in df.columns:
                 raise ValueError(f"'r2' column not found in {path}")
-            df['sampling_type'] = label
+            df['sampling_type'] = sampling_label
             dfs.append(df)
         except Exception as e:
             print(f"[Error] Could not read {path}: {e}")
@@ -45,10 +39,8 @@ def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotati
 
     combined_df = pd.concat(dfs, ignore_index=True)
 
-    # Pull consistent colors from global color map
     palette = {label: SAMPLING_TYPE_COLORS.get(label, "#CCCCCC") for label in csv_dict.keys()}
 
-    # Plotting setup
     sns.set(style="whitegrid", context="notebook", font_scale=1.2)
     plt.figure(figsize=(8, 6), dpi=300)
 
@@ -86,32 +78,31 @@ def plot_r2_boxplot_across_methods(csv_dict, sample_size, save_path=None, rotati
         plt.show()
 
 if __name__ == "__main__":
-    # for label in ['population', 'treecover']:
-    #     for sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
-    #         for points_per_cluster in [2, 5, 10, 25]:
-    #             plot_r2_boxplot_across_methods(
-    #             csv_dict={
-    #                 "Convenience\n(Urban)": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_urban_based_sample_size_{sample_size}.csv",
-    #                 "Convenience\n(Region)": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_region_based_sample_size_{sample_size}.csv",
-    #                 "Cluster": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
-    #                 "Random": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
-    #             },
-    #             sample_size=sample_size,
-    #             save_path= f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
-    #             rotation=30,
-    #             set_y_lim=True if label == 'population' else False
-    #         )
-    for sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
-        for points_per_cluster in [2, 5, 10, 25]:
-            plot_r2_boxplot_across_methods(
-            csv_dict={
-                "Convenience\n(Urban)": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_convenience_sampling_urban_based_sample_size_{sample_size}.csv",
-                "Convenience\n(Region)": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_convenience_sampling_region_based_sample_size_{sample_size}.csv",
-                "Cluster": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
-                "Random": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
-            },
-            sample_size=sample_size,
-            save_path= f"/home/libe2152/optimizedsampling/0_results/india_secc/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
-            rotation=30,
-            set_y_lim=False
-        )
+    for label in ['population', 'treecover']:
+        for sample_size in [100, 200, 300]:
+            for points_per_cluster in [10]:
+                plot_r2_boxplot_across_methods(
+                csv_dict={
+                    "Convenience\n(Urban)": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_urban_based_sample_size_{sample_size}.csv",
+                    #"Convenience\n(Region)": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_convenience_sampling_region_based_sample_size_{sample_size}.csv",
+                    "Cluster": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
+                    "Random": f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
+                },
+                sample_size=sample_size,
+                save_path= f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
+                set_y_lim= False
+            )
+    # for sample_size in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+    #     for points_per_cluster in [2, 5, 10, 25]:
+    #         plot_r2_boxplot_across_methods(
+    #         csv_dict={
+    #             "Convenience\n(Urban)": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_convenience_sampling_urban_based_sample_size_{sample_size}.csv",
+    #             "Convenience\n(Region)": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_convenience_sampling_region_based_sample_size_{sample_size}.csv",
+    #             "Cluster": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_cluster_sampling_sample_size_{sample_size}_ppc_{points_per_cluster}.csv",
+    #             "Random": f"/home/libe2152/optimizedsampling/0_results/india_secc/summaries/filtered_random_sampling_sample_size_{sample_size}.csv",
+    #         },
+    #         sample_size=sample_size,
+    #         save_path= f"/home/libe2152/optimizedsampling/0_results/india_secc/plots/r2_boxplot_sample{sample_size}_ppc{points_per_cluster}.png",
+    #         rotation=30,
+    #         set_y_lim=False
+    #     )
