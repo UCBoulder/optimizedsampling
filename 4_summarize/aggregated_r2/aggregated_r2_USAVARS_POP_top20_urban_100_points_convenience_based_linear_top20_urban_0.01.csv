@@ -1,0 +1,2 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_mod_updated_r2_mean,poprisk_mod_updated_r2_std,poprisk_dists_from_urban_tiers_1.0_updated_r2_mean,poprisk_dists_from_urban_tiers_1.0_updated_r2_std
+USAVARS_POP,top20_urban_100_points,convenience_based_linear_top20_urban_0.01,100,0.17,0.0,0.27,0.0,0.18,0.0,-0.27,0.0

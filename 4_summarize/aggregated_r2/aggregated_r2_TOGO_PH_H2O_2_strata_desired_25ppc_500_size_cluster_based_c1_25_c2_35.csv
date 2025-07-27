@@ -1,0 +1,12 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,similarity_updated_r2_mean,similarity_updated_r2_std,poprisk_regions_1.0_updated_r2_mean,poprisk_regions_1.0_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,100,0.06,0.15,0.06,0.17,0.15,0.02,0.05,0.18,0.05,0.17
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,200,0.06,0.15,0.07,0.16,0.08,0.1,0.17,0.05,0.03,0.22
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,300,0.06,0.15,0.16,0.03,0.1,0.09,0.19,0.05,-0.0,0.25
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,400,0.06,0.15,0.16,0.03,0.08,0.1,0.18,0.07,0.04,0.17
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,500,0.06,0.15,0.15,0.06,-0.02,0.21,0.2,0.04,0.04,0.12
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,600,0.06,0.15,0.15,0.05,0.06,0.16,0.23,0.02,0.1,0.11
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,700,0.06,0.15,0.17,0.03,0.06,0.13,0.24,0.02,0.1,0.08
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,800,0.06,0.15,0.16,0.04,0.05,0.15,0.23,0.03,0.13,0.07
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,900,0.06,0.15,0.16,0.04,0.05,0.11,0.23,0.01,0.12,0.05
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,1000,0.06,0.15,0.15,0.04,0.03,0.17,0.24,0.02,0.11,0.06
+TOGO_PH_H2O,2_strata_desired_25ppc_500_size,cluster_based_c1_25_c2_35,2000,0.17,0.0,,,,,,,,

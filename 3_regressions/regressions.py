@@ -7,7 +7,8 @@
 import dill
 import numpy as np
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 
@@ -29,25 +30,31 @@ def ridge_regression(X_train,
      
     print("Fitting regression...")
 
-    kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
-
-    #Pipeline that scales and then fits ridge regression
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),     # Step 1: Standardize features
-        ('ridgecv', RidgeCV(alphas=alphas, scoring='r2', cv=kf))  # Step 2: RidgeCV with 5-fold CV
+    model = Pipeline([
+        ('scaler', StandardScaler()),
+        ('ridge', Ridge())
     ])
 
-    #Fit the pipeline
-    print(f"NUM SAMPLES: {X_train.shape[0]}")
-    pipeline.fit(X_train, y_train)
+    param_grid = {
+        'ridge__alpha': alphas
+    }
 
-    # Optimal alpha
-    best_alpha = pipeline.named_steps['ridgecv'].alpha_
-    print(f"Best alpha: {best_alpha}")
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
 
-    # Make predictions on the test set
-    r2 = pipeline.score(X_test, y_test)
-    print(r2)
+    ridge_search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        scoring='r2',        
+        cv=cv,
+        n_jobs=-1                   #parallelize across folds
+    )
+
+
+    def evaluate_r2(model, X_test, y_test):
+        return model.score(X_test, y_test)
+    
+    ridge_search.fit(X_train, y_train)
+    r2 = evaluate_r2(ridge_search, X_test, y_test)
 
     if abs(r2) > 1:
         print("Warning: Severe overfitting. Add more samples.")
@@ -56,26 +63,43 @@ def ridge_regression(X_train,
 
 if __name__ == "__main__":
     import dill
+    import pandas as pd
 
-    with open("/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl", "rb") as f:
-        arrs = dill.load(f)
-    full_ids = arrs['ids_train']
-    X_train_full = arrs['X_train']
-    y_train_full = arrs['y_train']
-    X_test = arrs['X_test']
-    y_test = arrs['y_test']
+    results = []
 
-    id_to_index = {str(id_): i for i, id_ in enumerate(full_ids)}
+    for label in ['ph_h2o', 'k', 'p', 'mo']:
+        for typestr in ['P20', 'P40', 'P10', 'P30']:
+            for year in [2017, 2018, 2019, 2020, 2021, 2022]:
+                for month1 in ['Jan', 'Jul', 'jan']:
+                    for month2 in ['Jun', 'Dec', 'jun']:
+                        feature_identifier = f"{year}_{month1}_{month2}_{typestr}"
+                        
+                        try:
 
-    file_path = "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/randomstrata/sample_5_state_district_desired_20ppc_3000_size_seed_1.pkl"
+                            with open(f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_{feature_identifier}.pkl", "rb") as f:
+                                arrs = dill.load(f)
+                            full_ids = arrs['ids_train']
+                            X_train_full = arrs['X_train']
+                            y_train_full = arrs[f'{label}_train']
+                            X_test = arrs['X_test']
+                            y_test = arrs[f'{label}_test']
 
-    with open(file_path, "rb") as f:
-        sampled_ids = dill.load(f)['sampled_ids']
-    sampled_ids = [str(x) for x in sampled_ids]
-    sampled_indices = [id_to_index[i] for i in sampled_ids if i in id_to_index]
+                            train_mask = ~np.isnan(y_train_full)
+                            full_ids = full_ids[train_mask]
+                            X_train_full = X_train_full[train_mask]
+                            y_train_full = y_train_full[train_mask]
 
-    X_subset = X_train_full[sampled_indices]
-    y_subset = y_train_full[sampled_indices]
+                            test_mask = ~np.isnan(y_test)
+                            X_test = X_test[test_mask]
+                            y_test = y_test[test_mask]
 
-    r2 = ridge_regression(X_subset, y_subset, X_test, y_test)
-    from IPython import embed; embed()
+                            r2 = ridge_regression(X_train_full, y_train_full, X_test, y_test)
+                            results.append({'label': label, 'features': feature_identifier, 'r2': r2})
+                            print(f"R2 for label {label}, feature identifier {feature_identifier}: {r2}")
+
+                        except Exception as e:
+                            continue
+
+    # Write to CSV
+    df = pd.DataFrame(results)
+    df.to_csv("ridge_regression_results.csv", index=False)

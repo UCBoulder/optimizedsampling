@@ -1,9 +1,49 @@
 import os
 import dill
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 import csv
+
+def load_data_from_pkl(features_path, dataset=None, label=None):
+    if dataset != "togo":
+        print(f"Loading features from {features_path} ...")
+        try:
+            with open(features_path, "rb") as f:
+                arrs = dill.load(f)
+            full_ids = arrs['ids_train']
+            X_train_full = arrs['X_train']
+            y_train_full = arrs['y_train']
+            X_test = arrs['X_test']
+            y_test = arrs['y_test']
+            return full_ids, X_train_full, y_train_full, X_test, y_test
+        except Exception as e:
+            print(f"[ERROR] Could not load features: {e}")
+            return
+    else:
+        print("Loading togo features...")
+        try:
+            with open(features_path, "rb") as f:
+                arrs = dill.load(f)
+            full_ids = arrs['ids_train']
+            X_train_full = arrs['X_train']
+            y_train_full = arrs[f'{label}_train']
+
+            X_test = arrs['X_test']
+            y_test = arrs[f'{label}_test']
+            invalid_idxs = np.where(np.isnan(y_test))[0]
+            valid_idxs = np.where(~np.isnan(y_test))[0]
+
+            print(f"Number of invalid indices: {len(invalid_idxs)}")
+
+            X_test = X_test[valid_idxs]
+            y_test = y_test[valid_idxs]
+            return full_ids, X_train_full, y_train_full, X_test, y_test
+        except Exception as e:
+            print(f"[ERROR] Could not load features: {e}")
+            return
+
 
 def sampling_r2_scores(
     features_path,
@@ -12,7 +52,7 @@ def sampling_r2_scores(
     ridge_regression_fn,
     metadata_parser,
     results_filename_suffix,
-    min_samples=10,
+    min_samples=2000,
     verbose=True,
     **kwargs
 ):
@@ -20,19 +60,7 @@ def sampling_r2_scores(
     csv_path = os.path.join(results_dir, f"{results_filename_suffix}.csv")
     file_exists = os.path.isfile(csv_path)
 
-    if verbose:
-        print(f"Loading features from {features_path} ...")
-    try:
-        with open(features_path, "rb") as f:
-            arrs = dill.load(f)
-        full_ids = arrs['ids_train']
-        X_train_full = arrs['X_train']
-        y_train_full = arrs['y_train']
-        X_test = arrs['X_test']
-        y_test = arrs['y_test']
-    except Exception as e:
-        print(f"[ERROR] Could not load features: {e}")
-        return
+    full_ids, X_train_full, y_train_full, X_test, y_test = load_data_from_pkl(features_path, **kwargs)
 
     id_to_index = {str(id_): i for i, id_ in enumerate(full_ids)}
 
@@ -63,7 +91,6 @@ def sampling_r2_scores(
             sampled_indices = [id_to_index[i] for i in sampled_ids if i in id_to_index]
 
             if len(sampled_indices) < min_samples:
-                from IPython import embed; embed()
                 if verbose:
                     print(f"[SKIP] Not enough samples ({len(sampled_indices)}) in {fname}")
                 continue
@@ -76,6 +103,7 @@ def sampling_r2_scores(
             except Exception as e:
                 if verbose:
                     print(f"[ERROR] Ridge regression failed on {fname}: {e}")
+                    from IPython import embed; embed()
                 continue
 
             metadata = metadata_parser(fname, sampled_indices, r2)
@@ -227,32 +255,33 @@ def random_sampling_r2_scores(*args, **kwargs):
 
 if __name__ == "__main__":
     from regressions import ridge_regression
+    features_path = f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_2022_Jul_Dec_P20.pkl"
+    cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux"
+    # convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based"
+    # convenience_sampling_region_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/cluster_based"
+    # random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling"
 
-    features_path = f"/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl"
-    cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/randomstrata"
-    convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/urban_based"
-    convenience_sampling_region_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/cluster_based"
-    random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/random_sampling"
-
-    results_dir = f"/home/libe2152/optimizedsampling/0_results/india_secc"
+    results_dir = f"/home/libe2152/optimizedsampling/0_results/togo"
 
     # # Run cluster sampling R2 scores
-    # cluster_sampling_r2_scores(
+    cluster_sampling_r2_scores(
+        features_path=features_path,
+        sampling_dir=cluster_sampling_dir,
+        results_dir=results_dir,
+        ridge_regression_fn=ridge_regression,
+        verbose=True,
+        dataset="togo",
+        label='k'
+    )
+
+    # Run convenience sampling R2 scores
+    # convenience_sampling_r2_scores(
     #     features_path=features_path,
-    #     sampling_dir=cluster_sampling_dir,
+    #     sampling_dir=convenience_sampling_urban_dir,
     #     results_dir=results_dir,
     #     ridge_regression_fn=ridge_regression,
     #     verbose=True,
     # )
-
-    # # Run convenience sampling R2 scores
-    convenience_sampling_r2_scores(
-        features_path=features_path,
-        sampling_dir=convenience_sampling_urban_dir,
-        results_dir=results_dir,
-        ridge_regression_fn=ridge_regression,
-        verbose=True,
-    )
 
     # convenience_sampling_r2_scores(
     #     features_path=features_path,
@@ -262,7 +291,7 @@ if __name__ == "__main__":
     #     verbose=True,
     # )
 
-    # Run random sampling R2 scores
+    # # Run random sampling R2 scores
     # random_sampling_r2_scores(
     #     features_path=features_path,
     #     sampling_dir=random_sampling_dir,

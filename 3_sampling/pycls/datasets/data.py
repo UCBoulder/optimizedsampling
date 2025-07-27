@@ -155,27 +155,27 @@ class Data:
         preprocess_steps = transforms.Compose(preprocess_steps)
         
         if self.dataset == 'USAVARS_POP':
-            usavars_pop = USAVars(root='/share/usavars', isTrain=isTrain, label='population')
+            usavars_pop = USAVars(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain, label='population')
             return usavars_pop, len(usavars_pop)
         
         elif self.dataset == 'USAVARS_TC':
-            usavars_tc = USAVars(root='/share/usavars', isTrain=isTrain, label='treecover')
+            usavars_tc = USAVars(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain, label='treecover')
             return usavars_tc, len(usavars_tc)
         
         elif self.dataset == 'USAVARS_EL':
-            usavars_el = USAVars(root='/share/usavars', isTrain=isTrain, label='elevation')
+            usavars_el = USAVars(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain, label='elevation')
             return usavars_el, len(usavars_el)
 
         elif self.dataset == 'USAVARS_INC':
-            usavars_inc = USAVars(root='/share/usavars', isTrain=isTrain, label='income')
+            usavars_inc = USAVars(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain, label='income')
             return usavars_inc, len(usavars_inc)
 
         elif self.dataset == "INDIA_SECC":
             india_secc = IndiaSECC(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain)
             return india_secc, len(india_secc)
     
-        elif self.dataset == "TOGO":
-            togo_soil_fertility = TogoSoilFertility(root='/share/togo', isTrain=isTrain)
+        elif self.dataset.startswith("TOGO"):
+            togo_soil_fertility = TogoSoilFertility(root=self.cfg.DATASET.ROOT_DIR, isTrain=isTrain, label_col=self.cfg.DATASET.LABEL, identifier=self.cfg.DATASET.FEATURE_IDENTIFIER)
             return togo_soil_fertility, len(togo_soil_fertility)
 
         else:
@@ -254,7 +254,7 @@ class Data:
             return self.makeLUVSets_from_ids_usavars(ids, data, save_dir)
         elif self.dataset == "INDIA_SECC":
             return self.makeLUVSets_from_ids_india_secc(ids, data, save_dir)
-        elif self.dataset == "TOGO":
+        elif self.dataset.startswith("TOGO"):
             return self.makeLUVSets_from_ids_india_secc(ids, data, save_dir)
         else:
             raise ValueError("method not yet implemented")

@@ -1,6 +1,7 @@
 import numpy as np
 
 def uniform(s):
+    print("Uniform cost")
     return np.sum(s)
 
 def pointwise_by_array(s, cost_array):

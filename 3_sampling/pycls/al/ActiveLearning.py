@@ -37,7 +37,13 @@ class ActiveLearning:
         if self.cfg.ACTIVE_LEARNING.OPT == True:
             from .opt import Opt
             opt = Opt(self.cfg, lSet, uSet, budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE)
-            opt.set_utility_func(self.cfg.ACTIVE_LEARNING.SAMPLING_FN)
+
+            if self.cfg.ACTIVE_LEARNING.SAMPLING_FN == "diversity":
+                X_train = kwargs.get('X_train', None)
+                assert X_train is not None, "Need to specify X_train"
+                opt.set_utility_func(self.cfg.ACTIVE_LEARNING.SAMPLING_FN, X_train=X_train)
+            else:
+                opt.set_utility_func(self.cfg.ACTIVE_LEARNING.SAMPLING_FN)
                 
             activeSet, uSet = opt.select_samples()
             return activeSet, uSet

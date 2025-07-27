@@ -92,17 +92,19 @@ _C.ACTIVE_LEARNING.USET_PATH = ''
 _C.ACTIVE_LEARNING.UTIL_LAMBDA = None
 _C.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH = None
 _C.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = None
+_C.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH = None
 
 # ---------------------------------------------------------------------------- #
 # Dataset options
 # ---------------------------------------------------------------------------- #
 _C.DATASET = CN()
 _C.DATASET.LABEL = None
+_C.DATASET.FEATURE_IDENTIFIER = None
 _C.DATASET.NAME = None
 # For Tiny ImageNet dataset, ROOT_DIR must be set to the dataset folder ("data/tiny-imagenet-200/"). For others, the outder "data" folder where all datasets can be stored is expected.
 _C.DATASET.ROOT_DIR = None
 # Accepted Datasets
-_C.DATASET.ACCEPTED = ['USAVARS_POP', 'USAVARS_TC', 'USAVARS_EL', 'USAVARS_INC', 'INDIA_SECC', 'TOGO']
+_C.DATASET.ACCEPTED = ['USAVARS_POP', 'USAVARS_TC', 'USAVARS_EL', 'USAVARS_INC', 'INDIA_SECC', 'TOGO_P', 'TOGO_PH_H2O']
 
 # #-------------------------------------------------------------------------------#
 # #  INITIAL SET options

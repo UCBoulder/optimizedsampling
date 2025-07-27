@@ -1,60 +1,55 @@
 from pathlib import Path
-from typing import Sequence, Optional
+from typing import Sequence
+import warnings
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from sklearn.model_selection import train_test_split
 from torchgeo.datasets.geo import NonGeoDataset
+
+from matplotlib.figure import Figure
+from shapely.geometry import Point
 
 
 class TogoSoilFertility(NonGeoDataset):
     """Togo Soil Fertility dataset."""
 
+class TogoSoilFertility(NonGeoDataset):
     def __init__(
         self,
-        root: Path = Path("data"),
+        root: Path | str,
+        identifier: str,
         isTrain: bool = True,
         label_col: str = "p_mgkg",
-        unique_id_col: str = "unique_id",
-        outcome_cols: Optional[Sequence[str]] = None,
     ) -> None:
-        """
-        Args:
-            root: Path to the data directory
-            isTrain: Whether to load the training split
-            label_col: Column name for the label
-            unique_id_col: Column name for unique identifiers
-            outcome_cols: List of all outcome columns (including the label); 
-                          if None, all numeric columns except unique_id_col are used
-        """
-        self.root = Path(root) if isinstance(root, str) else root
-        self.label_col = label_col
-        self.unique_id_col = unique_id_col
+        self.root = Path(root)
         self.split = "train" if isTrain else "test"
+        self.label_col = label_col
 
-        self.df = self._load_csv()
+        import dill
+        pkl_path = self.root / f"togo_fertility_data_all_{identifier}.pkl"
+        with open(pkl_path, "rb") as f:
+            data = dill.load(f)
 
-        if outcome_cols is None:
-            self.outcome_cols = [
-                col for col in self.df.columns
-                if col != unique_id_col and pd.api.types.is_numeric_dtype(self.df[col])
-            ]
-        else:
-            self.outcome_cols = list(outcome_cols)
+        suffix = "_train" if isTrain else "_test"
+        X = data[f"X{suffix}"]
+        ids = data[f"ids{suffix}"]
+        y = data[f"{label_col}{suffix}"] if f"{label_col}{suffix}" in data else data[f"y{suffix}"]
+        lats = data[f"lats{suffix}"]
+        lons = data[f"lons{suffix}"]
 
-        assert label_col in self.outcome_cols, f"{label_col} must be in outcome_cols"
+        # Remove NaN labels
+        mask = ~np.isnan(y)
+        num_removed = np.sum(~mask)
+        if num_removed > 0:
+            warnings.warn(f"Removed {num_removed} samples with NaN labels in '{label_col}{suffix}'.")
 
-        self._ensure_splits_exist()
-        self.df = self._apply_split()
-
-        self.ids = self.df[unique_id_col].astype(str).values
-        self.y = self.df[label_col].values.astype(np.float32)
-
-        # Features = all other outcome columns (optional)
-        self.feature_cols = [col for col in self.outcome_cols if col != label_col]
-        if self.feature_cols:
-            self.X = self.df[self.feature_cols].values.astype(np.float32)
-        else:
-            self.X = None
+        self.X = X[mask]
+        self.ids = ids[mask]
+        self.y = y[mask]
+        self.lats = lats[mask]
+        self.lons = lons[mask]
+        self.latlons = np.column_stack((self.lats, self.lons))
 
     def __getitem__(self, index: int):
         if self.X is not None:
@@ -64,43 +59,57 @@ class TogoSoilFertility(NonGeoDataset):
 
     def __len__(self):
         return len(self.y)
+    
+    def plot_subset_on_map(
+        self,
+        indices: Sequence[int],
+        country_shape_file: str = '/share/togo/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp',
+        country_name: str | None = None,
+        exclude_names: list[str] | None = None,
+        point_color: str = 'red',
+        point_size: float = 1,
+        title: str | None = None,
+        save_path: str | None = None
+    ) -> Figure:
+        """
+        Plot selected lat/lon points on a country shapefile.
 
-    def _load_csv(self) -> pd.DataFrame:
-        path = self.root / "togo_soil_fertility_resampled.csv"
-        df = pd.read_csv(path)
+        Args:
+            indices: list of indices in self.latlons to plot.
+            country_shape_file: path to a shapefile for plotting the country boundary.
+            country_name: optional name to filter a specific country (must match shapefile's attribute).
+            exclude_names: optional list of names to exclude (e.g., overseas territories).
+            point_color: color of plotted points.
+            point_size: size of plotted points.
+            title: optional title for the plot.
 
-        # Sanitize column names
-        df.columns = (
-            df.columns
-            .str.strip()
-            .str.lower()
-            .str.replace(" ", "_")
-            .str.replace("%", "pct")
-            .str.replace("/", "")
-            .str.replace("__", "_")
-        )
+        Returns:
+            A matplotlib Figure showing the points on the map.
+        """
+        import matplotlib.pyplot as plt
+        print("Plotting latlon subset...")
+        # Load the country shapefile
+        country = gpd.read_file(country_shape_file)
 
-        # Rename label_col if needed
-        if self.label_col not in df.columns:
-            raise ValueError(f"Label column '{self.label_col}' not found in CSV columns: {df.columns.tolist()}")
+        if country_name is not None and 'NAME' in country.columns:
+            country = country[country['NAME'] == country_name]
 
-        df = df.dropna(subset=[self.label_col])
-        return df
+        if exclude_names:
+            country = country[~country['name'].isin(exclude_names)]
 
-    def _ensure_splits_exist(self, random_state=42):
-        split_dir = self.root / "splits"
-        split_dir.mkdir(exist_ok=True)
+        latlons = self.latlons[indices]
+        points = [Point(lon, lat) for lat, lon in latlons]
+        points_gdf = gpd.GeoDataFrame(geometry=points, crs='EPSG:4326')
 
-        train_path = split_dir / "train_ids.csv"
-        test_path = split_dir / "test_ids.csv"
+        fig, ax = plt.subplots(figsize=(12, 10))
+        country.plot(ax=ax, edgecolor='black', facecolor='none')
+        points_gdf.plot(ax=ax, color=point_color, markersize=point_size)
 
-        if not train_path.exists() or not test_path.exists():
-            ids = self.df[self.unique_id_col].values
-            ids_train, ids_test = train_test_split(ids, test_size=0.2, random_state=random_state)
-            pd.Series(ids_train).to_csv(train_path, index=False, header=False)
-            pd.Series(ids_test).to_csv(test_path, index=False, header=False)
+        ax.set_axis_off()
+        if title:
+            ax.set_title(title, fontsize=14)
 
-    def _apply_split(self) -> pd.DataFrame:
-        split_path = self.root / "splits" / f"{self.split}_ids.csv"
-        split_ids = pd.read_csv(split_path, header=None)[0].values
-        return self.df[self.df[self.unique_id_col].isin(split_ids)].copy()
+        if save_path:
+            fig.savefig(save_path, dpi=300)
+
+        return fig

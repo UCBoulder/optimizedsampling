@@ -1,0 +1,6 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_regions_1.0_updated_r2_mean,poprisk_regions_1.0_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
+TOGO,2_strata_desired_25ppc_2400_size,cluster_based_c1_25_c2_35,1000,-0.04,0.01,-0.01,0.02,0.06,0.01,-0.04,0.01
+TOGO,2_strata_desired_25ppc_2400_size,cluster_based_c1_25_c2_35,2000,-0.04,0.01,0.02,0.01,0.07,0.01,-0.01,0.03
+TOGO,2_strata_desired_25ppc_2400_size,cluster_based_c1_25_c2_35,3000,-0.04,0.01,0.04,0.01,0.09,0.01,0.02,0.03
+TOGO,2_strata_desired_25ppc_2400_size,cluster_based_c1_25_c2_35,4000,-0.04,0.01,0.06,0.01,0.1,0.01,0.06,0.03
+TOGO,2_strata_desired_25ppc_2400_size,cluster_based_c1_25_c2_35,5000,-0.04,0.01,0.09,0.01,0.11,0.01,0.08,0.01

@@ -269,6 +269,7 @@ class ClusterSampler:
         os.makedirs(os.path.dirname(self.out_path), exist_ok=True)
 
         assert not any(pd.isna(x) for x in self.sampled_ids), "Something went wrong, NaN values found in sampled_ids"
+        print(self.sampled_ids)
 
         sampling_metadata = {
             "sampled_ids": self.sampled_ids,

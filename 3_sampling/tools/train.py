@@ -5,9 +5,9 @@ import numpy as np
 import dill
 import json
 from datetime import datetime
+from utils import get_free_cpus
 
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 
@@ -72,6 +72,7 @@ def argparser():
 
     parser.add_argument('--similarity_matrix_path', default=None, type=str)
     parser.add_argument('--distance_matrix_path', default=None, type=str)
+    parser.add_argument('--distance_per_unit_path', default=None, type=str)
     return parser
 
 def main(cfg, train_data):
@@ -88,7 +89,7 @@ def main(cfg, train_data):
     else:
         seed_str = f"seed_{cfg.RNG_SEED}"
 
-        if cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion", "poprisk"]:
+        if cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion", "poprisk", "poprisk_mod"]:
             sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}/{cfg.GROUPS.GROUP_TYPE}"
         else:
             sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}"
@@ -105,7 +106,7 @@ def main(cfg, train_data):
         #         base_dir = f"{base_dir}/{random_strategy}"
 
         # Append util_lambda if sampling_fn is poprisk
-        if cfg.ACTIVE_LEARNING.SAMPLING_FN == "poprisk":
+        if cfg.ACTIVE_LEARNING.SAMPLING_FN.startswith("poprisk"):
             util_lambda = getattr(cfg.ACTIVE_LEARNING, "UTIL_LAMBDA", None)
             if util_lambda is not None:
                 base_dir = f"{base_dir}/util_lambda_{util_lambda}"
@@ -200,9 +201,10 @@ def main(cfg, train_data):
 
     logger.info("Starting subset selection...")
     al_obj = ActiveLearning(data_obj, cfg)
-    activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data)
+    activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data, X_train=train_data.X)
     print(f"Sampled {len(activeSet)} points!")
-    train_data.plot_subset_on_map(activeSet, save_path=f"{exp_dir}/activeSet_plot.png")
+    if len(activeSet) > 0:
+        train_data.plot_subset_on_map(activeSet, save_path=f"{exp_dir}/activeSet_plot.png")
 
     logger.info(f"Selected {len(activeSet)} new samples.")
     data_obj.saveSets(lSet, uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_0'))
@@ -227,7 +229,7 @@ def main(cfg, train_data):
         param_grid=param_grid,
         scoring='r2',        
         cv=cv,
-        n_jobs=-1                   #parallelize across folds
+        n_jobs=get_free_cpus()                  #parallelize across folds
     )
 
     # Train again on the updated labeled set
@@ -286,7 +288,7 @@ def main_wrapper():
 
     # === Optimization Flag for Some Strategies ===
     cfg.ACTIVE_LEARNING.OPT = args.sampling_fn in [
-        'greedycost', 'poprisk', 'similarity', 'diversity'
+        'greedycost', 'poprisk', 'similarity', 'diversity', 'poprisk_mod'
     ]
 
     # === Load Cost Array (Optional) ===
@@ -373,6 +375,7 @@ def main_wrapper():
     # === Optional Paths for Similarity/Distance Matrices ===
     cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH = args.similarity_matrix_path
     cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = args.distance_matrix_path
+    cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH = args.distance_per_unit_path
 
     # === Run Main Experiment ===
     main(cfg, train_data)

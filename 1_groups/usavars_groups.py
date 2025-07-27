@@ -59,44 +59,51 @@ def save_dict_to_pkl(d, filepath):
         pickle.dump(d, f)
 
 if __name__ == "__main__":
-    import pickle
-    import numpy as np
+    import geopandas as gpd
+    from pathlib import Path
 
-    N = 5
-    n = 100
-    subset_seed = 42
+    gdf = gpd.read_file("/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson")
 
-    for label in ['population', 'treecover']:
-        feature_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
+    ADMIN_IDS = {
+        'admin_1': 'region',
+        'admin_2': 'prefecture',
+        'admin_3': 'canton'
+    }
 
-        with open(feature_path, "rb") as f:
-            arrs = pickle.load(f)
+    id_col = 'id'
+    output_dir = Path("/home/libe2152/optimizedsampling/0_data/groups/togo")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        ids = np.array(arrs['ids_train'])
-        num_ids = len(ids)
+    for admin_col, admin_name in ADMIN_IDS.items():
+        if admin_col not in gdf.columns:
+            print(f"⚠️ Warning: Column '{admin_col}' not found in GeoDataFrame. Skipping.")
+            continue
 
-        total_needed = N * n
-        if total_needed > num_ids:
-            raise ValueError(f"Requested {total_needed} IDs (N={N}, n={n}), but only {num_ids} available.")
+        assignment_dict = make_group_assignment(gdf, [admin_col], id_col)
+        output_path = output_dir / f"{admin_name}_assignments_dict.pkl"
+        save_dict_to_pkl(assignment_dict, output_path)
+        print(f"✅ Saved: {output_path}")
 
-        rng = np.random.default_rng(subset_seed)
-        shuffled_ids = rng.permutation(ids)
+    admin3_to_admin2 = gdf.groupby("admin_3")["admin_2"].nunique()
+    violations_3_to_2 = admin3_to_admin2[admin3_to_admin2 > 1]
 
-        selected_ids = shuffled_ids[:total_needed]
-        leftover_ids = set(shuffled_ids[total_needed:])
+    # Check that each admin_2 maps to only one admin_1
+    admin2_to_admin1 = gdf.groupby("admin_2")["admin_1"].nunique()
+    violations_2_to_1 = admin2_to_admin1[admin2_to_admin1 > 1]
 
-        split_ids = np.split(selected_ids, N)
+    # Print results
+    if len(violations_3_to_2):
+        print(f"❌ Violations in admin_3 → admin_2: {len(violations_3_to_2)}")
+        print(violations_3_to_2)
+        from IPython import embed; embed()
+    else:
+        print("✅ All admin_3 codes uniquely map to a single admin_2")
 
-        id_to_subset = {str(id_): 0 for id_ in ids}
+    if len(violations_2_to_1):
+        print(f"❌ Violations in admin_2 → admin_1: {len(violations_2_to_1)}")
+        print(violations_2_to_1)
+    else:
+        print("✅ All admin_2 codes uniquely map to a single admin_1")
 
-        for subset_idx, id_subset in enumerate(split_ids, start=1):
-            for id_ in id_subset:
-                id_to_subset[str(id_)] = subset_idx
 
-        # Save to pickle
-        out_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/{N}_subset_size_{n}_assignments.pkl"
-        with open(out_path, "wb") as f:
-            pickle.dump(id_to_subset, f)
-
-        print(f"Saved subset assignment for {label} to {out_path}")
 

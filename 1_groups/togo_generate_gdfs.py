@@ -46,94 +46,95 @@ def get_nearest_polygon_index(point, gdf, buffer_degrees=0.5):
 
 def process_or_load_adm3(gdf_points):
     all_adm3_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
-    gdf_adm3 = load_adm3_with_combined_id(ADM3_SHP)
+    gdf_adm3 = load_adm3_admin_columns(ADM3_SHP)
 
     if os.path.exists(all_adm3_path):
         gdf_points_with_adm3 = gpd.read_file(all_adm3_path)
     else:
         print("Generating adm3 assignments...")
         gdf_points_with_adm3 = add_adm3_to_points(gdf_points, gdf_adm3)
-        from IPython import embed; embed()
         gdf_points_with_adm3.to_file(all_adm3_path, driver="GeoJSON")
 
     return gdf_points_with_adm3
 
-def load_adm3_with_combined_id(adm3_shp):
+def load_adm3_admin_columns(adm3_shp):
     gdf_adm3 = gpd.read_file(adm3_shp)
+    gdf_adm3['admin_3'] = gdf_adm3["ADM3_FR"]
 
-    gdf_adm3["ADM1_FR"] = gdf_adm3["ADM1_FR"].apply(normalize_admin2)
-    gdf_adm3["ADM2_FR"] = gdf_adm3["ADM2_FR"].apply(normalize_admin2)
+    return gdf_adm3[["admin_3", "geometry"]].copy()
 
-    # Create combined_adm_id column
-    gdf_adm3['combined_adm_name'] = (
-        gdf_adm3['ADM3_FR'].astype(str) + "_" +
-        gdf_adm3['ADM2_FR'].astype(str) + "_" +
-        gdf_adm3['ADM1_FR'].astype(str)
-    )
-
-    gdf_adm3['combined_adm_id'] = (
-        gdf_adm3['ADM3_PCODE'].astype(str) + "_" +
-        gdf_adm3['ADM2_PCODE'].astype(str) + "_" +
-        gdf_adm3['ADM1_PCODE'].astype(str)
-    )
-
-    return gdf_adm3
 
 def add_adm3_to_points(gdf_points, gdf_adm3):
     gdf_points = gdf_points.copy()
-    gdf_points['combined_adm_id'] = None
+    gdf_points['admin_3'] = None
 
-    print(f"Processing {len(gdf_points)} points and {len(gdf_adm3)} adm3...")
+    print(f"Processing {len(gdf_points)} points and {len(gdf_adm3)} admin_3 polygons...")
 
-    # Spatial join points to adm3 to assign combined_adm_id
+    # Ensure consistent CRS
     gdf_points = gdf_points.to_crs("EPSG:4326")
     gdf_adm3 = gdf_adm3.to_crs("EPSG:4326")
 
-    # Now perform the spatial join
+    # Initial spatial join
     joined = gpd.sjoin(
         gdf_points,
-        gdf_adm3[['geometry', 'combined_adm_id']],
+        gdf_adm3[['geometry', 'admin_3']],
         how='left',
         predicate='within'
     )
 
-    gdf_points.loc[joined.index, 'combined_adm_id'] = joined['combined_adm_id_right']
+    gdf_points.loc[joined.index, 'admin_3'] = joined['admin_3_right']
+    gdf_points["admin_3"] = (
+        gdf_points["admin_3"].astype(str).str.strip() + "__" +
+        gdf_points["admin_2"].astype(str).str.strip()
+    )
 
-    num_missing = gdf_points['combined_adm_id'].isna().sum()
+    # Fill in unmatched points using nearest polygon
+    num_missing = gdf_points['admin_3'].isna().sum()
 
     if num_missing > 0:
-        print(f"{num_missing} points missing 'combined_adm_id'. Filling using nearest polygon...")
+        print(f"{num_missing} points missing 'admin_3'. Attempting to fill using nearest polygon...")
 
-        for idx, row in gdf_points[gdf_points['combined_adm_id'].isna()].iterrows():
-            # Subset gdf_adm3 to matching admin_1 and admin_2 from the point
-            gdf_adm2_subset = gdf_adm3[
-                (gdf_adm3["ADM1_FR"] == row["admin_1"]) &
-                (gdf_adm3["ADM2_FR"] == row["admin_2"])
+        for idx, row in gdf_points[gdf_points['admin_3'].isna()].iterrows():
+            # Filter polygons by admin_1 and admin_2
+            subset = gdf_adm3[
+                (gdf_adm3["admin_1"] == row["admin_1"]) &
+                (gdf_adm3["admin_2"] == row["admin_2"])
             ]
 
-            if gdf_adm2_subset.empty:
-                gdf_adm2_subset = gdf_adm3[(gdf_adm3["ADM1_FR"] == row["admin_1"])]
-                print(gdf_adm2_subset)
-                print(row['admin_2'])
-                print(gdf_adm2_subset['ADM2_FR'])
+            if subset.empty:
                 from IPython import embed; embed()
-                print(f"No polygons found for point ID {row['id']} in admin_1='{row['admin_1']}', admin_2='{row['admin_2']}'. Using full gdf_adm3 fallback.")
-                gdf_adm2_subset = gdf_adm3
+                subset = gdf_adm3[gdf_adm3["admin_1"] == row["admin_1"]]
+                print(f"Fallback to full admin_1 for point {row['id']}")
+                if subset.empty:
+                    subset = gdf_adm3  # fallback to full set
+                    print(f"Fallback to full gdf_adm3 for point {row['id']}")
 
             nearest_idx = get_nearest_polygon_index(
                 point=row.geometry,
-                gdf=gdf_adm2_subset,  # narrowed down admin_2 region
+                gdf=subset,
                 buffer_degrees=0.5
             )
 
-            gdf_points.at[idx, 'combined_adm_id'] = gdf_adm3.loc[nearest_idx, 'combined_adm_id']
+            gdf_points.at[idx, 'admin_3'] = gdf_adm3.loc[nearest_idx, 'admin_3']
 
-        print("Missing values filled using nearest adm3 geometry within admin_2.")
+        print("Missing admin_3 values filled using nearest geometry.")
     else:
-        print("All points matched with adm3 polygons correctly.")
-
+        print("All points matched to admin_3 polygons successfully.")
 
     return gdf_points
+
+
+def verify_point_admin_nesting(gdf_points):
+    bad_3 = gdf_points.groupby("admin_3")["admin_2"].nunique()
+    bad_2 = gdf_points.groupby("admin_2")["admin_1"].nunique()
+
+    if (bad_3 > 1).any():
+        print("Some admin_3 values map to multiple admin_2 in point assignments.")
+        print(bad_3[bad_3 > 1])
+    if (bad_2 > 1).any():
+        print("Some admin_2 values map to multiple admin_1 in point assignments.")
+        print(bad_2[bad_2 > 1])
+
 
 
 def counts_per_division(gdf, division_col):
@@ -164,27 +165,22 @@ def plot_points_distribution(label, counts, division_type, division_col, log_sca
     plt.savefig(f"{label}/plots/{division_type}_hist.png", dpi=300)
 
 if __name__ == "__main__":
-    from pathlib import Path
+    type_str = "2017_Jan_Jun_P20"
+    with open(f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_{type_str}.pkl", "rb") as f:
+        arrs = dill.load(f)
+    
+    ids = arrs['ids_train']
+    lats_train = arrs['lats_train']
+    lons_train = arrs['lons_train']
 
-    root = Path("/share/togo")
+    latlons = list(zip(lats_train, lons_train))
 
-    df = pd.read_csv(root / "togo_soil_fertility_resampled.csv")
+    df_soil = pd.read_csv("/share/togo/togo_soil_fertility_resampled.csv")
 
-    df.columns = (
-        df.columns
-        .str.strip()
-        .str.lower()
-        .str.replace(" ", "_")
-        .str.replace("%", "pct")
-        .str.replace("/", "")
-    )
 
-    df = df.dropna(subset=["lat", "lon"])
-
-    ids = df["unique_id"].astype(str).values
-    admin_2 = df["admin_2"].astype(str).values
-    admin_1 = df["admin_1"].astype(str).values
-    latlons = df[["lat", "lon"]].values
+    df_soil = df_soil.set_index('unique_id')
+    admin_1 = [df_soil.loc[uid, 'admin_1'] if uid in df_soil.index else None for uid in ids]
+    admin_2 = [df_soil.loc[uid, 'admin_2'] if uid in df_soil.index else None for uid in ids]
 
     points = [Point(lon, lat) for lat, lon in latlons]
 
@@ -194,3 +190,4 @@ if __name__ == "__main__":
     geo_df['admin_2'] = geo_df['admin_2'].apply(normalize_admin2)
 
     gdf_adm3 = process_or_load_adm3(geo_df)
+    from IPython import embed; embed()

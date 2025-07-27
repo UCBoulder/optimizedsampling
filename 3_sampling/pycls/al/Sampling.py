@@ -144,6 +144,7 @@ class Sampling:
         np.random.shuffle(all_unlabeled_points)
 
         selected = []
+        baseline_cost = self.cost_func(self.labeled_unit_vector)
 
         for idx in all_unlabeled_points:
             unit = self.unit_assignment[idx]
@@ -154,7 +155,7 @@ class Sampling:
             unit_inclusion_vector[unit_idx] = 1
 
             #Check cost
-            if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+            if self.cost_func(unit_inclusion_vector) > self.budget + baseline_cost:
                 #revert inclusion if over budget
                 unit_inclusion_vector[unit_idx] = original
                 break
@@ -166,6 +167,9 @@ class Sampling:
 
         activeSet = np.array(selected)
         remainSet = np.array(sorted(uSet))
+        total_sample_cost = self.cost_func(unit_inclusion_vector)
+        labeled_sample_cost = baseline_cost
+        self._save_selection_metadata(total_sample_cost, len(activeSet), labeled_sample_cost)
         return activeSet, remainSet
 
     
@@ -207,6 +211,9 @@ class Sampling:
 
         activeSet = np.array(selected)
         remainSet = np.array(sorted(uSet))
+        total_sample_cost = self.cost_func(unit_inclusion_vector)
+        labeled_sample_cost = self.cost_func(self.labeled_unit_vector)
+        self._save_selection_metadata(total_sample_cost, len(activeSet), labeled_sample_cost)
         return activeSet, remainSet
 
     def _set_groups(self):
@@ -297,6 +304,10 @@ class Sampling:
         activeSet = np.array(selected)
         remainSet = np.array(sorted(list(uSet)))
         print(f"\nSampling finished. Total selected: {len(activeSet)}")
+        total_sample_cost = self.cost_func(unit_inclusion_vector)
+        labeled_sample_cost = self.cost_func(self.labeled_unit_vector)
+        self._save_selection_metadata(total_sample_cost, len(activeSet), labeled_sample_cost)
+
         return activeSet, remainSet
 
 
@@ -318,6 +329,17 @@ class Sampling:
         remain_set = np.array(sorted(self.uSet - set(active_set)))
         cost = self._compute_labeled_cost(unit_inclusion_vector)
         return active_set, remain_set, cost
+
+    def _save_selection_metadata(self, total_sample_cost, num_selected_samples, labeled_sample_cost):
+        save_path = os.path.join(self.cfg.EXP_DIR, "selection_metadata.json")
+        metadata = {
+            "total_sample_cost": float(total_sample_cost),  # convert np.float64 to native float
+            "labeled_sample_cost": float(labeled_sample_cost),
+            "seed": self.seed,
+            "num_selected_samples": num_selected_samples
+        }
+        with open(save_path, "w") as f:
+            json.dump(metadata, f)
     
     def _save_costs_metadata(self):
         seed_dir = os.path.join(self.cfg.SAMPLING_DIR, f"seed_{self.seed}")

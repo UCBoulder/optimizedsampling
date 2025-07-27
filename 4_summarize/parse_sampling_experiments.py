@@ -22,6 +22,8 @@ METHOD_LABELS = {
     "poprisk_nlcd_0.5": "PopRisk NLCD ($\\lambda = 0.5$)",
     "poprisk_dists_from_top20_urban_tiers_0.5": "PopRisk Urban Tiers ($\\lambda = 0.5$)",
     "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
+    "poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5)",
+    "poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0)",
     #"poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
 }

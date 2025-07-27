@@ -10,11 +10,13 @@ import mosek
 
 from .cvxpy_fns import cost, util
 from . import cost as np_cost
+from . import matrix_util as matr
 
 UTILITY_FNS = {
     "random": util.random,
     "greedycost": util.greedy,
     "poprisk": util.pop_risk,
+    "poprisk_mod": util.pop_risk_mod,
     "similarity": util.similarity,
     "diversity": util.diversity
 }
@@ -127,7 +129,7 @@ class Opt:
         }
         #note, will need to adjust if the cost function is unit_aware_pointwise
 
-    def set_utility_func(self, utility_func_type):
+    def set_utility_func(self, utility_func_type, X_train=None, X_test=None):
         if utility_func_type not in UTILITY_FNS:
             raise ValueError(f"Invalid utility function type: {utility_func_type}")
         self.utility_func_type = utility_func_type
@@ -143,20 +145,80 @@ class Opt:
             self.group_assignments_per_unit = [self.group_assignment_per_unit[u] for u in self.units]
 
             self.utility_func = lambda s: util.pop_risk(s, self.group_assignments_per_unit, l=self.cfg.ACTIVE_LEARNING.UTIL_LAMBDA, ignored_groups=self.cfg.GROUPS.IGNORED_GROUPS)
+        elif utility_func_type == "poprisk_mod":
+            assert self.cfg.GROUPS.GROUP_ASSIGNMENT is not None, "Group assignment must not be none for poprisk utility function"
+
+            self.group_assignment = np.array(self.cfg.GROUPS.GROUP_ASSIGNMENT)
+
+            self.group_assignment = self.group_assignment[self.relevant_indices]
+            self.group_assignment_per_unit = self._get_group_per_unit()
+            self.group_assignments_per_unit = [self.group_assignment_per_unit[u] for u in self.units]
+
+            self.utility_func = lambda s: util.pop_risk_mod(s, self.group_assignments_per_unit, l=self.cfg.ACTIVE_LEARNING.UTIL_LAMBDA, ignored_groups=self.cfg.GROUPS.IGNORED_GROUPS)
         elif utility_func_type == "similarity":
             assert self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH is not None, "Need to specify similarity matrix path"
-            similarity_matrix = np.load(self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH)['arr_0']
+            similarity_matrix = np.load(self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH)
             similarity_matrix = similarity_matrix[self.relevant_indices, :]
 
+            n_units = len(self.units)
+
+            n_test = similarity_matrix.shape[1]
+            similarity_per_unit = np.zeros((n_units, n_test))
+
+            for i, unit in enumerate(self.units):
+                mask = self.unit_assignment == unit
+                similarity_per_unit[i] = similarity_matrix[mask].mean(axis=0) 
+
             #need to input units in order of train ids
-            self.utility_func = lambda s: util.similarity(s, similarity_matrix, units_per_train_ids=np.array(self.cfg.UNITS.UNIT_ASSIGNMENT))
+            self.utility_func = lambda s: util.similarity(s, similarity_per_unit)
 
         elif utility_func_type == "diversity":
             assert self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH is not None, "Need to specify distance matrix path"
-            distance_matrix = np.load(self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH)['arr_0']
-            distance_matrix = distance_matrix[np.ix_(self.relevant_indices, self.relevant_indices)]
+            #distance_matrix = np.load(self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH, mmap_mode='r')
+            assert X_train is not None, "Need to specify X_train"
 
-            self.utility_func = lambda s: util.diversity(s, distance_matrix)
+            if self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH and os.path.exists(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH):
+                print(f"Loading distance_per_unit from {self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH}")
+                distance_per_unit = np.load(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH)
+            else:
+                print("Computing distance_matrix from X_train...")
+                distance_matrix = matr.cosine_distance_matrix(X_train)
+
+                # Reorder to match relevant indices
+                distance_matrix = distance_matrix[np.ix_(self.relevant_indices, self.relevant_indices)]
+                print("Reordered distance_matrix")
+
+                from joblib import Parallel, delayed
+                n_units = len(self.units)
+
+                def compute_row(i1):
+                    unit1 = self.units[i1]
+                    idx1 = self.unit_to_indices[unit1]
+                    row = np.zeros(n_units, dtype=np.float32)
+                    for i2 in range(i1, n_units):
+                        idx2 = self.unit_to_indices[self.units[i2]]
+                        row[i2] = distance_matrix[idx1[:, None], idx2].mean()
+                    return i1, row
+
+                from tqdm import tqdm
+                results = Parallel(n_jobs=-1)(
+                    delayed(compute_row)(i1) for i1 in tqdm(range(len(self.units)), desc="Computing distance rows")
+                )
+
+                for i1, row in results:
+                    distance_per_unit[i1, i1:] = row[i1:]
+                    distance_per_unit[i1:, i1] = row[i1:]
+
+                from IPython import embed; embed()
+
+                # Save for future use if desired
+                if self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH:
+                    os.makedirs(os.path.dirname(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH), exist_ok=True)
+                    np.save(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH, distance_per_unit)
+                    print(f"Saved distance_per_unit to {self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH}")
+
+
+            self.utility_func = lambda s: util.diversity(s, distance_per_unit)
         print(f"Utility function set to: {utility_func_type}")
 
     def _resolve_cost_func(self):
@@ -353,15 +415,19 @@ class Opt:
 
         probs_shuffled = probs[shuffled_unit_indices]
 
+        baseline_cost = self.np_cost_func(self.labeled_unit_vector)
+
+        draws = np.random.binomial(1, probs_shuffled)
+
         for i in range(len(shuffled_unit_indices)):
-            draw = np.random.binomial(1, probs_shuffled[i])
+            draw = draws[i]
             unit_idx = shuffled_unit_indices[i]  # original index in dataset
 
             if draw == 1:
                 unit_inclusion_vector[unit_idx] = 1
-                total_cost = self.np_cost_func(unit_inclusion_vector) - self.np_cost_func(self.labeled_unit_vector)
+                total_cost = self.np_cost_func(unit_inclusion_vector) - baseline_cost
 
-                if total_cost > self.budget + self.np_cost_func(self.labeled_unit_vector):
+                if total_cost > self.budget:
                     unit_inclusion_vector[unit_idx] = 0
                     break
 
@@ -386,7 +452,7 @@ class Opt:
         activeSet = np.array(sorted(set(activeSet)))
         remainSet = np.array(sorted(set(self.uSet) - set(activeSet)))
         total_sample_cost = self.np_cost_func(unit_inclusion_vector)
-        labeled_sample_cost = total_sample_cost - self.np_cost_func(self.labeled_unit_vector)
+        labeled_sample_cost = total_sample_cost - baseline_cost
 
         print(f"Total Sample Cost: {total_sample_cost}")
         print(f"Finished the selection of {len(activeSet)} samples.")
