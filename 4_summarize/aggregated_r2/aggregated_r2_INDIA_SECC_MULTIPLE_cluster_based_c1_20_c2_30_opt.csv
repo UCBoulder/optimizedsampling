@@ -1,0 +1,13 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,similarity_updated_r2_mean,similarity_updated_r2_std,poprisk_states_0.1_updated_r2_mean,poprisk_states_0.1_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std,poprisk_mod_urban_rural_0.5_updated_r2_mean,poprisk_mod_urban_rural_0.5_updated_r2_std,poprisk_urban_rural_0.5_updated_r2_mean,poprisk_urban_rural_0.5_updated_r2_std,poprisk_states_0.5_updated_r2_mean,poprisk_states_0.5_updated_r2_std
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,100,0.11,0.08,,,-0.18,0.01,-0.05,0.55,,,,,0.23,0.02
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,200,,,,,,,,,,,-15.01,14.47,,
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,400,,,,,,,,,,,-45.82,45.3,,
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,500,0.11,0.08,,,0.07,0.06,0.12,0.11,,,0.17,0.07,0.26,0.0
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,600,,,,,,,,,,,0.01,0.04,,
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,800,,,,,,,,,,,0.05,0.0,,
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,1000,-0.52,1.24,0.18,0.15,0.25,0.02,0.13,0.15,0.33,0.01,0.18,0.06,0.33,0.03
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,1500,0.11,0.08,,,0.27,0.02,0.17,0.11,,,,,0.32,0.03
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,2000,-0.52,1.24,0.3,0.07,0.33,0.02,0.2,0.1,0.34,0.01,0.2,0.08,0.34,0.02
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,3000,-0.52,1.24,0.34,0.05,0.35,0.02,0.25,0.06,0.32,0.01,0.28,0.07,0.37,0.02
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,4000,-0.52,1.24,0.37,0.03,0.38,0.01,0.31,0.06,0.36,0.02,0.37,0.02,0.38,0.01
+INDIA_SECC_MULTIPLE,cluster_based_c1_20_c2_30,opt,5000,-0.52,1.24,0.39,0.05,0.39,0.01,0.32,0.07,0.36,0.01,0.39,0.02,0.34,0.05

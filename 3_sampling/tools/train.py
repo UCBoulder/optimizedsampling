@@ -277,13 +277,17 @@ def main_wrapper():
 
     # === Load Initial Labeled Set IDs (Optional) ===
     if args.id_path:
-        with open(args.id_path, "rb") as f:
-            arrs = dill.load(f)
-        if isinstance(arrs, dict) and "sampled_ids" in arrs:
-            ids = arrs["sampled_ids"]
-        else:
-            ids = arrs  # assume list or array
-        cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
+        try:
+            with open(args.id_path, "rb") as f:
+                arrs = dill.load(f)
+            if isinstance(arrs, dict) and "sampled_ids" in arrs:
+                ids = arrs["sampled_ids"]
+            else:
+                ids = arrs  # assume list or array
+            cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
+        except Exception as e:
+            cfg.LSET_IDS = []
+            # cfg.INITIAL_SET.STR = "empty_initial_set"
     else:
         cfg.LSET_IDS = []
 

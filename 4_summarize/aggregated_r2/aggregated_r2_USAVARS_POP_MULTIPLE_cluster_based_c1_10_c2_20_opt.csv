@@ -1,0 +1,17 @@
+dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,similarity_updated_r2_mean,similarity_updated_r2_std,diversity_updated_r2_mean,diversity_updated_r2_std,poprisk_dists_from_urban_tiers_1.0_updated_r2_mean,poprisk_dists_from_urban_tiers_1.0_updated_r2_std,poprisk_nlcd_0.5_updated_r2_mean,poprisk_nlcd_0.5_updated_r2_std,poprisk_nlcd_1.0_updated_r2_mean,poprisk_nlcd_1.0_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std,poprisk_dists_from_urban_tiers_0.5_updated_r2_mean,poprisk_dists_from_urban_tiers_0.5_updated_r2_std
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,10,0.33,0.1,0.23,0.2,,,0.27,0.15,0.24,0.19,0.24,0.19,0.24,0.16,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,20,0.33,0.1,0.22,0.26,0.25,0.26,0.25,0.16,0.24,0.19,0.24,0.19,0.19,0.3,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,30,0.33,0.1,0.3,0.14,0.25,0.26,0.23,0.22,0.28,0.16,0.29,0.12,0.17,0.29,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,40,0.33,0.1,0.31,0.15,0.28,0.22,0.19,0.26,0.29,0.19,0.31,0.16,0.14,0.42,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,50,0.31,0.11,0.32,0.13,0.3,0.22,0.23,0.18,0.3,0.19,0.32,0.18,0.18,0.38,0.38,0.13
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,60,0.33,0.1,0.34,0.1,0.31,0.2,0.25,0.15,0.29,0.19,0.31,0.16,0.27,0.15,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,70,0.33,0.1,0.34,0.09,0.31,0.21,0.3,0.13,0.28,0.18,0.32,0.15,0.31,0.15,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,80,0.33,0.1,0.36,0.09,0.3,0.17,0.3,0.12,0.32,0.13,0.32,0.14,0.32,0.14,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,90,0.33,0.1,0.37,0.1,0.3,0.17,0.3,0.11,0.3,0.18,0.27,0.19,0.31,0.15,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,100,0.31,0.11,0.34,0.17,0.3,0.17,0.31,0.1,0.38,0.11,0.37,0.09,0.34,0.14,0.49,0.03
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,200,0.31,0.11,0.38,0.1,,,,,0.42,0.07,0.4,0.07,0.39,0.07,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,300,0.31,0.11,0.41,0.07,,,,,0.47,0.05,0.47,0.03,0.42,0.04,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,400,0.31,0.11,0.44,0.05,,,,,0.48,0.03,0.47,0.03,0.44,0.03,,
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,500,0.31,0.11,0.43,0.05,0.47,0.05,0.42,0.08,0.5,0.03,0.49,0.03,0.46,0.04,0.58,0.0
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,1000,0.31,0.11,0.47,0.04,0.51,0.02,0.49,0.02,0.53,0.02,0.53,0.03,0.49,0.03,0.61,0.0
+USAVARS_POP_MULTIPLE,cluster_based_c1_10_c2_20,opt,5000,0.31,0.11,0.53,0.01,0.62,0.01,0.62,0.01,0.62,0.01,0.62,0.01,0.61,0.01,0.68,0.01

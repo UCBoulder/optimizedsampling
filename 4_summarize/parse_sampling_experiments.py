@@ -20,12 +20,15 @@ METHOD_LABELS = {
     "random": "Random",
     "greedycost": "Greedy Low-Cost",
     "poprisk_nlcd_0.5": "PopRisk NLCD ($\\lambda = 0.5$)",
+    "poprisk_mod_dists_from_top20_urban_tiers_0.5": "PopRisk Urban Tiers ($\\lambda = 0.5$)",
     "poprisk_dists_from_top20_urban_tiers_0.5": "PopRisk Urban Tiers ($\\lambda = 0.5$)",
     "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
     "poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5$)",
-    #"poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0$)",
-    #"poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
+    "poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0$)",
+    "poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
+    "poprisk_mod_nlcd_0.5": "PopRisk Mod NLCD ($\\lambda = 0.5$)",
+    "poprisk_mod_nlcd_1.0": "PopRisk Mod NLCD ($\\lambda = 1.0$)"
 }
 
 # === FUNCTION DEFINITIONS ===
@@ -51,7 +54,7 @@ def parse_log_file(log_path, root):
         cost_type = path_parts[7]
         method_base_idx = 8
     else:
-        if 'multiple' in path_parts:
+        if 'multiple' in path_parts or 'multiple_cluster_sampling':
             dataset = f"{dataset}_MULTIPLE"
             init_set_idx = 8
         else:
@@ -65,7 +68,7 @@ def parse_log_file(log_path, root):
     if "opt" in path_parts:
         idx = path_parts.index("opt")
         method = path_parts[idx + 1]
-        if method == "poprisk":
+        if method.startswith("poprisk"):
             group_type = path_parts[idx + 2]
             budget = path_parts[idx + 3].replace("budget_", "")
             lambda_val = path_parts[idx + 4].replace("util_lambda_", "")
@@ -109,7 +112,6 @@ def build_filtered_df(results_dict, dataset, init_set, cost_type):
     for (ds, iset, ctype, budget), data in results_dict.items():
         if (ds, iset, ctype) != (dataset, init_set, cost_type):
             continue
-
         row = {
             "dataset": ds,
             "initial_set": iset,
@@ -166,7 +168,9 @@ def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
     lines.append("\\begin{tabular}{l" + "c" * (1 + len(method_labels)) + "}%" )
     lines.append("\\hline%")
 
-    method_names = [f"\\multicolumn{{1}}{{c}}{{{label}}}" for label in method_labels.values()]
+    available_methods = [m for m in method_labels if f"{m}_updated_r2_mean" in df.columns]
+    method_names = [f"\\multicolumn{{1}}{{c}}{{{method_labels[m]}}}" for m in available_methods]
+
     lines.append("Problem Setting & Budget & " + "&".join(method_names) + "\\\\%")
     lines.append(" &  & " + " & ".join(["($R^2$ ± Std)"] * len(method_labels)) + "\\\\%")
     lines.append("\\hline%")
@@ -273,7 +277,7 @@ if __name__ == "__main__":
                 print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
                 continue
             save_csv(df, dataset, init_set, cost_type)
-            #generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
-            #generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
+            generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
+            generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
         except Exception as e:
             print(e)

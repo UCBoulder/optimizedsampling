@@ -225,11 +225,11 @@ if __name__ == "__main__":
             dists = np.array([dist_dict[str(i)] for i in gdf_points['id']])
             print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
 
-            cap = 10000000
+            cap = 7
             alpha=0.01
             costs = dist_to_cost(dists, cap=cap, scale='linear', alpha=alpha)
             print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
 
             # Save
-            out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/linear_distance_km_based_costs_top{n_urban}_urban_{alpha}.pkl"
+            out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/capped_{cap}_linear_distance_km_based_costs_top{n_urban}_urban_{alpha}.pkl"
             save_cost_array(gdf_points['id'], costs, out_path)
