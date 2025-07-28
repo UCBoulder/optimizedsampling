@@ -5,7 +5,6 @@ __pycache__
 0_results/*/*/summaries
 0_results/*/*/plots
 3_sampling/tools/*.log
-3_sampling/tools/*.sh
 0_output
 00_old_data
 00_old_results
