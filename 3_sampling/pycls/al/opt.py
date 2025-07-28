@@ -173,52 +173,29 @@ class Opt:
             self.utility_func = lambda s: util.similarity(s, similarity_per_unit)
 
         elif utility_func_type == "diversity":
-            assert self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH is not None, "Need to specify distance matrix path"
-            #distance_matrix = np.load(self.cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH, mmap_mode='r')
-            assert X_train is not None, "Need to specify X_train"
+            if len(self.units) == len(self.relevant_indices):
+                assert self.cfg.ACTIVE_LEARNING.TRAIN_SIMILARITY_MATRIX_PATH is not None, "Need to specify distance matrix path"
+                train_similarity_matrix = np.load(self.cfg.ACTIVE_LEARNING.TRAIN_SIMILARITY_MATRIX_PATH)
+                similarity_per_unit = train_similarity_matrix[np.ix_(self.relevant_indices, self.relevant_indices)]
 
-            if self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH and os.path.exists(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH):
-                print(f"Loading distance_per_unit from {self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH}")
-                distance_per_unit = np.load(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH)
             else:
-                print("Computing distance_matrix from X_train...")
-                distance_matrix = matr.cosine_distance_matrix(X_train)
+                assert self.cfg.ACTIVE_LEARNING.SIMILARITY_PER_UNIT_PATH is not None, "Need to specify similarity per unit path"
+                print(f"Loading distance_per_unit from {self.cfg.ACTIVE_LEARNING.SIMILARITY_PER_UNIT_PATH}")
+                similarity_per_unit = np.load(self.cfg.ACTIVE_LEARNING.SIMILARITY_PER_UNIT_PATH)
 
-                # Reorder to match relevant indices
-                distance_matrix = distance_matrix[np.ix_(self.relevant_indices, self.relevant_indices)]
-                print("Reordered distance_matrix")
+            M = similarity_per_unit
+            M_sym = 0.5 * (M + M.T)
 
-                from joblib import Parallel, delayed
-                n_units = len(self.units)
+            # D = 1 - M_sym
+            M_sym = np.clip(M_sym, 0.0, 1.0) #floating point issues...
+            M_sym = cp.Constant(M_sym)
 
-                def compute_row(i1):
-                    unit1 = self.units[i1]
-                    idx1 = self.unit_to_indices[unit1]
-                    row = np.zeros(n_units, dtype=np.float32)
-                    for i2 in range(i1, n_units):
-                        idx2 = self.unit_to_indices[self.units[i2]]
-                        row[i2] = distance_matrix[idx1[:, None], idx2].mean()
-                    return i1, row
+            # sparse_dist = matr.get_sparse_farthest_neighbors(D)
 
-                from tqdm import tqdm
-                results = Parallel(n_jobs=-1)(
-                    delayed(compute_row)(i1) for i1 in tqdm(range(len(self.units)), desc="Computing distance rows")
-                )
+            # D_sparse = cp.Constant(sparse_dist)
+            # D = cp.Constant(D)
 
-                for i1, row in results:
-                    distance_per_unit[i1, i1:] = row[i1:]
-                    distance_per_unit[i1:, i1] = row[i1:]
-
-                from IPython import embed; embed()
-
-                # Save for future use if desired
-                if self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH:
-                    os.makedirs(os.path.dirname(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH), exist_ok=True)
-                    np.save(self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH, distance_per_unit)
-                    print(f"Saved distance_per_unit to {self.cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH}")
-
-
-            self.utility_func = lambda s: util.diversity(s, distance_per_unit)
+            self.utility_func = lambda s: util.diversity(s, M_sym)
         print(f"Utility function set to: {utility_func_type}")
 
     def _resolve_cost_func(self):
@@ -292,7 +269,10 @@ class Opt:
             constraints.append(s[unit_inclusion_vector] == 1)
 
         prob = cp.Problem(cp.Maximize(objective), constraints)
-        prob.solve(solver = cp.MOSEK, verbose=False)
+        try:
+            prob.solve(solver = cp.MOSEK, verbose=False)
+        except Exception as e:
+            from IPython import embed; embed()
 
         assert prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE], \
             f"Optimization failed. Status: {prob.status}"

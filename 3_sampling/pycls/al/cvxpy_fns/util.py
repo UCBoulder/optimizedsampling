@@ -114,14 +114,13 @@ def similarity(s, similarity_per_unit):
     test_similarity = similarity_per_unit.mean(axis=1) #this sums the similarity for now, might want to change to softmax
     return s @ test_similarity
 
-def diversity(s, distance_per_unit):    
-    n = s.shape[0]
-    M = distance_per_unit
-    M_sym = 0.5 * (M + M.T)
+def diversity(s, similarity_per_unit, l=100, epsilon=1e-5):    
+    # n = s.shape[0]
 
-    s_i = cp.reshape(s, (n, 1), order='C')
-    s_j = cp.reshape(s, (1, n), order='C')
+    # s_i = cp.reshape(s, (n, 1), order='C')
+    # s_j = cp.reshape(s, (1, n), order='C')
 
-    pairwise_min = cp.minimum(s_i, s_j)
+    # pairwise_min = cp.minimum(s_i, s_j) #pairwise min, proxy for probability that both s_i and s_j will be included
+    similarity_per_unit_psd = cp.Constant(similarity_per_unit.value + epsilon * np.eye(similarity_per_unit.shape[0]))
 
-    return cp.sum(cp.multiply(M_sym, pairwise_min))
+    return l*cp.sum(s) - cp.quad_form(s, similarity_per_unit_psd)

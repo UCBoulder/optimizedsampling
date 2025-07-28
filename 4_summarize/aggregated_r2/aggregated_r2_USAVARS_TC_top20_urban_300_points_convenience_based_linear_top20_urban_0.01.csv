@@ -1,3 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,poprisk_nlcd_0.5_updated_r2_mean,poprisk_nlcd_0.5_updated_r2_std
-USAVARS_TC,top20_urban_300_points,convenience_based_linear_top20_urban_0.01,1000,0.7,0.0,0.86,0.0,0.87,0.0
-USAVARS_TC,top20_urban_300_points,convenience_based_linear_top20_urban_0.01,10000,0.7,0.0,0.91,0.0,0.91,0.0

@@ -1,2 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std
-USAVARS_POP,top20_urban_200_points,convenience_based_linear_top20_urban_0.001,1000,0.2,0.0,0.21,0.0

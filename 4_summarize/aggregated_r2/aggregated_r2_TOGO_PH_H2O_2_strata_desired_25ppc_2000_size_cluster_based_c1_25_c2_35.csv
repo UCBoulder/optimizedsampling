@@ -1,4 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std
-TOGO_PH_H2O,2_strata_desired_25ppc_2000_size,cluster_based_c1_25_c2_35,1000,0.18,0.0,0.21,0.0
-TOGO_PH_H2O,2_strata_desired_25ppc_2000_size,cluster_based_c1_25_c2_35,2000,0.18,0.0,0.22,0.0
-TOGO_PH_H2O,2_strata_desired_25ppc_2000_size,cluster_based_c1_25_c2_35,3000,0.18,0.0,,

@@ -59,51 +59,18 @@ def save_dict_to_pkl(d, filepath):
         pickle.dump(d, f)
 
 if __name__ == "__main__":
-    import geopandas as gpd
-    from pathlib import Path
+    distance_path = "/home/libe2152/optimizedsampling/0_data/distances/india_secc/distance_km_to_top20_urban.pkl"
 
-    gdf = gpd.read_file("/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson")
+    import dill
+    with open(distance_path, "rb") as f:
+        arrs = dill.load(f)
 
-    ADMIN_IDS = {
-        'admin_1': 'region',
-        'admin_2': 'prefecture',
-        'admin_3': 'canton'
-    }
+    gdf_points = gpd.read_file(f"/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
+    gdf_points = gdf_points.to_crs("EPSG:4326")
+    id_col='id'
 
-    id_col = 'id'
-    output_dir = Path("/home/libe2152/optimizedsampling/0_data/groups/togo")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    for admin_col, admin_name in ADMIN_IDS.items():
-        if admin_col not in gdf.columns:
-            print(f"⚠️ Warning: Column '{admin_col}' not found in GeoDataFrame. Skipping.")
-            continue
-
-        assignment_dict = make_group_assignment(gdf, [admin_col], id_col)
-        output_path = output_dir / f"{admin_name}_assignments_dict.pkl"
-        save_dict_to_pkl(assignment_dict, output_path)
-        print(f"✅ Saved: {output_path}")
-
-    admin3_to_admin2 = gdf.groupby("admin_3")["admin_2"].nunique()
-    violations_3_to_2 = admin3_to_admin2[admin3_to_admin2 > 1]
-
-    # Check that each admin_2 maps to only one admin_1
-    admin2_to_admin1 = gdf.groupby("admin_2")["admin_1"].nunique()
-    violations_2_to_1 = admin2_to_admin1[admin2_to_admin1 > 1]
-
-    # Print results
-    if len(violations_3_to_2):
-        print(f"❌ Violations in admin_3 → admin_2: {len(violations_3_to_2)}")
-        print(violations_3_to_2)
-        from IPython import embed; embed()
-    else:
-        print("✅ All admin_3 codes uniquely map to a single admin_2")
-
-    if len(violations_2_to_1):
-        print(f"❌ Violations in admin_2 → admin_1: {len(violations_2_to_1)}")
-        print(violations_2_to_1)
-    else:
-        print("✅ All admin_2 codes uniquely map to a single admin_1")
+    distances = [arrs['distances_to_urban_areas'][str(id)] for id in gdf_points[id_col]]
+    from IPython import embed; embed()
 
 
 

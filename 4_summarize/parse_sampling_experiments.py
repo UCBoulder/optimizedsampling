@@ -22,8 +22,8 @@ METHOD_LABELS = {
     "poprisk_nlcd_0.5": "PopRisk NLCD ($\\lambda = 0.5$)",
     "poprisk_dists_from_top20_urban_tiers_0.5": "PopRisk Urban Tiers ($\\lambda = 0.5$)",
     "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
-    "poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5)",
-    "poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0)",
+    "poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5$)",
+    #"poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0$)",
     #"poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
 }
@@ -51,10 +51,16 @@ def parse_log_file(log_path, root):
         cost_type = path_parts[7]
         method_base_idx = 8
     else:
-        init_set_full = path_parts[7]
+        if 'multiple' in path_parts:
+            dataset = f"{dataset}_MULTIPLE"
+            init_set_idx = 8
+        else:
+            init_set_idx = 7
+
+        init_set_full = path_parts[init_set_idx]
         init_set_base = seed_re.sub("", init_set_full)
-        cost_type = path_parts[8]
-        method_base_idx = 9
+        cost_type = path_parts[init_set_idx + 1]
+        method_base_idx = init_set_idx + 2
 
     if "opt" in path_parts:
         idx = path_parts.index("opt")
@@ -111,19 +117,22 @@ def build_filtered_df(results_dict, dataset, init_set, cost_type):
             "budget": int(budget),
         }
 
-        if data["initial_r2"]:
-            arr = np.array(data["initial_r2"])
-            row["initial_r2_mean"] = round(arr.mean(), 2)
-            row["initial_r2_std"] = round(arr.std(), 2)
+        if len(data["initial_r2"]) < 5 and row["dataset"] != "INDIA_SECC_MULTIPLE":
+            continue
+
+        arr = np.array(data["initial_r2"])
+        row["initial_r2_mean"] = round(arr.mean(), 2)
+        row["initial_r2_std"] = round(arr.std(), 2)
 
         for method, vals in data["methods"].items():
             if vals:
                 arr = np.array(vals)
+                if len(arr) < 5 and row["dataset"] != "INDIA_SECC_MULTIPLE":
+                    continue
                 row[f"{method}_updated_r2_mean"] = round(arr.mean(), 2)
                 row[f"{method}_updated_r2_std"] = round(arr.std(), 2)
 
         rows.append(row)
-
     df = pd.DataFrame(rows).sort_values("budget")
     return df
 
@@ -264,7 +273,7 @@ if __name__ == "__main__":
                 print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
                 continue
             save_csv(df, dataset, init_set, cost_type)
-            generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
-            generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
+            #generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
+            #generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
         except Exception as e:
             print(e)

@@ -233,23 +233,3 @@ if __name__ == "__main__":
             # Save
             out_path = f"/home/libe2152/optimizedsampling/0_data/costs/usavars/{label}/convenience_costs/linear_distance_km_based_costs_top{n_urban}_urban_{alpha}.pkl"
             save_cost_array(gdf_points['id'], costs, out_path)
-
-    #india
-    # gdf_points = gpd.read_file(f"/media/volume/geo_sampling_data/optimizedsampling/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
-    # gdf_points = gdf_points.to_crs("EPSG:4326")
-    # n_urban = 20
-    # pop_col = 'pc11_pca_tot_p_combined'
-
-    # gdf_urban_top = gdf_points.nlargest(n_urban, pop_col)
-
-    # # Compute distance-based cost
-    # dist_dict = compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, f"costs/india_secc/distance_to_top{n_urban}_urban.pkl", id_col='condensed_shrug_id')
-    # dists = np.array([dist_dict[str(i)] for i in gdf_points['condensed_shrug_id']])
-    # print(f"Min/Max/Mean distance (m): {dists.min():.2f} / {dists.max():.2f} / {dists.mean():.2f}")
-
-    # costs = dist_to_cost(dists, scale='sqrt', alpha=0.01)
-    # print(f"Cost stats -> Min: {costs.min():.4f}, Max: {costs.max():.4f}, Mean: {costs.mean():.4f}")
-
-    # # Save
-    # out_path = f"costs/india_secc/distance_based_costs_top{n_urban}_urban.pkl"
-    # save_cost_array(gdf_points['condensed_shrug_id'], costs, out_path)

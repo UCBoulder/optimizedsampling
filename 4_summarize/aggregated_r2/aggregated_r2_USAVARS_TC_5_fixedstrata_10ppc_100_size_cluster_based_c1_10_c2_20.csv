@@ -3,7 +3,7 @@ USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,10,0.5,0.14,0.
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,20,0.5,0.14,0.61,0.11,0.64,0.07,0.64,0.09,0.58,0.18,,
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,30,0.5,0.14,0.66,0.1,0.68,0.04,0.69,0.05,0.64,0.09,,
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,40,0.5,0.14,0.65,0.12,0.66,0.05,0.71,0.06,0.65,0.14,,
-USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,50,0.5,0.14,0.68,0.11,0.68,0.02,0.72,0.04,0.71,0.04,,
+USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,50,0.5,0.14,,,0.68,0.02,0.72,0.04,0.71,0.04,,
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,60,0.5,0.14,0.68,0.11,0.68,0.04,0.7,0.09,0.71,0.05,,
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,70,0.5,0.14,0.68,0.11,0.69,0.03,0.74,0.03,0.69,0.09,,
 USAVARS_TC,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,80,0.5,0.14,0.71,0.12,0.69,0.06,0.76,0.02,0.71,0.06,,

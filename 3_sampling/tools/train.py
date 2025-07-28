@@ -71,8 +71,8 @@ def argparser():
     parser.add_argument('--util_lambda', default=0.5, type=float)
 
     parser.add_argument('--similarity_matrix_path', default=None, type=str)
-    parser.add_argument('--distance_matrix_path', default=None, type=str)
-    parser.add_argument('--distance_per_unit_path', default=None, type=str)
+    parser.add_argument('--train_similarity_matrix_path', default=None, type=str)
+    parser.add_argument('--similarity_per_unit_path', default=None, type=str)
     return parser
 
 def main(cfg, train_data):
@@ -118,6 +118,10 @@ def main(cfg, train_data):
             exp_dir = base_dir
 
     exp_dir = os.path.join(dataset_dir, exp_dir)
+    # if os.path.exists(exp_dir) and cfg.ACTIVE_LEARNING.SAMPLING_FN not in ['similarity', 'diversity']:
+    #     print("Experiment already done!")
+    #     return
+    
     os.makedirs(exp_dir, exist_ok=True)
     cfg.EXP_DIR = exp_dir
     cfg.INITIAL_SET_DIR = os.path.join(dataset_dir, cfg.INITIAL_SET.STR)
@@ -166,17 +170,22 @@ def main(cfg, train_data):
     
     X_test, y_test = test_data[:][0], test_data[:][1]
 
+    run_regression = True
     if len(lSet) > 0:
         initial_set_r2_path = f"{cfg.INITIAL_SET_DIR}/initial_set_r2_seed_{cfg.RNG_SEED}.json"
         if os.path.exists(initial_set_r2_path):
 
             print("Loading initial set r2 performance...")
-            with open(initial_set_r2_path, "r") as f:
-                r2 = json.load(f)
-            if isinstance(r2, dict):
-                r2 = r2['initial_set_r2']
-            logger.info(f"Initial R² score: {r2:.4f}")
-        else:
+            try:
+                with open(initial_set_r2_path, "r") as f:
+                    r2 = json.load(f)
+                if isinstance(r2, dict):
+                    r2 = r2['initial_set_r2']
+                logger.info(f"Initial R² score: {r2:.4f}")
+                run_regression = False
+            except Exception as e:
+                run_regression = True
+        if run_regression:
             n_splits = 5
             print("Training ridge regression on initial set...")
             logger.info("Training ridge regression on initial set...")
@@ -374,8 +383,8 @@ def main_wrapper():
 
     # === Optional Paths for Similarity/Distance Matrices ===
     cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH = args.similarity_matrix_path
-    cfg.ACTIVE_LEARNING.DISTANCE_MATRIX_PATH = args.distance_matrix_path
-    cfg.ACTIVE_LEARNING.DISTANCE_PER_UNIT_PATH = args.distance_per_unit_path
+    cfg.ACTIVE_LEARNING.TRAIN_SIMILARITY_MATRIX_PATH = args.train_similarity_matrix_path
+    cfg.ACTIVE_LEARNING.SIMILARITY_PER_UNIT_PATH = args.similarity_per_unit_path
 
     # === Run Main Experiment ===
     main(cfg, train_data)

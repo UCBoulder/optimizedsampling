@@ -1,7 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,poprisk_nlcd_1.0_updated_r2_mean,poprisk_nlcd_1.0_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
-USAVARS_TC,top20_urban_100_points,uniform,50,0.64,0.0,0.77,0.0,0.78,0.0
-USAVARS_TC,top20_urban_100_points,uniform,75,0.64,0.0,0.79,0.0,0.78,0.0
-USAVARS_TC,top20_urban_100_points,uniform,100,0.64,0.0,0.8,0.0,0.77,0.0
-USAVARS_TC,top20_urban_100_points,uniform,250,0.64,0.0,0.81,0.0,0.81,0.0
-USAVARS_TC,top20_urban_100_points,uniform,500,0.64,0.0,0.85,0.0,0.85,0.0
-USAVARS_TC,top20_urban_100_points,uniform,1000,0.64,0.0,,,0.87,0.0
