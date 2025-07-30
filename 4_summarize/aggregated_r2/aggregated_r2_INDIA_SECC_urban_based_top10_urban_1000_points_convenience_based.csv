@@ -1,9 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,100,-0.45,0.38,-0.24,0.26
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,500,-0.45,0.38,-0.1,0.18
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,1000,-0.45,0.38,-0.03,0.14
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,1500,-0.45,0.38,0.07,0.09
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,2000,-0.45,0.38,0.11,0.11
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,3000,-0.45,0.38,0.16,0.08
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,4000,-0.45,0.38,0.18,0.05
-INDIA_SECC,urban_based_top10_urban_1000_points,convenience_based,5000,-0.45,0.38,0.2,0.08

@@ -1,7 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,poprisk_nlcd_0.5_updated_r2_mean,poprisk_nlcd_0.5_updated_r2_std
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,100,0.47,0.19,0.62,0.09
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,200,0.47,0.19,0.67,0.04
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,300,0.47,0.19,0.68,0.05
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,400,0.47,0.19,0.71,0.03
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,500,0.47,0.19,0.71,0.03
-USAVARS_TC_MULTIPLE,convenience_based_top20_urban_0.01,opt,1000,0.47,0.19,0.75,0.02

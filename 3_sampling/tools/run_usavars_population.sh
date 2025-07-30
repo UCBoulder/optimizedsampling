@@ -12,17 +12,17 @@ FAILED_LOG="failed_experiments_usavars_population.log"
 
 ROOT_DIR="/share/usavars"
 SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/population/cosine_similarity_train_test.npy"
-TRAIN_SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/treecover/cosine_similarity_train_train.npy"
-SIM_PER_UNIT_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/treecover/county_cosine_similarity_train_train.npy"
+TRAIN_SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/population/cosine_similarity_train_train.npy"
+SIM_PER_UNIT_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/population/county_cosine_similarity_train_train.npy"
 
 GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/usavars/population/NLCD_cluster_assignments_8_dict.pkl"
 GROUP_TYPE="nlcd"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "greedycost" "similarity" "poprisk" "poprisk_mod")
+METHODS=("random" "random_unit" "similarity" "greedycost" "poprisk" "poprisk_avg" "diversity")
 BUDGETS=(50 100 200 300 400 500 1000)
 
-UTIL_LAMBDAS=(0.5 1.0)
+UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
 send_error_email() {
@@ -74,7 +74,7 @@ append_method_flags() {
 
     if [ "$method" == "poprisk" ]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
-    elif [ "$method" == "match_population_proportion" ]; then
+    elif [ "$method" == "poprisk_avg" ]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
     fi
 

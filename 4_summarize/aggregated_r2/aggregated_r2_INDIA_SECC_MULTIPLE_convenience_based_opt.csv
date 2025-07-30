@@ -1,9 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,similarity_updated_r2_mean,similarity_updated_r2_std,poprisk_urban_rural_0.5_updated_r2_mean,poprisk_urban_rural_0.5_updated_r2_std,greedycost_updated_r2_mean,greedycost_updated_r2_std
-INDIA_SECC_MULTIPLE,convenience_based,opt,100,0.03,0.0,,,0.04,0.0,0.05,0.0
-INDIA_SECC_MULTIPLE,convenience_based,opt,500,0.03,0.0,,,,,0.08,0.0
-INDIA_SECC_MULTIPLE,convenience_based,opt,1000,0.05,0.07,0.12,0.03,0.07,0.06,0.05,0.05
-INDIA_SECC_MULTIPLE,convenience_based,opt,1500,0.03,0.0,,,0.06,0.0,0.09,0.0
-INDIA_SECC_MULTIPLE,convenience_based,opt,2000,0.05,0.07,0.12,0.03,0.07,0.06,0.03,0.05
-INDIA_SECC_MULTIPLE,convenience_based,opt,3000,0.05,0.07,0.14,0.04,0.14,0.03,0.1,0.0
-INDIA_SECC_MULTIPLE,convenience_based,opt,4000,0.05,0.07,0.11,0.04,0.16,0.02,0.11,0.0
-INDIA_SECC_MULTIPLE,convenience_based,opt,5000,0.05,0.07,0.11,0.04,0.07,0.12,-0.0,0.17

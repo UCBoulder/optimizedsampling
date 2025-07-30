@@ -98,7 +98,10 @@ class Sampling:
             in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
             self._set_region_assignment()
 
-            labeled_regions = set(self.region_assignment[self.lSet])
+            in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
+            self._set_region_assignment()
+
+            labeled_regions = set(self.region_assignment[:len(self.lSet)])
             in_labeled_regions_unit_array = [self.region_assignment_per_unit[u] in labeled_regions for u in self.units]
 
             cost_kwargs = {}
@@ -106,6 +109,7 @@ class Sampling:
                 cost_kwargs["c1"] = self.cfg.REGIONS.IN_REGION_UNIT_COST
             if self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST is not None:
                 cost_kwargs["c2"] = self.cfg.REGIONS.OUT_OF_REGION_UNIT_COST
+            print(f"Running random with in region cost {cost_kwargs['c1']} and out of region cost {cost_kwargs['c2']}")
 
             self.cost_func = lambda s: cost.region_aware_unit_cost(s, in_labeled_set_unit_array, in_labeled_regions_unit_array, **cost_kwargs)
 
@@ -189,7 +193,10 @@ class Sampling:
 
         for u in permuted_units:
             unit_inclusion_vector[self.unit_index_map[u]] = 1
-            if self.cost_func(unit_inclusion_vector) > self.budget + self.cost_func(self.labeled_unit_vector):
+            total_cost = self.cost_func(unit_inclusion_vector)
+            added_cost = total_cost - self.cost_func(self.labeled_unit_vector)
+            print(added_cost)
+            if added_cost > self.budget:
                 unit_inclusion_vector[self.unit_index_map[u]] = 0
                 break
 

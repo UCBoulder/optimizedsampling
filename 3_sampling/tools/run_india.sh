@@ -12,14 +12,16 @@ FAILED_LOG="failed_experiments_india.log"
 
 ROOT_DIR="/share/india_secc"
 SIM_MATRIX_PATH="/share/india_secc/similarity_matrix.npz"
-DIST_MATRIX_PATH=""
+TRAIN_SIM_MATRIX_PATH="../../0_data/cosine_similarity/india_secc/cosine_similarity_train_train.npy"
+SIM_PER_UNIT_PATH="../../0_data/cosine_similarity/india_secc/district_cosine_similarity_train_train.npy"
 
 GROUP_TYPE="dists_from_top20_urban_tiers"
 GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/india_secc/dist_from_top20urban_area_tiers.pkl"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "poprisk_mod" "poprisk")
-BUDGETS=(200 400 600 800 1000 2000)
+METHODS=("random" "random_unit" "poprisk_avg" "poprisk" "greedycost" "similarity" "diversity")
+BUDGETS=(1000 2000 3000 4000 5000)
+UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
 send_error_email() {
@@ -65,13 +67,10 @@ append_method_flags() {
     if [ "$method" == "similarity" ]; then
         cmd+=" --similarity_matrix_path \"$SIM_MATRIX_PATH\""
     elif [ "$method" == "diversity" ]; then
-        cmd+=" --distance_matrix_path \"$DIST_MATRIX_PATH\""
+        cmd+=" --train_similarity_matrix_path \"$TRAIN_SIM_MATRIX_PATH\" --similarity_per_unit_path \"$SIM_PER_UNIT_PATH\""
     fi
 
-    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" ]]; then
-        UTIL_LAMBDA=0.5
-        cmd+=" --util_lambda 0.5 --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
-    elif [ "$method" == "match_population_proportion" ]; then
+    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_reg" ]]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
     fi
 

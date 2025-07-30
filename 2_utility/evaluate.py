@@ -31,17 +31,12 @@ def compute_utilities_from_ids(
         if sid in id_to_idx:
             s[id_to_idx[sid]] = 1
     
-    if group_dict is not None:
-        id_to_group = {id_: group_dict[id_] for id_ in all_ids}
-        groups = np.zeros(len(all_ids), dtype=int)
-        for sid in sampled_ids:
-            if sid in id_to_idx:
-                groups[id_to_idx[sid]] = id_to_group[sid]
+    group_assignments_per_id = [[(group_dict[id_], 1.0)] for id_ in all_ids]#CHANGE IF DOING UNITS
 
     results = {}
     for name, fn in utility_fns.items():
         if name.startswith('pop_risk'):
-            results[name] = fn(s, groups)
+            results[name] = fn(s, group_assignments_per_id)
         elif name in ['similarity']:
             similarity_matrix = kwargs.get('similarity_matrix', None)
             results[name] = fn(s, similarity_matrix)
@@ -110,17 +105,18 @@ if __name__ == "__main__":
         all_ids = [id_ for id_ in all_ids if id_ not in invalid_ids]
 
         # Load groups info once
+        #maybe change groups
         group_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/NLCD_cluster_assignments_8.pkl"
         with open(group_path, "rb") as f:
             arrs = dill.load(f)
         ids = arrs['ids']
         groups = arrs['assignments']
 
-        similarity_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_test.npz"
-        similarity_matrix = np.load(similarity_path)['arr_0']
+        similarity_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_test.npy"
+        similarity_matrix = np.load(similarity_path)
 
-        # distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npz"
-        # distance_matrix = np.load(distance_path)['arr_0']
+        # distance_path = f"/home/libe2152/optimizedsampling/0_data/cosine_distance/usavars/{label}/cosine_distance.npy"
+        # distance_matrix = np.load(distance_path)
 
         # Filter out invalid ids from groups and ids
         filtered_pairs = [(i, g) for i, g in zip(ids, groups) if i not in invalid_ids]
@@ -194,6 +190,9 @@ if __name__ == "__main__":
                         try:
                             with open(sampled_path, "rb") as f:
                                 sampled_ids = dill.load(f)
+
+                            if isinstance(sampled_ids, dict) and "sampled_ids" in sampled_ids:
+                                sampled_ids = sampled_ids["sampled_ids"]
 
                             # Filter out invalid ids from sampled_ids
                             sampled_ids = [id_ for id_ in sampled_ids if id_ not in invalid_ids]

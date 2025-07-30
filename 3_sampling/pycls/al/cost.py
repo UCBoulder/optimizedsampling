@@ -11,6 +11,7 @@ def pointwise_by_array(s, cost_array):
 def region_aware_unit_cost(s, in_labeled_set_array, in_labeled_region_array, c1=1, c2=2): #unit_labeled_array is binary indicating whether that index point is in an already labeled unit
     in_labeled_set_array = np.asarray(in_labeled_set_array)
     in_labeled_region_array = np.asarray(in_labeled_region_array)
+    print(f"Cost func: c1 {c1}, c2 {c2}")
     assert s.shape == in_labeled_set_array.shape == in_labeled_region_array.shape, \
         "Shape mismatch between s and labeled arrays"
 

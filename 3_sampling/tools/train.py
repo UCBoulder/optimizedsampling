@@ -67,6 +67,7 @@ def argparser():
     parser.add_argument('--region_assignment_path', default=None, type=str)
     parser.add_argument('--in_region_unit_cost', default=None, type=int)
     parser.add_argument('--out_of_region_unit_cost', default=None, type=int)
+    parser.add_argument('--alpha', default=None, type=float)
 
     parser.add_argument('--util_lambda', default=0.5, type=float)
 
@@ -89,7 +90,7 @@ def main(cfg, train_data):
     else:
         seed_str = f"seed_{cfg.RNG_SEED}"
 
-        if cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion", "poprisk", "poprisk_mod"]:
+        if cfg.ACTIVE_LEARNING.SAMPLING_FN in ["match_population_proportion", "poprisk", "poprisk_avg"]:
             sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}/{cfg.GROUPS.GROUP_TYPE}"
         else:
             sampling_str = f"{cfg.ACTIVE_LEARNING.SAMPLING_FN}"
@@ -277,17 +278,13 @@ def main_wrapper():
 
     # === Load Initial Labeled Set IDs (Optional) ===
     if args.id_path:
-        try:
-            with open(args.id_path, "rb") as f:
-                arrs = dill.load(f)
-            if isinstance(arrs, dict) and "sampled_ids" in arrs:
-                ids = arrs["sampled_ids"]
-            else:
-                ids = arrs  # assume list or array
-            cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
-        except Exception as e:
-            cfg.LSET_IDS = []
-            # cfg.INITIAL_SET.STR = "empty_initial_set"
+        with open(args.id_path, "rb") as f:
+            arrs = dill.load(f)
+        if isinstance(arrs, dict) and "sampled_ids" in arrs:
+            ids = arrs["sampled_ids"]
+        else:
+            ids = arrs  # assume list or array
+        cfg.LSET_IDS = ids if isinstance(ids, list) else ids.tolist()
     else:
         cfg.LSET_IDS = []
 
@@ -301,7 +298,7 @@ def main_wrapper():
 
     # === Optimization Flag for Some Strategies ===
     cfg.ACTIVE_LEARNING.OPT = args.sampling_fn in [
-        'greedycost', 'poprisk', 'similarity', 'diversity', 'poprisk_mod'
+        'greedycost', 'poprisk', 'similarity', 'diversity', 'poprisk_avg'
     ]
 
     # === Load Cost Array (Optional) ===
@@ -352,12 +349,18 @@ def main_wrapper():
         else:
             idx_to_assignment = dict(zip(train_data.ids, loaded['assignments']))
 
-        assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        try:
+            assignments_ordered = [idx_to_assignment[idx] for idx in train_data.ids]
+        except Exception as e:
+            from IPython import embed; embed()
         cfg.UNITS.UNIT_ASSIGNMENT = [str(x) for x in assignments_ordered]
         cfg.UNITS.POINTS_PER_UNIT = args.points_per_unit
 
         if args.unit_cost_path:
             cfg.COST.UNIT_COST_PATH = args.unit_cost_path
+
+        if args.alpha:
+            cfg.COST.ALPHA = args.alpha
 
     # === Load Region Assignments (Optional) ===
     if args.region_assignment_path:

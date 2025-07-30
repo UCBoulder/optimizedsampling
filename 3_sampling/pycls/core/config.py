@@ -120,6 +120,7 @@ _C.COST.FN = None
 _C.COST.NAME = None
 _C.COST.ARRAY = None
 _C.COST.UNIT_COST_PATH = None
+_C.COST.ALPHA = None
 
 # #-------------------------------------------------------------------------------#
 # #  GROUP options

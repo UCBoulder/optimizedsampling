@@ -140,15 +140,21 @@ if __name__ == "__main__":
     def load_data(data_path):
         with open(data_path, 'rb') as f:
             data = pickle.load(f)
-        return data['X_train'], data['ids_train']
+        return data['X_train'], data['ids_train'], data['X_test'], data['ids_test']
     
-    data_path = f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_2021_Jan_Jun_P20.pkl"
+    data_path = f"../0_data/features/togo/togo_fertility_data_all_2021_Jan_Jun_P20.pkl"
     unit_path = f"/home/libe2152/optimizedsampling/0_data/groups/togo/canton_assignments_dict.pkl"
     out_path_unit = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/togo/canton_cosine_similarity_train_train.npy"
-    out_path_all = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/togo/cosine_similarity_train_train.npy"
+    out_path_all = f"../0_data/cosine_similarity/usavars/treecover/cosine_similarity_train_test.npy"
 
     print(f"Loading data from {data_path}...")
-    X_train, ids_train = load_data(data_path)
+    X_train, ids_train, X_test, ids_test = load_data(data_path)
+
+    # invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
+
+    # valid_idxs = [i for i, id_ in enumerate(ids_train) if id_ not in invalid_ids]
+    # X_train = X_train[valid_idxs]
+    # ids_train = ids_train[valid_idxs]
 
     with open(unit_path, "rb") as f:
         idx_to_assignment = pickle.load(f)
@@ -159,4 +165,5 @@ if __name__ == "__main__":
     save_matrix(sim_matrix, out_path=out_path_unit)
 
     sim_matrix_all = batched_cosine_similarity(X_train, X_train)
+    print(sim_matrix_all.shape)
     save_matrix(sim_matrix_all, out_path = out_path_all)

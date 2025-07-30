@@ -16,7 +16,7 @@ UTILITY_FNS = {
     "random": util.random,
     "greedycost": util.greedy,
     "poprisk": util.pop_risk,
-    "poprisk_mod": util.pop_risk_mod,
+    "poprisk_avg": util.pop_risk_avg,
     "similarity": util.similarity,
     "diversity": util.diversity
 }
@@ -31,6 +31,14 @@ NP_COST_FNS = {
     "pointwise_by_array": np_cost.pointwise_by_array,
     "region_aware_unit_cost": np_cost.region_aware_unit_cost
 }
+
+def load_similarity_matrix(path):
+    if path.endswith(".npy"):
+        return np.load(path)
+    elif path.endswith(".npz"):
+        return np.load(path)['arr_0']
+    else:
+        raise ValueError(f"Unsupported file format: {path}")
 
 class Opt:
     def __init__(self, cfg, lSet, uSet, budgetSize):
@@ -140,24 +148,25 @@ class Opt:
 
             self.group_assignment = np.array(self.cfg.GROUPS.GROUP_ASSIGNMENT)
 
-            self.group_assignment = self.group_assignment[self.relevant_indices]
+            self.group_assignment = self.group_assignment[self.relevant_indices] #first reorder
             self.group_assignment_per_unit = self._get_group_per_unit()
             self.group_assignments_per_unit = [self.group_assignment_per_unit[u] for u in self.units]
 
             self.utility_func = lambda s: util.pop_risk(s, self.group_assignments_per_unit, l=self.cfg.ACTIVE_LEARNING.UTIL_LAMBDA, ignored_groups=self.cfg.GROUPS.IGNORED_GROUPS)
-        elif utility_func_type == "poprisk_mod":
+        elif utility_func_type == "poprisk_avg":
             assert self.cfg.GROUPS.GROUP_ASSIGNMENT is not None, "Group assignment must not be none for poprisk utility function"
 
             self.group_assignment = np.array(self.cfg.GROUPS.GROUP_ASSIGNMENT)
 
-            self.group_assignment = self.group_assignment[self.relevant_indices]
+            self.group_assignment = self.group_assignment[self.relevant_indices] #first reorder
             self.group_assignment_per_unit = self._get_group_per_unit()
             self.group_assignments_per_unit = [self.group_assignment_per_unit[u] for u in self.units]
+            points_per_unit = 1 if self.points_per_unit is None else self.points_per_unit
 
-            self.utility_func = lambda s: util.pop_risk_mod(s, self.group_assignments_per_unit, l=self.cfg.ACTIVE_LEARNING.UTIL_LAMBDA, ignored_groups=self.cfg.GROUPS.IGNORED_GROUPS)
+            self.utility_func = lambda s: util.pop_risk_avg(s, self.group_assignments_per_unit, points_per_unit, l=self.cfg.ACTIVE_LEARNING.UTIL_LAMBDA, ignored_groups=self.cfg.GROUPS.IGNORED_GROUPS)
         elif utility_func_type == "similarity":
             assert self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH is not None, "Need to specify similarity matrix path"
-            similarity_matrix = np.load(self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH)
+            similarity_matrix = load_similarity_matrix(self.cfg.ACTIVE_LEARNING.SIMILARITY_MATRIX_PATH)
             similarity_matrix = similarity_matrix[self.relevant_indices, :]
 
             n_units = len(self.units)
@@ -231,7 +240,7 @@ class Opt:
             in_labeled_set_unit_array = np.array([int(u in set(self.labeled_unit_set)) for u in self.units])
             self._set_region_assignment()
 
-            labeled_regions = set(self.region_assignment[:len(self.lSet)])
+            labeled_regions = set(self.region_assignment[:len(self.lSet)]) #already reordered region_assignment wrt self.relevant_indices
             in_labeled_regions_unit_array = [self.region_assignment_per_unit[u] in labeled_regions for u in self.units]
 
             cost_kwargs = {}

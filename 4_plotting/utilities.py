@@ -1,249 +1,140 @@
 import os
+import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr
 
-def load_and_merge_utilities_r2(utilities_csv_path, summaries_dir):
-    """
-    Load utilities CSV and corresponding R² summaries,
-    merge on sampled_path, size, and sampling_type.
-    
-    Args:
-        utilities_csv_path (str): Path to utilities CSV file.
-        summaries_dir (str): Directory where filtered summary CSVs reside.
-                             Files are named like filtered_{sampling_type}_sample_size_{size}.csv.
-                             
-    Returns:
-        pd.DataFrame: Merged DataFrame with columns including:
-                      sampled_path, sampling_type, size, utility columns..., r2
-    """
-    # Load utilities CSV
-    utilities_df = pd.read_csv(utilities_csv_path)
-    
-    # Check required columns present
-    for col in ['sampled_path', 'sampling_type', 'size']:
-        if col not in utilities_df.columns:
-            raise ValueError(f"Column '{col}' missing from utilities CSV")
+def load_utilities_csv(path):
+    df = pd.read_csv(path)
+    required_cols = ['sampled_path', 'sampling_type', 'size']
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Missing required column: {col}")
+    return df
 
-    # Prepare list for per sampling_type and sample_size r2 DataFrames
+def get_summary_path(summaries_dir, sampling_type, sample_size):
+    if sampling_type.startswith('cluster_sampling'):
+        sampling_type = 'cluster_sampling'
+    
+    sample_size = ((sample_size + 99) // 100) * 100
+
+    # Base pattern to match potential ppc suffix
+    pattern = os.path.join(
+        summaries_dir,
+        f"filtered_{sampling_type}_sample_size_{sample_size}*.csv"
+    )
+    
+    matches = glob.glob(pattern)
+    if not matches:
+        return None
+    elif len(matches) > 1:
+        print(f"[Warning] Multiple summary files matched pattern: {pattern}. Using first match:\n  {matches[0]}")
+    
+    return matches[0]
+
+
+def merge_utilities_with_r2(utilities_df, summaries_dir):
     merged_parts = []
-
-    # Get unique (sampling_type, sample_size) pairs
     groups = utilities_df.groupby(['sampling_type', 'size'])
 
     for (sampling_type, sample_size), group_df in groups:
-        summary_file = os.path.join(
-            summaries_dir,
-            f"filtered_{sampling_type}_sample_size_{sample_size}.csv"
-        )
-        if not os.path.exists(summary_file):
-            print(f"[Warning] Summary file not found: {summary_file}, skipping this group.")
+        summary_path = get_summary_path(summaries_dir, sampling_type, sample_size)
+        if not os.path.exists(summary_path):
+            print(f"[Warning] Missing summary: {summary_path}")
             continue
 
-        r2_df = pd.read_csv(summary_file)
-        # Check for required columns
-        if 'filename' not in r2_df.columns or 'r2' not in r2_df.columns:
-            raise ValueError(f"Summary CSV {summary_file} missing 'filename' or 'r2' columns")
+        r2_df = pd.read_csv(summary_path)
+        from IPython import embed; embed()
+        if 'r2' not in r2_df:
+            raise ValueError(f"Missing 'filename' or 'r2' in {summary_path}")
 
-        # Merge utilities with r2 on sampled_path and filename
         merged = group_df.merge(
-            r2_df,
-            left_on='sampled_path',
-            right_on='filename',
-            how='inner',
-            suffixes=('', '_r2')
+            r2_df, left_on='sampled_path', right_on='filename', how='inner'
         )
-
         merged_parts.append(merged)
 
     if not merged_parts:
-        raise RuntimeError("No data merged; check files and keys")
+        raise RuntimeError("No merged data. Check summary files.")
 
-    merged_df = pd.concat(merged_parts, ignore_index=True)
-    return merged_df
+    return pd.concat(merged_parts, ignore_index=True)
 
-
-def plot_utility_vs_r2(merged_df, utility_col='size', title=None, save_path=None, set_y_lim=False):
-    """
-    Scatter plot utility vs. r2 colored by sampling_type.
-    Annotates plot with overall Spearman's ρ and per-sampling-type ρ.
-
-    Args:
-        merged_df (pd.DataFrame): DataFrame with 'sampling_type', utility_col, 'r2'
-        utility_col (str): Column for x-axis (utility)
-        title (str, optional): Plot title
-        save_path (str, optional): Save path
-        set_y_lim (bool): Whether to force y-axis to start at 0
-    """
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from scipy.stats import spearmanr
-
-    sns.set(style="white", context="notebook", font_scale=1.2)
-    plt.figure(figsize=(8, 6), dpi=300)
-
-    # Compute overall Spearman's rho
-    if merged_df[utility_col].nunique() > 1:
-        overall_rho, _ = spearmanr(merged_df[utility_col], merged_df['r2'])
-        overall_rho = round(overall_rho, 2)
-    else:
-        overall_rho = None
-
-    # Compute per-sampling-type Spearman's rho
-    rho_labels = {}
-    grouped = merged_df.groupby('sampling_type')
-    for name, group in grouped:
+def compute_rho_labels(df, utility_col):
+    labels = {}
+    for name, group in df.groupby('sampling_type'):
         if group[utility_col].nunique() > 1:
             rho, _ = spearmanr(group[utility_col], group['r2'])
-            rho_labels[name] = f"{name} (ρ={rho:.2f})"
+            labels[name] = f"{name} (ρ={rho:.2f})"
         else:
-            rho_labels[name] = f"{name} (ρ=N/A)"
+            labels[name] = f"{name} (ρ=N/A)"
+    return labels
 
-    # Replace labels in DataFrame for legend
-    merged_df['sampling_type_rho'] = merged_df['sampling_type'].map(rho_labels)
+def plot_utility_vs_r2(df, utility_col, title=None, save_path=None, set_y_lim=False):
+    rho_labels = compute_rho_labels(df, utility_col)
+    df['sampling_type_rho'] = df['sampling_type'].map(rho_labels)
 
-    # Plot
-    ax = sns.scatterplot(
-        data=merged_df,
-        x=utility_col,
-        y='r2',
+    overall_rho = spearmanr(df[utility_col], df['r2'])[0] if df[utility_col].nunique() > 1 else None
+
+    plt.figure(figsize=(8, 6), dpi=300)
+    sns.scatterplot(
+        data=df,
+        x=utility_col, y='r2',
         hue='sampling_type_rho',
-        palette='Set2',
-        s=70,
-        alpha=0.8,
-        edgecolor='k'
+        palette='Set2', s=70, alpha=0.8, edgecolor='k'
     )
-
-    ax.set_xlabel(f"Utility ({utility_col})", fontsize=12)
-    ax.set_ylabel("R² Score", fontsize=12)
-    ax.grid(False)
-
-    # Title includes overall rho if available
+    plt.xlabel(f"Utility ({utility_col})")
+    plt.ylabel("R² Score")
     if title:
-        ax.set_title(title, fontsize=14, pad=15)
+        plt.title(title)
     elif overall_rho is not None:
-        ax.set_title(f"Utility ({utility_col}) vs. R² (ρ = {overall_rho})", fontsize=14, pad=15)
+        plt.title(f"Utility vs R² (ρ={overall_rho:.2f})")
     else:
-        ax.set_title(f"Utility ({utility_col}) vs. R²", fontsize=14, pad=15)
-
+        plt.title("Utility vs R²")
     if set_y_lim:
-        ax.set_ylim(bottom=0)
-
-    plt.legend(title='Sampling Type', loc='best', fontsize=10)
+        plt.ylim(bottom=0)
+    plt.legend(title='Sampling Type')
     plt.tight_layout()
 
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')
-        print(f"Saved plot to {save_path}")
+        print(f"Saved: {save_path}")
     else:
         plt.show()
 
-def plot_top_percent_utility_vs_r2(merged_df, utility_col='size', top_percent=0.1, title=None, save_path=None, set_y_lim=False):
-    """
-    Plot the top `top_percent` of data by R² score vs. utility, color-coded by sampling type.
+def plot_top_percent_utility_vs_r2(df, utility_col, top_percent=0.1, **kwargs):
+    n = int(len(df) * top_percent)
+    top_df = df.nlargest(n, 'r2').copy()
+    plot_utility_vs_r2(top_df, utility_col, **kwargs)
 
-    Args:
-        merged_df (pd.DataFrame): DataFrame with 'sampling_type', utility_col, 'r2'
-        utility_col (str): Column for x-axis (utility)
-        top_percent (float): Fraction of top-performing samples to plot (e.g. 0.1 for top 10%)
-        title (str, optional): Plot title
-        save_path (str, optional): Save path
-        set_y_lim (bool): Whether to force y-axis to start at 0
-    """
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from scipy.stats import spearmanr
+def run_utility_r2_pipeline(label, utility_cols, top_percent=0.1):
+    base_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}"
+    utilities_csv_path = os.path.join(base_dir, "utilities.csv")
+    summaries_dir = os.path.join(base_dir, "summaries")
+    plot_dir = os.path.join(base_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
 
-    sns.set(style="white", context="notebook", font_scale=1.2)
-    plt.figure(figsize=(8, 6), dpi=300)
+    set_y_lim = (label == "population")
+    utilities_df = load_utilities_csv(utilities_csv_path)
+    merged_df = merge_utilities_with_r2(utilities_df, summaries_dir)
 
-    # Select top x% based on R²
-    n_top = int(len(merged_df) * top_percent)
-    top_df = merged_df.nlargest(n_top, 'r2').copy()
+    for utility in utility_cols:
+        plot_utility_vs_r2(
+            merged_df, utility_col=utility,
+            save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot.png"),
+            set_y_lim=set_y_lim
+        )
+        plot_top_percent_utility_vs_r2(
+            merged_df, utility_col=utility, top_percent=top_percent,
+            save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot_top_{int(top_percent*100)}_percent.png"),
+            set_y_lim=False
+        )
 
-    # Compute overall Spearman's rho
-    if top_df[utility_col].nunique() > 1:
-        overall_rho, _ = spearmanr(top_df[utility_col], top_df['r2'])
-        overall_rho = round(overall_rho, 2)
-    else:
-        overall_rho = None
-
-    # Per-sampling-type rho
-    rho_labels = {}
-    grouped = top_df.groupby('sampling_type')
-    for name, group in grouped:
-        if group[utility_col].nunique() > 1:
-            rho, _ = spearmanr(group[utility_col], group['r2'])
-            rho_labels[name] = f"{name} (ρ={rho:.2f})"
-        else:
-            rho_labels[name] = f"{name} (ρ=N/A)"
-
-    # Apply labels
-    top_df['sampling_type_rho'] = top_df['sampling_type'].map(rho_labels)
-
-    # Plot
-    ax = sns.scatterplot(
-        data=top_df,
-        x=utility_col,
-        y='r2',
-        hue='sampling_type_rho',
-        palette='Set2',
-        s=70,
-        alpha=0.8,
-        edgecolor='k'
-    )
-
-    ax.set_xlabel(f"Utility ({utility_col})", fontsize=12)
-    ax.set_ylabel("R² Score", fontsize=12)
-    ax.grid(False)
-
-    # Title logic
-    if title:
-        ax.set_title(title, fontsize=14, pad=15)
-    elif overall_rho is not None:
-        ax.set_title(f"Top {int(top_percent * 100)}%: Utility vs. R² (ρ = {overall_rho})", fontsize=14, pad=15)
-    else:
-        ax.set_title(f"Top {int(top_percent * 100)}%: Utility vs. R²", fontsize=14, pad=15)
-
-    if set_y_lim:
-        ax.set_ylim(bottom=0)
-
-    plt.legend(title='Sampling Type', loc='best', fontsize=10)
-    plt.tight_layout()
-
-    if save_path:
-        plt.savefig(save_path, bbox_inches='tight')
-        print(f"Saved plot to {save_path}")
-    else:
-        plt.show()
-
-
-# === Usage Example ===
 if __name__ == '__main__':
+    utility_metrics = [
+        'size', 'pop_risk_nlcd_0.5', 'pop_risk_nlcd_0', 'pop_risk_nlcd_0.01',
+        'pop_risk_nlcd_0.1', 'pop_risk_nlcd_0.9', 'pop_risk_nlcd_0.99',
+        'pop_risk_nlcd_1', 'similarity', 'diversity'
+    ]
+
     for label in ['population', 'treecover']:
-        utilities_csv_path = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}/utilities.csv"
-        results_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}"
-        summaries_dir = os.path.join(results_dir, "summaries")
-        plot_dir = os.path.join(results_dir, "plots")
-
-        os.makedirs(plot_dir, exist_ok=True)
-
-        set_y_lim = (label == "population")
-        merged_df = load_and_merge_utilities_r2(utilities_csv_path, summaries_dir)
-
-        for utility in ['size', 'pop_risk_0.5', 'pop_risk_0', 'pop_risk_0.01', 'pop_risk_0.1', 'pop_risk_0.9', 'pop_risk_0.99', 'pop_risk_1', 'similarity', 'diversity']:
-
-            plot_utility_vs_r2(
-                merged_df,
-                utility_col=utility,
-                save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot.png"),
-                set_y_lim=set_y_lim
-            )
-
-            plot_top_percent_utility_vs_r2(
-                merged_df,
-                utility_col=utility,
-                save_path=os.path.join(plot_dir, f"r2_{utility}_utility_scatterplot_top_10_percent.png"),
-                set_y_lim=False
-            )
+        run_utility_r2_pipeline(label, utility_metrics)

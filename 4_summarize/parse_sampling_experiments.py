@@ -27,6 +27,7 @@ METHOD_LABELS = {
     "poprisk_regions_1.0": "PopRisk ($\\lambda = 1.0$)",
     "poprisk_0.1": "PopRisk ($\\lambda = 0.1$)",
     "similarity": "Similarity",
+    "diversity": "Diversity",
     "poprisk_mod_nlcd_0.5": "PopRisk Mod NLCD ($\\lambda = 0.5$)",
     "poprisk_mod_nlcd_1.0": "PopRisk Mod NLCD ($\\lambda = 1.0$)"
 }
@@ -46,26 +47,38 @@ def parse_log_file(log_path, root):
         size = float(m.group(1))
 
     path_parts = root.split("/")
-    dataset = path_parts[5]
+    dataset_names = {"INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O", "TOGO_P_2022_JUL_DEC_P20"}  # add other dataset names here
+
+    # Find dataset index dynamically
+    dataset_idx = next((i for i, part in enumerate(path_parts) if part in dataset_names), None)
+    if dataset_idx is None:
+        raise ValueError("Dataset name not found in path_parts")
+
+    dataset = path_parts[dataset_idx]
+
+    # Example extraction assuming fixed offsets relative to dataset_idx
     seed = path_parts[-1].split("_")[1]
 
-    if path_parts[6] == "empty_initial_set":
+    # Now adjust following logic relative to dataset_idx
+    if path_parts[dataset_idx + 1] == "empty_initial_set":
         init_set_base = "empty_initial_set"
-        cost_type = path_parts[7]
-        method_base_idx = 8
+        cost_type = path_parts[dataset_idx + 2]
+        method_base_idx = dataset_idx + 3
     else:
-        if 'multiple' in path_parts or 'multiple_cluster_sampling':
-            dataset = f"{dataset}_MULTIPLE"
-            init_set_idx = 8
+        # Handle 'multiple' or 'multiple_cluster_sampling' presence relative to dataset_idx
+        # Check if those keywords are anywhere after dataset_idx, or specifically at some offset
+        post_dataset_parts = path_parts[dataset_idx + 1 : dataset_idx + 5]  # slice as needed
+        if any(p in {"multiple", "multiple_cluster_sampling"} for p in post_dataset_parts):
+            dataset += "_MULTIPLE"
+            init_set_idx = dataset_idx + 3
         else:
-            init_set_idx = 7
+            init_set_idx = dataset_idx + 2
 
         init_set_full = path_parts[init_set_idx]
         init_set_base = seed_re.sub("", init_set_full)
-        cost_type = path_parts[init_set_idx + 1]
-        method_base_idx = init_set_idx + 2
 
     if "opt" in path_parts:
+        cost_type = path_parts[init_set_idx+1]
         idx = path_parts.index("opt")
         method = path_parts[idx + 1]
         if method.startswith("poprisk"):
@@ -76,12 +89,13 @@ def parse_log_file(log_path, root):
         else:
             budget = path_parts[idx + 2].replace("budget_", "")
     else:
+        cost_type = path_parts[init_set_idx + 1]
+        method_base_idx = init_set_idx + 2
         method = path_parts[method_base_idx]
         if method == "match_population_proportion":
             budget = path_parts[method_base_idx + 2].replace("budget_", "")
         else:
             budget = path_parts[method_base_idx + 1].replace("budget_", "")
-    print(method)
 
     key = (dataset, init_set_base, cost_type, budget)
     return key, method, size, initial_r2, updated_r2, seed
@@ -119,7 +133,7 @@ def build_filtered_df(results_dict, dataset, init_set, cost_type):
             "budget": int(budget),
         }
 
-        if len(data["initial_r2"]) < 5 and row["dataset"] != "INDIA_SECC_MULTIPLE":
+        if len(data["initial_r2"]) < 10 and row["dataset"] != "INDIA_SECC_MULTIPLE":
             continue
 
         arr = np.array(data["initial_r2"])

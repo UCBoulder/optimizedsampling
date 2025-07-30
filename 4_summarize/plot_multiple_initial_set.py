@@ -11,6 +11,7 @@ import os
 METHOD_LABELS = {
     "random": "Random",
     "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
+    "poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5$)"
     # Add other methods here if needed
 }
 
@@ -19,7 +20,7 @@ plt.rcParams.update({'font.size': 24})
 def format_r2(mean, std):
     return f"{mean:.2f} ± {std:.2f}" if pd.notnull(mean) and pd.notnull(std) else "--"
 
-def plot_sample_cost_vs_r2(csv_path, method_labels, budget_limit=None, out_path="plot.png"):
+def plot_sample_cost_vs_r2(csv_path, method_labels, budget_limit=None, dataset_name=None, out_path="plot.png"):
     """
     Plots Sample Cost (budget + initial size) vs. R²:
     - One line per method
@@ -49,7 +50,7 @@ def plot_sample_cost_vs_r2(csv_path, method_labels, budget_limit=None, out_path=
     method_to_color = {m: color_map(i) for i, m in enumerate(method_names)}
 
     # Start plot
-    plt.figure(figsize=(20, 12))
+    plt.figure(figsize=(16, 8))
 
     # Plot initial R² Xs
     initial_points = df.groupby("initial_size").first().reset_index()
@@ -87,9 +88,9 @@ def plot_sample_cost_vs_r2(csv_path, method_labels, budget_limit=None, out_path=
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("india_secc_multiple.png", dpi=300)
+    plt.savefig(f"{dataset_name}_multiple.png", dpi=300)
     plt.close()
 
 if __name__ == "__main__":
-    csv_path = "aggregated_r2/aggregated_r2_INDIA_SECC_MULTIPLE_cluster_based_c1_20_c2_30_opt.csv"
-    plot_sample_cost_vs_r2(csv_path, METHOD_LABELS, budget_limit=1200)
+    csv_path = "results/multiple/aggregated_r2_TOGO_PH_H2O.csv"
+    plot_sample_cost_vs_r2(csv_path, METHOD_LABELS, dataset_name="togo_ph_h20", budget_limit=1200)

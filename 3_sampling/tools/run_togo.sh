@@ -12,15 +12,17 @@ FAILED_LOG="failed_experiments_togo.log"
 
 ROOT_DIR="/share/togo"
 SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/togo/cosine_similarity_train_test.npy"
-DIST_MATRIX_PATH=""
+TRAIN_SIM_MATRIX_PATH="../../0_data/cosine_similarity/togo/cosine_similarity_train_train.npy"
+SIM_PER_UNIT_PATH="../../0_data/cosine_similarity/togo/canton_cosine_similarity_train_train.npy"
+
 
 GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/togo/region_assignments_dict.pkl"
 GROUP_TYPE="regions"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "greedycost" "poprisk" "similarity" "random_unit")
+METHODS=("random" "random_unit" "poprisk_avg" "greedycost" "poprisk" "similarity" "diversity")
 BUDGETS=(100 200 300 400 500 600 700 800 900 1000)
-UTIL_LAMBDA=0.5
+UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
 send_error_email() {
@@ -59,12 +61,10 @@ append_method_flags() {
     if [ "$method" == "similarity" ]; then
         cmd+=" --similarity_matrix_path \"$SIM_MATRIX_PATH\""
     elif [ "$method" == "diversity" ]; then
-        cmd+=" --distance_matrix_path \"$DIST_MATRIX_PATH\""
+        cmd+=" --train_similarity_matrix_path \"$TRAIN_SIM_MATRIX_PATH\" --similarity_per_unit_path \"$SIM_PER_UNIT_PATH\""
     fi
 
-    if [ "$method" == "poprisk" ]; then
-        cmd+=" --util_lambda ${UTIL_LAMBDA} --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
-    elif [ "$method" == "match_population_proportion" ]; then
+    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_reg" ]]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
     fi
 

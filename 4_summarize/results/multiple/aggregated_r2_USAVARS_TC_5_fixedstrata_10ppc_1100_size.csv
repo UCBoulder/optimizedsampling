@@ -1,0 +1,11 @@
+dataset,initial_set,cost_type,budget,alpha,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,random_delta_r2_mean,random_delta_r2_se,poprisk_nlcd_0.5_updated_r2_mean,poprisk_nlcd_0.5_updated_r2_std,poprisk_nlcd_0.5_delta_r2_mean,poprisk_nlcd_0.5_delta_r2_se
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,100,10.0,0.76,0.0,0.76,0.01,0.0,0.003046900063999485,0.81,0.0,0.05,0.0014698979556418167
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,200,10.0,0.76,0.0,0.77,0.01,0.01,0.005892418858160024,0.82,0.0,0.06,0.0003891015291668717
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,300,10.0,0.76,0.0,0.79,0.01,0.03,0.0033781059782073204,0.82,0.0,0.06,0.0013234047000067748
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,400,10.0,0.76,0.0,0.79,0.01,0.03,0.00363612431030624,0.82,0.0,0.06,0.0023240051635054645
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,500,10.0,0.76,0.0,0.79,0.01,0.03,0.004873089369178449,0.83,0.0,0.07,0.001416545092822689
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,600,10.0,0.76,0.0,0.79,0.01,0.03,0.004692611213386423,0.83,0.0,0.07,0.0006303967004989909
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,700,10.0,0.76,0.0,0.8,0.01,0.04,0.004125336349923487,0.83,0.0,0.07,0.0008346256645946168
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,800,10.0,0.76,0.0,0.8,0.01,0.04,0.002886970730714125,0.84,0.0,0.07,0.0022406695427929593
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,900,10.0,0.76,0.0,0.8,0.01,0.04,0.003975172952212272,0.84,0.0,0.08,0.001711023085758939
+USAVARS_TC,5_fixedstrata_10ppc_1100_size,cluster_based_c1_10_c2_20,1000,10.0,0.76,0.0,0.81,0.01,0.04,0.003112169661184926,0.84,0.0,0.08,0.0006851277253184189

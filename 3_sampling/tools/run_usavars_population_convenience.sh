@@ -17,7 +17,7 @@ run_setting2() {
 
             for METHOD in "${METHODS[@]}"; do
                 for BUDGET in "${BUDGETS[@]}"; do
-                    for UTIL_LAMBDAS in "${UTIL_LAMBDAS[@]}"; do
+                    for UTIL_LAMBDA in "${UTIL_LAMBDAS[@]}"; do
 
                         COST_FN_NAME="uniform"
                         COST_ARRAY_PATH=""

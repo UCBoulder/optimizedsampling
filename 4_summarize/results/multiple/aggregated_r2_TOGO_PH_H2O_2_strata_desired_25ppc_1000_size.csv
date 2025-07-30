@@ -1,0 +1,11 @@
+dataset,initial_set,cost_type,budget,alpha,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,random_delta_r2_mean,random_delta_r2_se,poprisk_regions_0.5_updated_r2_mean,poprisk_regions_0.5_updated_r2_std,poprisk_regions_0.5_delta_r2_mean,poprisk_regions_0.5_delta_r2_se
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,100,10.0,0.13,0.0,0.15,0.02,0.02,0.008671193689452447,0.14,0.01,0.01,0.0059145244948347305
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,200,10.0,0.13,0.0,0.16,0.02,0.03,0.008185499373892832,0.18,0.02,0.05,0.01114342855677731
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,300,10.0,0.13,0.0,0.17,0.02,0.04,0.011133310379217852,0.22,0.0,0.09,0.002207849632561058
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,400,10.0,0.13,0.0,0.16,0.01,0.03,0.006620725035825,0.23,0.01,0.1,0.0039016150502067717
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,500,10.0,0.13,0.0,0.17,0.01,0.03,0.0056019282394546965,0.22,0.03,0.08,0.015174340183348992
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,600,10.0,0.13,0.0,0.17,0.01,0.04,0.006037631986134959,0.23,0.01,0.1,0.00617943363100535
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,700,10.0,0.13,0.0,0.19,0.02,0.05,0.008581281955512242,0.24,0.01,0.11,0.0058877330102510604
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,800,10.0,0.13,0.0,0.18,0.01,0.05,0.00645914855069923,0.24,0.01,0.11,0.004788277352033821
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,900,10.0,0.13,0.0,0.18,0.02,0.05,0.010341692317991287,0.25,0.0,0.12,0.0014957941034781524
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,1000,10.0,0.13,0.0,0.18,0.02,0.05,0.010810023126709768,0.25,0.01,0.11,0.0068088618725892745

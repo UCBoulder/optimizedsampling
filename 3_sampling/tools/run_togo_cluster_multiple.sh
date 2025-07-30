@@ -10,16 +10,16 @@ run_setting3() {
     BUDGETS=(100 200 300 400 500 600 700 800 900 1000)
     DATASET="togo"
 
-    for SIZE in 500 1000 1500 2000; do
+    for SIZE in 500 1000 1500 2000 2500; do
         for PPC in 20; do
             if [ "$SIZE" -eq 0 ]; then
                 INIT_NAME_EXP="empty_initial_set"
                 INIT_NAME="multiple/cluster_sampling/empty_initial_set"
                 INIT_SET_IDS=None
             else
-                INIT_NAME_EXP="cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"
-                INIT_NAME="cluster_sampling/2_strata_desired_25ppc_${SIZE}_size"
-                INIT_SET_IDS="/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux/sample_region_canton_25ppc_${SIZE}_size_seed_${seed}.pkl"
+                INIT_NAME_EXP="multiple_cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"
+                INIT_NAME="multiple/cluster_sampling/2_strata_desired_25ppc_${SIZE}_size"
+                INIT_SET_IDS="/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux/sample_region_canton_25ppc_${SIZE}_size_seed_1.pkl"
             fi
             for COST_FN in "cluster_based"; do
                 echo "⚙️ Running Setting 3 with COST_FN=${COST_FN}"

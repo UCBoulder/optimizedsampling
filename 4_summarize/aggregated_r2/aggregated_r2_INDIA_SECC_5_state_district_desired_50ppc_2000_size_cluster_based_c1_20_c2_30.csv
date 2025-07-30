@@ -1,6 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_r2_mean,initial_r2_std,similarity_updated_r2_mean,similarity_updated_r2_std
-INDIA_SECC,5_state_district_desired_50ppc_2000_size,cluster_based_c1_20_c2_30,1000,-10.57,20.58,0.17,0.11
-INDIA_SECC,5_state_district_desired_50ppc_2000_size,cluster_based_c1_20_c2_30,2000,-10.57,20.58,0.3,0.04
-INDIA_SECC,5_state_district_desired_50ppc_2000_size,cluster_based_c1_20_c2_30,3000,-10.57,20.58,0.34,0.04
-INDIA_SECC,5_state_district_desired_50ppc_2000_size,cluster_based_c1_20_c2_30,4000,-10.57,20.58,0.36,0.04
-INDIA_SECC,5_state_district_desired_50ppc_2000_size,cluster_based_c1_20_c2_30,5000,-10.57,20.58,0.39,0.03
