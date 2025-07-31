@@ -52,7 +52,7 @@ def sampling_r2_scores(
     ridge_regression_fn,
     metadata_parser,
     results_filename_suffix,
-    min_samples=2000,
+    min_samples=100,
     verbose=True,
     **kwargs
 ):
@@ -78,13 +78,17 @@ def sampling_r2_scores(
             full_path = os.path.join(sampling_dir, fname)
             try:
                 with open(full_path, "rb") as f:
-                    if "india" in full_path:
-                        sampled_ids = dill.load(f)
+                    loaded = dill.load(f)
+                    
+                    if isinstance(loaded, dict) and 'sampled_ids' in loaded:
+                        sampled_ids = loaded['sampled_ids']
                     else:
-                        sampled_ids = dill.load(f)['sampled_ids']
-                    sampled_ids = [str(x) for x in sampled_ids] 
+                        sampled_ids = loaded  # assume it's already a list or compatible
+
+                    sampled_ids = [x if isinstance(x, str) else str(x) for x in sampled_ids]
             except Exception as e:
                 if verbose:
+                    from IPython import embed; embed()
                     print(f"[WARNING] Failed to load {fname}: {e}")
                 continue
 
@@ -255,47 +259,56 @@ def random_sampling_r2_scores(*args, **kwargs):
 
 if __name__ == "__main__":
     from regressions import ridge_regression
-    features_path = f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_2022_Jul_Dec_P20.pkl"
-    cluster_sampling_dir= f"/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux"
-    # convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based"
-    # convenience_sampling_region_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/cluster_based"
-    # random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling"
 
-    results_dir = f"/home/libe2152/optimizedsampling/0_results/togo"
+    CLUSTER_SAMPLING_DIR = {
+        'population': "/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/population/cluster_sampling/fixedstrata_Idaho_16-Louisiana_22-Mississippi_28-New Mexico_35-Pennsylvania_42",
+        "treecover": "/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/treecover/cluster_sampling/fixedstrata_Alabama_01-Colorado_08-Montana_30-New York_36-Ohio_39"
+    }
 
-    # # Run cluster sampling R2 scores
-    cluster_sampling_r2_scores(
-        features_path=features_path,
-        sampling_dir=cluster_sampling_dir,
-        results_dir=results_dir,
-        ridge_regression_fn=ridge_regression,
-        verbose=True,
-        dataset="togo",
-        label='k'
-    )
+    for label in ['population', 'treecover']:
 
-    # Run convenience sampling R2 scores
-    # convenience_sampling_r2_scores(
-    #     features_path=features_path,
-    #     sampling_dir=convenience_sampling_urban_dir,
-    #     results_dir=results_dir,
-    #     ridge_regression_fn=ridge_regression,
-    #     verbose=True,
-    # )
+        features_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
+        cluster_sampling_dir= CLUSTER_SAMPLING_DIR[label]
+        convenience_sampling_urban_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based"
+        convenience_sampling_region_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/region_based"
+        random_sampling_dir = f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/random_sampling"
 
-    # convenience_sampling_r2_scores(
-    #     features_path=features_path,
-    #     sampling_dir=convenience_sampling_region_dir,
-    #     results_dir=results_dir,
-    #     ridge_regression_fn=ridge_regression,
-    #     verbose=True,
-    # )
+        results_dir = f"/home/libe2152/optimizedsampling/0_results/usavars/{label}"
 
-    # # Run random sampling R2 scores
-    # random_sampling_r2_scores(
-    #     features_path=features_path,
-    #     sampling_dir=random_sampling_dir,
-    #     results_dir=results_dir,
-    #     ridge_regression_fn=ridge_regression,
-    #     verbose=True,
-    # )
+        # # Run cluster sampling R2 scores
+        # cluster_sampling_r2_scores(
+        #     features_path=features_path,
+        #     sampling_dir=cluster_sampling_dir,
+        #     results_dir=results_dir,
+        #     ridge_regression_fn=ridge_regression,
+        #     verbose=True,
+        #     min_samples=100
+        # )
+
+        # Run convenience sampling R2 scores
+        convenience_sampling_r2_scores(
+            features_path=features_path,
+            sampling_dir=convenience_sampling_urban_dir,
+            results_dir=results_dir,
+            ridge_regression_fn=ridge_regression,
+            verbose=True,
+            min_samples=100
+        )
+
+        # convenience_sampling_r2_scores(
+        #     features_path=features_path,
+        #     sampling_dir=convenience_sampling_region_dir,
+        #     results_dir=results_dir,
+        #     ridge_regression_fn=ridge_regression,
+        #     verbose=True,
+        #     min_samples=100
+        # )
+
+        # # Run random sampling R2 scores
+        # random_sampling_r2_scores(
+        #     features_path=features_path,
+        #     sampling_dir=random_sampling_dir,
+        #     results_dir=results_dir,
+        #     ridge_regression_fn=ridge_regression,
+        #     verbose=True,
+        # )

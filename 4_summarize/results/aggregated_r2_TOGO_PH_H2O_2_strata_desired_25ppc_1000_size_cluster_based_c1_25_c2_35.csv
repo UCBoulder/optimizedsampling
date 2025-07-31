@@ -1,0 +1,2 @@
+dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,random_delta_r2_mean,random_delta_r2_se
+TOGO_PH_H2O,2_strata_desired_25ppc_1000_size,cluster_based_c1_25_c2_35,100,1000,10.0,0.15,0.04,0.15,0.04,0.0,0.0087288830900637

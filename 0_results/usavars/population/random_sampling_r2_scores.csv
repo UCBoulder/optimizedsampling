@@ -1,4 +1,4 @@
-filename,sample_size,seed,r2
+initial_set,size,seed,r2
 random_sample_1000_points_seed_1.pkl,1000,1,0.5905427106860859
 random_sample_1000_points_seed_1213.pkl,1000,1213,0.6090701527021521
 random_sample_1000_points_seed_123.pkl,1000,123,0.606950391446681

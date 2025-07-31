@@ -50,17 +50,10 @@ def similarity(s: np.ndarray, similarity_per_unit: np.ndarray) -> float:
     test_similarity = similarity_per_unit.mean(axis=1)
     return float(np.dot(s, test_similarity))
 
-def diversity(s: np.ndarray, distance_per_unit: np.ndarray) -> float:
-    """
-    distance_per_unit: shape (n_units, n_units)
-    s: shape (n_units,)
-    """
-    n_units = len(s)
-    s_i = s.reshape((n_units, 1))
-    s_j = s.reshape((1, n_units))
-    pairwise_min = np.minimum(s_i, s_j)
+import numpy as np
 
-    diag_mask = np.ones((n_units, n_units)) - np.eye(n_units)
-    valid_distances = distance_per_unit * pairwise_min * diag_mask
+def diversity_(s, similarity_per_unit, l=100, epsilon=1e-4):
+    S_eps = similarity_per_unit + epsilon * np.eye(similarity_per_unit.shape[0])
+    s = s.astype(float)  # ensure dot products work
+    return l * np.sum(s) - s.T @ S_eps @ s
 
-    return float(valid_distances[valid_distances > 0].min()) if np.any(valid_distances > 0) else 0.0

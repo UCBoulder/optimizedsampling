@@ -6,11 +6,9 @@ source "$(dirname "$0")/run_india.sh"
 run_setting3() {
     local seed="$1"
     DATASET="india"
-    GROUP_TYPE="urban_rural"
-    GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/india_secc/urban_rural_groups.pkl"
     ALPHAS=(10)
 
-    for SIZE in 2000; do
+    for SIZE in 1000 2000 3000 4000 5000; do
         for PPC in 20; do
             INIT_NAME_EXP="cluster_sampling_10_state_district_desired_${PPC}ppc_${SIZE}_size"
             INIT_NAME="cluster_sampling/10_state_district_desired_${PPC}ppc_${SIZE}_size"
@@ -41,7 +39,7 @@ run_setting3() {
                                     REGION_ASSIGNMENT_PATH="/home/libe2152/optimizedsampling/0_data/groups/india_secc/state_assignments_dict.pkl"
                                 fi
 
-                                if [[ "$METHOD" == "poprisk" || "$METHOD" == "poprisk_mod" ]]; then
+                                if [[ "$METHOD" == "poprisk" || "$METHOD" == "poprisk_mod" || "$METHOD" == "poprisk_avg" ]]; then
                                     EXP_NAME="india_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_${GROUP_TYPE}_budget_${BUDGET}_seed_${seed}"
                                 else
                                     EXP_NAME="india_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_budget_${BUDGET}_seed_${seed}"

@@ -101,25 +101,22 @@ def plot_delta_r2_vs_alpha(df, r2_mean_cols, r2_se_cols, budget, save_path=None,
         print('plotted')
 
         #Shaded standard error band
-        # ax.fill_between(
-        #     alpha_vals,
-        #     mean_vals - se_vals,
-        #     mean_vals + se_vals,
-        #     color=METHOD_COLORS[method_name],
-        #     alpha=0.1
-        # )
+        ax.fill_between(
+            alpha_vals,
+            mean_vals - se_vals,
+            mean_vals + se_vals,
+            color=METHOD_COLORS[method_name],
+            alpha=0.1
+        )
 
-    # Axis labels
     ax.set_xlabel("Cost Difference", fontsize=24, fontweight='bold')
     ax.set_ylabel("Δ R²", fontsize=24, fontweight='bold')
 
-    # Tick formatting
     ax.tick_params(labelsize=20)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
     if y_lim:
         ax.set_ylim(y_lim)
 
-    # Legend outside
     ax.legend(
         fontsize=20,
         title_fontsize=20,
@@ -128,7 +125,6 @@ def plot_delta_r2_vs_alpha(df, r2_mean_cols, r2_se_cols, budget, save_path=None,
         frameon=True
     )
 
-    # Tight layout and save/show
     fig.tight_layout()
     if save_path:
         fig.savefig(save_path, bbox_inches='tight')

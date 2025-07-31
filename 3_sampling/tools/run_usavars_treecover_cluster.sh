@@ -8,7 +8,7 @@ run_setting3() {
     DATASET="usavars"
     ALPHAS=(10)
 
-    for SIZE in 100 200 300; do
+    for SIZE in 100; do
         INIT_NAME_EXP="cluster_sampling_5_fixedstrata_10ppc_${SIZE}_size"
         INIT_NAME="cluster_sampling/5_fixedstrata_10ppc_${SIZE}_size"
         INIT_SET_IDS="/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/treecover/cluster_sampling/fixedstrata_Alabama_01-Colorado_08-Montana_30-New York_36-Ohio_39/sample_state_combined_county_id_10ppc_${SIZE}_size_seed_${seed}.pkl"
@@ -40,7 +40,7 @@ run_setting3() {
                             fi
 
                             EXP_NAME="usavars_treecover_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_budget_${BUDGET}_seed_${seed}"
-                            if [ "$METHOD" == "poprisk" ]; then
+                            if [[ "$METHOD" == "poprisk" || "$METHOD" == "poprisk_avg" ]]; then
                                 EXP_NAME="usavars_treecover_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_${GROUP_TYPE}_${UTIL_LAMBDA}_budget_${BUDGET}_seed_${seed}"
                             fi
                             

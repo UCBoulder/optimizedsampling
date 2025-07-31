@@ -6,7 +6,7 @@ source "$(dirname "$0")/run_togo.sh"
 run_setting3() {
     local seed="$1"
     DATASET="togo_ph_h20"
-    ALPHAS=(10)
+    ALPHAS=(0 1 10 15 20 25)
 
     for SIZE in 500; do
         INIT_NAME_EXP="cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"

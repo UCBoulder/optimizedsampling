@@ -1,0 +1,12 @@
+dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,random_delta_r2_mean,random_delta_r2_se,poprisk_urban_rural_0.5_updated_r2_mean,poprisk_urban_rural_0.5_updated_r2_std,poprisk_urban_rural_0.5_delta_r2_mean,poprisk_urban_rural_0.5_delta_r2_se
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,100,3000,10.0,0.22,0.0,0.22,0.0,-0.0,0.00067498148122745,0.23,0.01,0.01,0.0037803438997001328
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,200,3000,10.0,0.22,0.0,0.22,0.01,0.0,0.0037430736033372347,0.23,0.01,0.01,0.006186711565929028
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,300,3000,10.0,0.22,0.0,0.22,0.01,-0.0,0.0049064651226723285,0.23,0.02,0.01,0.009869822693442878
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,400,3000,10.0,0.22,0.0,0.22,0.01,0.0,0.004990891703894204,0.24,0.04,0.02,0.019598173384272322
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,500,3000,10.0,0.22,0.0,0.23,0.01,0.01,0.00402894527140789,0.27,0.02,0.05,0.007665024461800496
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,600,3000,10.0,0.22,0.0,0.23,0.01,0.01,0.004623634933685832,0.27,0.01,0.05,0.004558881441757397
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,700,3000,10.0,0.22,0.0,0.23,0.01,0.01,0.004129576249447394,0.28,0.01,0.06,0.007458109680073089
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,800,3000,10.0,0.22,0.0,0.23,0.01,0.01,0.006893301095991672,0.26,0.01,0.04,0.006294203682754476
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,900,3000,10.0,0.22,0.0,0.23,0.02,0.01,0.0075897562543206926,0.26,0.02,0.04,0.011447052022245729
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,1000,3000,10.0,0.22,0.0,0.23,0.02,0.01,0.007578390330406585,0.26,0.02,0.04,0.011171409937872656
+INDIA_SECC,10_state_district_desired_20ppc_3000_size,cluster_based_c1_20_c2_30,2000,3000,10.0,0.22,0.0,0.24,0.01,0.02,0.0056884971653328575,0.3,0.01,0.08,0.00484922674248173

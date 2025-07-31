@@ -60,4 +60,8 @@ def determine_clusters_and_save(dataset):
 
 if __name__ == "__main__":
     for dataset in DATASET_FEATURE_PATHS.keys():
-        determine_clusters_and_save(dataset)
+        #determine_clusters_and_save(dataset)
+        features, ids = load_features(DATASET_FEATURE_PATHS[dataset])
+        preds = cluster(features, 8)
+        save_path = CLUSTER_SAVE_PATHS[dataset].format(num_clusters=8)
+        save_clusters(preds, ids, save_path)

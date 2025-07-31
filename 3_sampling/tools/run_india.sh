@@ -15,12 +15,12 @@ SIM_MATRIX_PATH="/share/india_secc/similarity_matrix.npz"
 TRAIN_SIM_MATRIX_PATH="../../0_data/cosine_similarity/india_secc/cosine_similarity_train_train.npy"
 SIM_PER_UNIT_PATH="../../0_data/cosine_similarity/india_secc/district_cosine_similarity_train_train.npy"
 
-GROUP_TYPE="dists_from_top20_urban_tiers"
-GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/india_secc/dist_from_top20urban_area_tiers.pkl"
+GROUP_PATH="../../0_data/groups/india_secc/image_2_cluster_assignments.pkl"
+GROUP_TYPE="image_clusters_2"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "random_unit" "poprisk_avg" "poprisk" "greedycost" "similarity" "diversity")
-BUDGETS=(1000 2000 3000 4000 5000)
+METHODS=("poprisk" "poprisk_avg" "random" "random_unit" "similarity" "diversity")
+BUDGETS=(500 1000 2000 5000)
 UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
@@ -70,7 +70,7 @@ append_method_flags() {
         cmd+=" --train_similarity_matrix_path \"$TRAIN_SIM_MATRIX_PATH\" --similarity_per_unit_path \"$SIM_PER_UNIT_PATH\""
     fi
 
-    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_reg" ]]; then
+    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_avg" ]]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
     fi
 

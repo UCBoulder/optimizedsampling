@@ -127,7 +127,7 @@ def plot_group_assignments(
         if country_name:
             country = country[country['NAME'] == country_name]
         if exclude_names:
-            country = country[~country['NAME'].isin(exclude_names)]
+            country = country[~country['name'].isin(exclude_names)]
         country = country.to_crs('EPSG:4326')
         country.boundary.plot(ax=ax, color='black', linewidth=0.8, zorder=1, alpha=0.8)
 
@@ -152,29 +152,73 @@ def plot_group_assignments(
 
 
 if __name__ == "__main__":
-    distance_path = "/home/libe2152/optimizedsampling/0_data/distances/usavars/population/distance_km_to_all_urban.pkl"
+    DATASET_GDF_PATHS = {
+        'usavars_pop': "../0_data/admin_gdfs/usavars/population/gdf_counties_2015.geojson",
+        'usavars_tc': "../0_data/admin_gdfs/usavars/population/gdf_counties_2015.geojson",
+        'india_secc': "/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson",
+        'togo': "../0_data/admin_gdfs/togo/gdf_adm3.geojson"
+    }
 
+    import geopandas as gpd
     import dill
-    with open(distance_path, "rb") as f:
-        arrs = dill.load(f)
 
-    gdf_points = gpd.read_file(f"/share/india_secc/MOSAIKS/train_shrugs_with_admins.geojson")
-    gdf_points = gdf_points.to_crs("EPSG:4326")
-    id_col='condensed_shrug_id'
+    DATASET_GROUP_PATHS = {
+        'usavars_pop': "../0_data/groups/usavars/population/image_8_cluster_assignments.pkl",
+        'usavars_tc': "../0_data/groups/usavars/treecover/image_8_cluster_assignments.pkl",
+        'india_secc': "../0_data/groups/india_secc/image_8_cluster_assignments.pkl",
+        'togo': "../0_data/groups/togo/image_8_cluster_assignments.pkl"
+    }
 
-    # distances = [arrs['distances_to_urban_area'][str(id)] for id in gdf_points[id_col]]
-    # group_dict, _ = assign_groups_by_farthest_group(distances, gdf_points, id_col='id')
+    DATASET_ID_COLS = {
+        'usavars_pop': "id",
+        'usavars_tc': "id",
+        'india_secc': "condensed_shrug_id",
+        'togo': "id"
+    }
 
-    filepath = "/home/libe2152/optimizedsampling/0_data/groups/india_secc/urban_rural_groups.pkl"
-    # save_dict_to_pkl(group_dict, filepath)
+    DATASET_SHAPEFILES = {
+        'usavars_pop': "../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp",
+        'usavars_tc': "../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp",
+        'india_secc': "../0_data/boundaries/world/ne_10m_admin_0_countries.shp",
+        'togo': "/share/togo/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp"
+    }
 
-    with open(filepath, "rb") as f:
-        group_dict = dill.load(f)
+    DATASET_COUNTRY_NAME = {
+        'india_secc': 'India',
+        'usavars_pop': None,
+        'usavars_tc': None,
+        'togo': None
+    }
 
-    country_shape_file = '../0_data/boundaries/world/ne_10m_admin_0_countries.shp'
-    country_name = 'India'
+    DATASET_EXCLUDE_NAMES = {
+        'india_secc': None,
+        'usavars_pop': ['Alaska', 'Hawaii', 'Puerto Rico'],
+        'usavars_tc': ['Alaska', 'Hawaii', 'Puerto Rico'],
+        'togo': None,
+    }
 
-    plot_group_assignments(gdf_points, group_dict, dataset='india', group_type='urban_rural', id_col=id_col, country_shape_file=country_shape_file, country_name=country_name)
-    print(group_dict)
+    for dataset in DATASET_GDF_PATHS.keys():
 
+        gdf_path = DATASET_GDF_PATHS[dataset]
+        gdf_points = gpd.read_file(gdf_path)
+        gdf_points = gdf_points.to_crs("EPSG:4326")
 
+        group_path = DATASET_GROUP_PATHS[dataset]
+        with open(group_path, "rb") as f:
+            group_dict = dill.load(f)
+
+        id_col = DATASET_ID_COLS[dataset]
+        country_shape_file = DATASET_SHAPEFILES[dataset]
+        country_name = DATASET_COUNTRY_NAME[dataset]
+        exclude_names = DATASET_EXCLUDE_NAMES[dataset]
+
+        plot_group_assignments(
+            gdf_points,
+            group_dict,
+            dataset=dataset,
+            group_type='image_clusters',
+            id_col=id_col,
+            country_shape_file=country_shape_file,
+            country_name=country_name,
+            exclude_names=exclude_names
+        )

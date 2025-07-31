@@ -127,10 +127,11 @@ def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME, dataset=None
             print(f"{budget} not in budget_list...")
             continue
 
-        if initial_r2 is not None and updated_r2 is not None:
+        if initial_r2 is not None:
             results[key]["initial_r2"].append((seed, initial_r2))
             results[key]["seeds"].add(seed)
 
+        if updated_r2 is not None:
             results[key]["methods"][method].append((seed, updated_r2))
             results[key]["method_seeds"][method].add(seed)
 
@@ -279,8 +280,6 @@ def save_csv(df, dataset, init_set=None, cost_type=None, out_dir="results", mult
     print(f"CSV saved to: {path}")
 
 if __name__ == "__main__":
-    EXPECTED_SEEDS = set([1, 42, 123, 456, 789]) # edit this...
-
     initial_set_strs = {
         'USAVARS_POP': '{num_strata}_fixedstrata_{ppc}ppc_{size}_size',
         'USAVARS_TC': '{num_strata}_fixedstrata_{ppc}ppc_{size}_size',
@@ -288,49 +287,106 @@ if __name__ == "__main__":
         'TOGO_PH_H2O': '{num_strata}_strata_desired_{ppc}ppc_{size}_size'
     }
 
-    multiple = True
+    PPC = {
+        "USAVARS_POP": 10,
+        "USAVARS_TC": 10,
+        "INDIA_SECC": 20,
+        "TOGO_PH_H2O": 25,
+    }
+
+    NUM_STRATA = {
+        "USAVARS_POP": 5,
+        "USAVARS_TC": 5,
+        "INDIA_SECC": 10,
+        "TOGO_PH_H2O": 2,
+    }
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run sampling evaluation script")
+    parser.add_argument("--multiple", type=lambda x: x.lower() == 'true', default=False,
+                    help="Whether to use multiple experiments")
+
+    args = parser.parse_args()
+    multiple = args.multiple
+
+    if multiple:
+        EXPECTED_SEEDS = set([1, 42, 123, 456, 789]) # edit this...
+    else:
+        EXPECTED_SEEDS = set([1, 42, 123, 456, 789]) # edit this...
 
     for dataset in DATASET_NAMES:
         dataset_dfs = []
         multiple_dfs = []
-        for ppc in [10, 20, 25]:
-            for size in [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000]:
-                for num_strata in [2, 5, 10]:
-                    initial_set = initial_set_strs[dataset].format(num_strata=num_strata, ppc=ppc, size=size)
-                    sampling_type = 'cluster_sampling'
-                    for alpha in [0, 1, 5, 10, 15, 20, 25, 30]:
-                        in_region_cost = ppc
-                        out_of_region_cost = in_region_cost + alpha
-                        cost_type = f"cluster_based_c1_{in_region_cost}_c2_{out_of_region_cost}"
-                        budget_list = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 5000]
-                        try:
+        initial_set_sizes = []
+        initial_r2_means = []
+        initial_r2_stds = []
 
-                            results = aggregate_results(dataset=dataset, initial_set=initial_set, sampling_type=sampling_type, cost_type=cost_type, budget_list=budget_list, multiple=multiple)
-                            keys = set((ds, iset, ctype) for (ds, iset, ctype, _) in results)
+        ppc = PPC[dataset]
+        num_strata = NUM_STRATA[dataset]
 
-                            for dataset, init_set, cost_type in sorted(keys):
-                                df = build_filtered_df(results, dataset, init_set, cost_type, alpha)
-                                if df.empty:
-                                    print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
-                                    continue
-                                save_csv(df, dataset, init_set, cost_type, multiple=multiple)
-                                dataset_dfs.append(df)
-                                multiple_dfs.append(df)
-                        except Exception as e:
-                            print(e)
+        seen_initial_sets = set()
+        for size in range(100, 5100, 100):
+            initial_set = initial_set_strs[dataset].format(num_strata=num_strata, ppc=ppc, size=size)
+            sampling_type = 'cluster_sampling'
+            for alpha in [0, 1, 5, 10, 15, 20, 25, 30]:
+                in_region_cost = ppc
+                out_of_region_cost = in_region_cost + alpha
+                cost_type = f"cluster_based_c1_{in_region_cost}_c2_{out_of_region_cost}"
+                budget_list = [1, 10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 5000]
+                try:
+                    results = aggregate_results(dataset=dataset, initial_set=initial_set, sampling_type=sampling_type, cost_type=cost_type, budget_list=budget_list, multiple=multiple)
+                    keys = set((ds, iset, ctype) for (ds, iset, ctype, _) in results)
 
-                    if dataset_dfs and not multiple:
-                        print(len(dataset_dfs))
-                        combined_df = pd.concat(dataset_dfs, ignore_index=True, join="inner")
+                    for ds, iset, ctype in sorted(keys):
+                        df = build_filtered_df(results, ds, iset, ctype, alpha)
+                        if df.empty:
+                            print(f"Skipping empty table for: {ds}, {iset}, {ctype}")
+                            continue
+                        save_csv(df, ds, iset, ctype, multiple=multiple)
+                        dataset_dfs.append(df)
+                        multiple_dfs.append(df)
 
-                        save_csv(combined_df, dataset, init_set, multiple=multiple)
-                        print(f"Saved combined results for {dataset}")
-                        dataset_dfs = []
+                        # Save initial R² stats only once per (dataset, init_set)
+                        key = (ds, iset)
+                        if key not in seen_initial_sets:
+                            initial_set_sizes.append(size)
+                            initial_r2_means.append(np.unique(df['initial_r2_mean']))
+                            initial_r2_stds.append(np.unique(df['initial_r2_std']))
+                            seen_initial_sets.add(key)
 
-            if multiple and multiple_dfs:
-                combined_df = pd.concat(multiple_dfs, ignore_index=True, join="inner")
+                except Exception as e:
+                    x=1
 
-                save_csv(combined_df, dataset, multiple=multiple)
+
+            if dataset_dfs and not multiple:
+                print(len(dataset_dfs))
+                combined_df = pd.concat(dataset_dfs, ignore_index=True, join="inner")
+
+                save_csv(combined_df, dataset, initial_set, multiple=multiple)
                 print(f"Saved combined results for {dataset}")
                 dataset_dfs = []
+
+        if multiple and multiple_dfs:
+            combined_df = pd.concat(multiple_dfs, ignore_index=True, join="outer")
+
+            save_csv(combined_df, dataset, multiple=multiple)
+            print(f"Saved combined results for {dataset}")
             
+
+        # Save initial R² summary
+        if len(initial_set_sizes) > 0:
+            print(initial_set_sizes)
+            summary_df = pd.DataFrame({
+                'initial_set_size': initial_set_sizes,
+                'initial_r2_mean': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_means],
+                'initial_r2_std': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_stds]
+            })
+            summary_path = f"results/multiple/{dataset}_initial_r2_summary.csv" if multiple else f"results/{dataset}_initial_r2_summary.csv"
+            summary_df.to_csv(summary_path, index=False)
+            print(f"Saved initial R² summary to {summary_path}")
+
+            # Reset tracking lists
+            initial_set_sizes = []
+            initial_r2_means = []
+            initial_r2_stds = []

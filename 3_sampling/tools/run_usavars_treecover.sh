@@ -15,14 +15,14 @@ SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usava
 TRAIN_SIM_MATRIX_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/treecover/cosine_similarity_train_train.npy"
 SIM_PER_UNIT_PATH="/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/treecover/county_cosine_similarity_train_train.npy"
 
-GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/usavars/treecover/NLCD_cluster_assignments_8_dict.pkl"
-GROUP_TYPE="nlcd"
+GROUP_PATH="../../0_data/groups/usavars/treecover/state_assignments_dict.pkl"
+GROUP_TYPE="states"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "random_unit" "greedycost" "similarity" "poprisk" "poprisk_avg")
+METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
 BUDGETS=(50 100 200 300 400 500 1000)
 
-UTIL_LAMBDAS=(0.5 1.0)
+UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
 send_error_email() {
@@ -53,7 +53,7 @@ run_experiment() {
     local status=$?
 
     if [[ $status -ne 0 ]]; then
-        echo "❌ Error in experiment: $exp_name"
+        echo "Error in experiment: $exp_name"
         echo "$exp_name" >> "$FAILED_LOG"
         send_error_email "$exp_name" "$dataset" "$method" "$budget" "$seed" "$init_name" "$cost_name"
     else

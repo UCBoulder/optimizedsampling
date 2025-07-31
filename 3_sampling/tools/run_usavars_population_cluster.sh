@@ -8,7 +8,7 @@ run_setting3() {
     DATASET="usavars"
     ALPHAS=(10)
 
-    for SIZE in 100 200 300; do
+    for SIZE in 100; do
         INIT_NAME_EXP="cluster_sampling_5_fixedstrata_10ppc_${SIZE}_size"
         INIT_NAME="cluster_sampling/5_fixedstrata_10ppc_${SIZE}_size"
         INIT_SET_IDS="/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/population/cluster_sampling/fixedstrata_Idaho_16-Louisiana_22-Mississippi_28-New Mexico_35-Pennsylvania_42/sample_state_combined_county_id_10ppc_${SIZE}_size_seed_${seed}.pkl"

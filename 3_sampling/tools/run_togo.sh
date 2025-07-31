@@ -16,12 +16,12 @@ TRAIN_SIM_MATRIX_PATH="../../0_data/cosine_similarity/togo/cosine_similarity_tra
 SIM_PER_UNIT_PATH="../../0_data/cosine_similarity/togo/canton_cosine_similarity_train_train.npy"
 
 
-GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/togo/region_assignments_dict.pkl"
-GROUP_TYPE="regions"
+GROUP_PATH="../../0_data/groups/togo/image_3_cluster_assignments.pkl"
+GROUP_TYPE="image_clusters_3"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "random_unit" "poprisk_avg" "greedycost" "poprisk" "similarity" "diversity")
-BUDGETS=(100 200 300 400 500 600 700 800 900 1000)
+METHODS=("poprisk_avg" "poprisk" "diversity")
+BUDGETS=(500)
 UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===
@@ -64,7 +64,7 @@ append_method_flags() {
         cmd+=" --train_similarity_matrix_path \"$TRAIN_SIM_MATRIX_PATH\" --similarity_per_unit_path \"$SIM_PER_UNIT_PATH\""
     fi
 
-    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_reg" ]]; then
+    if [[ "$method" == "poprisk" || "$method" == "poprisk_mod" || "$method" == "poprisk_mod_reg" || "$method" == "poprisk_avg" ]]; then
         cmd+=" --group_assignment_path \"$GROUP_PATH\" --group_type \"$GROUP_TYPE\""
     fi
 
