@@ -4,7 +4,6 @@ __pycache__
 .vscode/
 0_results/*/*/summaries
 0_results/*/*/plots
-3_sampling/tools/*.log
 0_output
 00_old_data
 00_old_results
