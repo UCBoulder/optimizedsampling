@@ -52,7 +52,7 @@ def similarity(s: np.ndarray, similarity_per_unit: np.ndarray) -> float:
 
 import numpy as np
 
-def diversity_(s, similarity_per_unit, l=100, epsilon=1e-4):
+def diversity(s, similarity_per_unit, l=100, epsilon=1e-4):
     S_eps = similarity_per_unit + epsilon * np.eye(similarity_per_unit.shape[0])
     s = s.astype(float)  # ensure dot products work
     return l * np.sum(s) - s.T @ S_eps @ s

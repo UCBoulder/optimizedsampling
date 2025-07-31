@@ -16,7 +16,7 @@ METHOD_LABELS = {
     # "random": "Random",
     "poprisk_urban_rural_0.5": "PopRisk ($\\lambda = 0.5$)",
     #"poprisk_regions_0.5": "PopRisk ($\\lambda = 0.5$)",
-    "poprisk_image_clusters_8_0.5": "PopRisk Img ($\\lambda = 0.5$)"
+    "poprisk_image_clusters_3_0.5": "PopRisk Img ($\\lambda = 0.5$)"
     # Add other methods here if needed
 }
 
@@ -77,7 +77,7 @@ def plot_sample_cost_vs_r2(csv_path, initial_set_r2_csv_path, method_labels, ini
     initial_points = df.groupby("initial_size").first().reset_index()
     if init_set_lower_limit is not None:
         initial_points = initial_points[initial_points['initial_size'] >= init_set_lower_limit]
-    plt.scatter(initial_points["initial_size"], initial_points["initial_r2_mean"],
+    plt.scatter(initial_points["initial_size"][:-1], initial_points["initial_r2_mean"][:-1],
                 color='black', marker='x', s=200, linewidths=3, label="Initial $R^2$")
 
     # Plot each method

@@ -313,7 +313,7 @@ if __name__ == "__main__":
     if multiple:
         EXPECTED_SEEDS = set([1, 42, 123, 456, 789]) # edit this...
     else:
-        EXPECTED_SEEDS = set([1, 42, 123, 456, 789]) # edit this...
+        EXPECTED_SEEDS = set([1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415]) # edit this...
 
     for dataset in DATASET_NAMES:
         dataset_dfs = []
@@ -327,6 +327,7 @@ if __name__ == "__main__":
 
         seen_initial_sets = set()
         for size in range(100, 5100, 100):
+            
             initial_set = initial_set_strs[dataset].format(num_strata=num_strata, ppc=ppc, size=size)
             sampling_type = 'cluster_sampling'
             for alpha in [0, 1, 5, 10, 15, 20, 25, 30]:

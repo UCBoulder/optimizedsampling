@@ -20,8 +20,8 @@ GROUP_PATH="../../0_data/groups/togo/image_3_cluster_assignments.pkl"
 GROUP_TYPE="image_clusters_3"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("poprisk_avg" "poprisk" "diversity")
-BUDGETS=(500)
+METHODS=("random")
+BUDGETS=(1)
 UTIL_LAMBDAS=(0.5)
 
 # === Helpers ===

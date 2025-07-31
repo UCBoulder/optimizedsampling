@@ -6,7 +6,7 @@ source "$(dirname "$0")/run_togo.sh"
 run_setting3() {
     local seed="$1"
     SEEDS=(1 42 123 456 789)
-    METHODS=("poprisk" "poprisk_avg")
+    METHODS=("poprisk")
     BUDGETS=(100 200 300 400 500 600 700 800 900 1000)
     DATASET="togo"
 

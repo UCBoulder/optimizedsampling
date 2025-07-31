@@ -19,7 +19,7 @@ GROUP_PATH="../../0_data/groups/india_secc/image_2_cluster_assignments.pkl"
 GROUP_TYPE="image_clusters_2"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("poprisk" "poprisk_avg" "random" "random_unit" "similarity" "diversity")
+METHODS=("poprisk")
 BUDGETS=(500 1000 2000 5000)
 UTIL_LAMBDAS=(0.5)
 

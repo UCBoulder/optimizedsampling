@@ -45,7 +45,7 @@ def compute_utilities_from_ids(
             similarity_matrix = kwargs.get('similarity_matrix', None)
             results[name] = fn(s, similarity_matrix)
         elif name in ['diversity']:
-            similarity_matrix = kwargs.get('similarity_matrix', None)
+            similarity_matrix = kwargs.get('similarity_train_matrix', None)
             results[name] = fn(s, similarity_matrix)
         else:
             results[name] = fn(s)
@@ -121,6 +121,11 @@ def load_data_for_label(label, group_type='nlcd'):
     similarity_matrix = np.load(similarity_path)
     print(f"Similarity matrix shape: {similarity_matrix.shape}")
     
+    similarity_train_path = f"/home/libe2152/optimizedsampling/0_data/cosine_similarity/usavars/{label}/cosine_similarity_train_train.npy"
+    print(f"Loading similarity matrix from: {similarity_train_path}")
+    similarity_train_matrix = np.load(similarity_train_path)
+    print(f"Similarity train matrix shape: {similarity_train_matrix.shape}")
+
     return all_ids, group_dict, similarity_matrix
 
 def get_utility_functions(group_type='nlcd'):

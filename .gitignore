@@ -15,3 +15,8 @@ shapefiles
 00_output_from_jetstream
 *.tex
 0_output_backup
+0_data_folder/
+*.zip
+cosine_similarity/
+cosine_distance/
+features copy/

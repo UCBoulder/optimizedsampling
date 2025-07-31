@@ -1,7 +1,7 @@
 import pandas as pd
 
 #base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'similarity', 'diversity']
-base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_avg', 'poprisk', 'poprisk_img']
+base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd']
 # base_method_order = ['poprisk', 'poprisk2']
 
 #base_method_order = ['poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'poprisk_avg_img', 'poprisk_avg_img_8']
@@ -95,11 +95,18 @@ if __name__ == "__main__":
         'TOGO_PH_H2O': 'regions'
     }
 
+    admin_types = {
+        'USAVARS_POP': 'states',
+        'USAVARS_TC': 'states',
+        'INDIA_SECC': 'urban_rural',
+        'TOGO_PH_H2O': 'regions'
+    }
+
     cluster_nums = {
         'USAVARS_POP': '8',
         'USAVARS_TC': '8',
-        'INDIA_SECC': '8',
-        'TOGO_PH_H2O': '8'
+        'INDIA_SECC': '2',
+        'TOGO_PH_H2O': '3'
     }
 
     import argparse
@@ -112,11 +119,9 @@ if __name__ == "__main__":
 
     for dataset in DATASET_NAMES:
         method_map = {
-            'poprisk': f'poprisk_{group_types[dataset]}_0.5',
-            'poprisk2': f'poprisk_{group_types[dataset]}_1.0',
-            'poprisk_avg': f'poprisk_avg_{group_types[dataset]}_0.5',
+            'poprisk_admin': f'poprisk_{admin_types[dataset]}_0.5',
+            'poprisk_nlcd': f'poprisk_nlcd_0.5',
             'poprisk_img': f'poprisk_image_clusters_{cluster_nums[dataset]}_0.5',
-            'poprisk_avg_img': f'poprisk_avg_image_clusters_{cluster_nums[dataset]}_0.5',
         }
 
         for ppc in [10, 20, 25]:
