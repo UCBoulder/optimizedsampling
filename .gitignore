@@ -4,3 +4,14 @@ data/*
 test_image/*
 satclip_files/*
 land_cover/*
+*.pkl
+0_data/
+00_old_data/
+0_data_folder/
+00_old_output/
+00_old_results/
+0_output/
+0_output_from_jetstream/
+00_output_from_jetstream/
+0_output_india_multiple/
+*.zip

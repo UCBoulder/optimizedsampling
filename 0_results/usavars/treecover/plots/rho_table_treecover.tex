@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Sampling Type} & \multirow{2}{*}{Size} & \multicolumn{2}{c}{Admin-Rep} & \multicolumn{2}{c}{Image-Rep} & \multicolumn{2}{c}{NLCD-Rep}  \\
+\cmidrule(lr){3-4}
+ & & NLCD & Image & \\
+\midrule
+Cluster & 0.132 & 0.158 & 0.270 & 0.178 \\
+Random & 0.795 & 0.508 & 0.830 & 0.737 \\
+\midrule
+Overall & 0.044 & 0.777 & 0.377 & 0.260 \\
+\bottomrule
+\end{tabular}
+\caption{Spearman correlation coefficients ($\rho$) between utility metrics and $R^2$ scores}
+\label{tab:rho_values}
+\end{table}

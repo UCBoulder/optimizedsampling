@@ -1,0 +1,18 @@
+{
+  "sampling_type": "convenience",
+  "base_name": "IDS_top50_urban_800_points_probabilistic",
+  "intended_sample_size": 800,
+  "actual_sample_size_mean": 800.0,
+  "actual_sample_size_std": 0.0,
+  "num_seeds": 4,
+  "r2_mean": -0.1160466342346071,
+  "r2_std": 0.13034048363427458,
+  "r2_min": -0.22065840415242022,
+  "r2_max": 0.10125535558196419,
+  "r2_scores": [
+    -0.13091134711457242,
+    -0.21387214125339993,
+    0.10125535558196419,
+    -0.22065840415242022
+  ]
+}
