@@ -245,12 +245,14 @@ def build_filtered_df(results_dict, dataset, init_set, cost_type, alpha=None):
         arr = np.array(data["initial_r2"])
         row["initial_r2_mean"] = round(arr.mean(), 2)
         row["initial_r2_std"] = round(arr.std(), 2)
+        row["initial_r2_se"] =  np.std(arr, ddof=1) / np.sqrt(np.size(arr))
 
         for method, vals in data["methods"].items():
             if vals:
                 arr = np.array(vals)
                 row[f"{method}_updated_r2_mean"] = round(arr.mean(), 2)
                 row[f"{method}_updated_r2_std"] = round(arr.std(), 2)
+                row[f"{method}_updated_r2_se"] = np.std(arr, ddof=1) / np.sqrt(np.size(arr))
 
                 delta_vals = data.get("delta_r2", {}).get(method, [])
                 if delta_vals:
@@ -321,6 +323,7 @@ if __name__ == "__main__":
         initial_set_sizes = []
         initial_r2_means = []
         initial_r2_stds = []
+        initial_r2_ses = []
 
         ppc = PPC[dataset]
         num_strata = NUM_STRATA[dataset]
@@ -354,6 +357,7 @@ if __name__ == "__main__":
                             initial_set_sizes.append(size)
                             initial_r2_means.append(np.unique(df['initial_r2_mean']))
                             initial_r2_stds.append(np.unique(df['initial_r2_std']))
+                            initial_r2_ses.append(np.unique(df['initial_r2_se']))
                             seen_initial_sets.add(key)
 
                 except Exception as e:
@@ -362,7 +366,7 @@ if __name__ == "__main__":
 
             if dataset_dfs and not multiple:
                 print(len(dataset_dfs))
-                combined_df = pd.concat(dataset_dfs, ignore_index=True, join="inner")
+                combined_df = pd.concat(dataset_dfs, ignore_index=True, join="outer")
 
                 save_csv(combined_df, dataset, initial_set, multiple=multiple)
                 print(f"Saved combined results for {dataset}")
@@ -381,7 +385,8 @@ if __name__ == "__main__":
             summary_df = pd.DataFrame({
                 'initial_set_size': initial_set_sizes,
                 'initial_r2_mean': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_means],
-                'initial_r2_std': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_stds]
+                'initial_r2_std': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_stds],
+                'initial_r2_se': [vals[0] if len(vals) == 1 else np.nan for vals in initial_r2_ses]
             })
             summary_path = f"results/multiple/{dataset}_initial_r2_summary.csv" if multiple else f"results/{dataset}_initial_r2_summary.csv"
             summary_df.to_csv(summary_path, index=False)
@@ -391,3 +396,4 @@ if __name__ == "__main__":
             initial_set_sizes = []
             initial_r2_means = []
             initial_r2_stds = []
+            initial_r2_ses = []

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from geopy.distance import geodesic
 from shapely.ops import nearest_points
 
-COUNTY_SHP = "/home/libe2152/optimizedsampling/0_data/boundaries/us/us_county_2015"
+COUNTY_SHP = "../../0_data/boundaries/us/us_county_2015"
 
 
 def get_nearest_polygon_index(point, gdf, buffer_degrees=0.5):
@@ -34,7 +34,7 @@ def get_nearest_polygon_index(point, gdf, buffer_degrees=0.5):
     return distances.idxmin()
 
 def process_or_load_counties(gdf_points, label, year):
-    counties_fp = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/usavars/{label}/gdf_counties_{year}.geojson"
+    counties_fp = f"../../0_data/admin_gdfs/usavars/{label}/gdf_counties_{year}.geojson"
     gdf_counties = load_counties_with_combined_id(COUNTY_SHP)
 
     if os.path.exists(counties_fp):
@@ -50,14 +50,10 @@ def process_or_load_counties(gdf_points, label, year):
 def load_counties_with_combined_id(county_shp):
     gdf_counties = gpd.read_file(county_shp)
 
-    # Ensure STATEFP and COUNTYFP are zero-padded strings (2 digits)
     gdf_counties['STATEFP'] = gdf_counties['STATEFP'].astype(str).str.zfill(2)
     gdf_counties['COUNTYFP'] = gdf_counties['COUNTYFP'].astype(str).str.zfill(3)
     gdf_counties['COUNTY_NAME'] = gdf_counties['NAME']
 
-    # Here you may need to add STATE_NAME if missing by mapping from STATEFP (see previous messages)
-    # Assuming gdf_counties has a STATE_NAME column or add it now:
-    # For example, if missing:
     if 'STATE_NAME' not in gdf_counties.columns:
         state_fips_to_name = {
             '01': 'Alabama', '02': 'Alaska', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
@@ -71,11 +67,9 @@ def load_counties_with_combined_id(county_shp):
             '42': 'Pennsylvania', '44': 'Rhode Island', '45': 'South Carolina', '46': 'South Dakota',
             '47': 'Tennessee', '48': 'Texas', '49': 'Utah', '50': 'Vermont', '51': 'Virginia',
             '53': 'Washington', '54': 'West Virginia', '55': 'Wisconsin', '56': 'Wyoming',
-            # Territories could be added if needed
-        } # full mapping dict as before
+        } 
         gdf_counties['STATE_NAME'] = gdf_counties['STATEFP'].map(state_fips_to_name)
 
-    # Create combined_county_id column
     gdf_counties['combined_county_id'] = (
         gdf_counties['COUNTY_NAME'].astype(str) + "_" +
         gdf_counties['COUNTYFP'].astype(str) + "_" +
@@ -91,11 +85,9 @@ def add_counties_to_points(gdf_points, gdf_counties):
 
     print(f"Processing {len(gdf_points)} points and {len(gdf_counties)} counties...")
 
-    # Spatial join points to counties to assign combined_county_id
     gdf_points = gdf_points.to_crs("EPSG:4326")
     gdf_counties = gdf_counties.to_crs("EPSG:4326")
 
-    # Now perform the spatial join
     joined = gpd.sjoin(
         gdf_points,
         gdf_counties[['geometry', 'combined_county_id']],
@@ -151,7 +143,7 @@ if __name__ == "__main__":
     for label in ["population", "treecover"]:
         year = 2015
 
-        with open(f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
+        with open(f"../../0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl", "rb") as f:
             arrs = dill.load(f)
         
         invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
@@ -163,10 +155,8 @@ if __name__ == "__main__":
 
         points = [Point(lon, lat) for lat, lon in latlons]
 
-        # Create a DataFrame first
         df = pd.DataFrame({'id': ids})
 
-        # Create GeoDataFrame
         gdf = gpd.GeoDataFrame(df, geometry=points, crs="EPSG:4326")
         
         gdf_counties = process_or_load_counties(gdf, label, year)

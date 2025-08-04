@@ -45,8 +45,8 @@ def compute_utilities_from_ids(
             similarity_matrix = kwargs.get('similarity_matrix', None)
             results[name] = fn(s, similarity_matrix)
         elif name in ['diversity']:
-            similarity_matrix = kwargs.get('similarity_train_matrix', None)
-            results[name] = fn(s, similarity_matrix)
+            similarity_train_matrix = kwargs.get('similarity_train_matrix', None)
+            results[name] = fn(s, similarity_train_matrix)
         else:
             results[name] = fn(s)
 
@@ -103,6 +103,10 @@ def load_data_for_label(label, group_type='nlcd'):
         group_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/NLCD_cluster_assignments_8_dict.pkl"
     elif group_type == 'image_clusters_8':
         group_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/image_8_cluster_assignments.pkl"
+    elif group_type == 'image_clusters_2':
+        group_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/image_2_cluster_assignments.pkl"
+    elif group_type == 'states':
+        group_path = f"/home/libe2152/optimizedsampling/0_data/groups/usavars/{label}/state_assignments_dict.pkl"
     else:
         raise ValueError(f"Unknown group_type: {group_type}")
     
@@ -126,7 +130,7 @@ def load_data_for_label(label, group_type='nlcd'):
     similarity_train_matrix = np.load(similarity_train_path)
     print(f"Similarity train matrix shape: {similarity_train_matrix.shape}")
 
-    return all_ids, group_dict, similarity_matrix
+    return all_ids, group_dict, similarity_matrix, similarity_train_matrix
 
 def get_utility_functions(group_type='nlcd'):
     """
@@ -142,12 +146,12 @@ def get_utility_functions(group_type='nlcd'):
     
     utility_fns = {
         "size": greedy,
-        'diversity': lambda x, sim_matrix: diversity(x, sim_matrix),
+        #'diversity': lambda x, sim_matrix: diversity(x, sim_matrix),
         f"pop_risk_{group_type}_0.5": lambda x, groups: pop_risk(x, groups, l=0.5),
         f"pop_risk_{group_type}_0": lambda x, groups: pop_risk(x, groups, l=0),
+        f"pop_risk_{group_type}_0.001": lambda x, groups: pop_risk(x, groups, l=0.001),
         f"pop_risk_{group_type}_0.01": lambda x, groups: pop_risk(x, groups, l=0.01),
         f"pop_risk_{group_type}_0.1": lambda x, groups: pop_risk(x, groups, l=0.1),
-        f"pop_risk_{group_type}_0.9": lambda x, groups: pop_risk(x, groups, l=0.9),
         f"pop_risk_{group_type}_0.99": lambda x, groups: pop_risk(x, groups, l=0.99),
         f"pop_risk_{group_type}_1": lambda x, groups: pop_risk(x, groups, l=1),
     }
@@ -175,7 +179,7 @@ def process_sampling_files(base_dir, sampling_type, all_data_dict, label):
     invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
     
     if sampling_type == "convenience_sampling":
-        subfolders = ["urban_based"]
+        subfolders = ["urban_based", "region_based"]
         for subfolder in subfolders:
             print(f"  Processing subfolder: {subfolder}")
             dir_path = os.path.join(base_dir, sampling_type, subfolder)
@@ -234,7 +238,7 @@ def process_directory(dir_path, sampling_label, all_data_dict, invalid_ids):
     
     processed_count = 0
     for sampled_path in tqdm(pkl_files, desc=f"Processing {sampling_label}", leave=False):
-        if not sampled_path.endswith("seed_1.pkl"):
+        if not sampled_path.endswith(".pkl"):
             continue
         
         try:
@@ -243,7 +247,7 @@ def process_directory(dir_path, sampling_label, all_data_dict, invalid_ids):
                 sampled_ids = dill.load(f)
             
             # Handle different data structures
-            if isinstance(sampled_ids, dict) and "sampled_ids" in sampled_ids:
+            if isinstance(sampled_ids, dict) and "sampled_ids" in sampled_ids.keys():
                 sampled_ids = sampled_ids["sampled_ids"]
             
             # Filter out invalid ids
@@ -264,7 +268,8 @@ def process_directory(dir_path, sampling_label, all_data_dict, invalid_ids):
                     data['all_ids'],
                     data['utility_fns'],
                     data['group_dict'],
-                    similarity_matrix=data['similarity_matrix']
+                    similarity_matrix=data['similarity_matrix'],
+                    similarity_train_matrix=data['similarity_train_matrix']
                 )
                 
                 # Add results to combined dictionary
@@ -275,6 +280,7 @@ def process_directory(dir_path, sampling_label, all_data_dict, invalid_ids):
             processed_count += 1
             
         except Exception as e:
+            from IPython import embed; embed()
             print(f"    [Error] Could not process {sampled_path}: {e}")
     
     print(f"    Successfully processed {processed_count} files")
@@ -286,8 +292,8 @@ def main():
     """
     print("Starting utility computation script")
     
-    labels = ['population', 'treecover']
-    group_types = ['nlcd', 'image_clusters_8']
+    labels = ['treecover']
+    group_types = ['nlcd', 'image_clusters_2', 'image_clusters_8', 'states']
     sampling_types = ["cluster_sampling", "convenience_sampling", "random_sampling"]
     
     for label in labels:
@@ -300,13 +306,14 @@ def main():
         for group_type in group_types:
             print(f"\nLoading data for group type: {group_type}")
             try:
-                all_ids, group_dict, similarity_matrix = load_data_for_label(label, group_type)
+                all_ids, group_dict, similarity_matrix, similarity_train_matrix = load_data_for_label(label, group_type)
                 utility_fns = get_utility_functions(group_type)
                 
                 all_data_dict[group_type] = {
                     'all_ids': all_ids,
                     'group_dict': group_dict,
                     'similarity_matrix': similarity_matrix,
+                    'similarity_train_matrix': similarity_train_matrix,
                     'utility_fns': utility_fns
                 }
                 print(f"Successfully loaded data for {group_type}")

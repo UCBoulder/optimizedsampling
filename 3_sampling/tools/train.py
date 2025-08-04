@@ -136,6 +136,7 @@ def main(cfg, train_data):
     data_obj = Data(cfg)
     #train_data, _ = data_obj.getDataset(isTrain=True)
     test_data, _ = data_obj.getDataset(isTrain=False)
+    from IPython import embed; embed()
 
     model = Pipeline([
         ('scaler', StandardScaler()),

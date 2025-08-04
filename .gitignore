@@ -19,3 +19,6 @@ shapefiles
 cosine_similarity/
 cosine_distance/
 features copy/
+0_output_*
+*.json
+0_results/

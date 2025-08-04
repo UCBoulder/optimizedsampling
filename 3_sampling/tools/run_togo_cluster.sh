@@ -8,7 +8,7 @@ run_setting3() {
     DATASET="togo_ph_h20"
     ALPHAS=(10)
 
-    for SIZE in 3000; do
+    for SIZE in 500; do
         INIT_NAME_EXP="cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"
         INIT_NAME="cluster_sampling/2_strata_desired_25ppc_${SIZE}_size"
         INIT_SET_IDS="/home/libe2152/optimizedsampling/0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux/sample_region_canton_25ppc_${SIZE}_size_seed_${seed}.pkl"

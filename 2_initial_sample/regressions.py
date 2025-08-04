@@ -224,12 +224,13 @@ def parse_convenience_seeded_filename(base, seed, filename):
     
     for part in parts:
         # Look for "top{number}" pattern
-        match = re.match(r"top(\d+)", part)
+        match = re.match(r"(\d+)_points", part)
+        match2 = re.match(r"top(\d+)", part)
         if match:
-            num_urban = int(match.group(1))
+            num_urban = int(match2.group(1))
             # For convenience sampling, the intended size might be encoded differently
             # This might need adjustment based on actual filename patterns
-            intended_size = num_urban  # Assuming top{N} means N samples initially
+            intended_size = int(match.group(1))  # Assuming top{N} means N samples initially
             break
         
         # Look for explicit size indicators
@@ -415,7 +416,7 @@ def verify_subset_relationship(groups, verbose=True):
 
 
 def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_test, y_test, 
-                         ridge_regression_fn, min_samples=0, verbose=True):
+                         ridge_regression_fn, min_samples=1100, max_samples=1100, verbose=True):
     """Compute R² statistics for each group of samples."""
     print("\nComputing R² statistics...")
     
@@ -425,6 +426,10 @@ def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_tes
         if intended_size < min_samples:
             if verbose:
                 print(f"[SKIP] Intended size {intended_size} below minimum {min_samples}")
+            continue
+        if intended_size > max_samples:
+            if verbose:
+                print(f"[SKIP] Intended size {intended_size} above maximum {max_samples}")
             continue
         
         print(f"\n--- Processing {sampling_type} sampling, intended size {intended_size} ---")
@@ -489,65 +494,28 @@ def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_tes
     return results
 
 
-def save_results_to_json(results, output_path, verbose=True):
-    """Save results into separate JSON files for each dataset and each initial sample."""
-    print(f"\nSaving split results to {os.path.dirname(output_path)}...")
+def save_results_to_json(results, output_dir, verbose=True):
+    """Save each result to its own JSON file based on its 'base_name'."""
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"\nSaving individual results to {output_dir}...")
 
-    # Collect JSON-serializable entries
-    json_results = []
-    for (_, _, _), stats in results.items():
-        json_results.append(stats)
-
-    # Group by dataset and initial sample
-    grouped = defaultdict(lambda: defaultdict(list))  # grouped[dataset][initial_sample] = [stats, stats, ...]
-
-    for r in json_results:
-        dataset = r.get("dataset", "unknown_dataset")
-        init = r.get("initial_sample", "unknown_initial")
-        grouped[dataset][init].append(r)
-
-    # Save one file per (dataset, initial_sample)
     count = 0
-    for dataset, init_dict in grouped.items():
-        for initial_sample, stats_list in init_dict.items():
-            save_dir = os.path.join(os.path.dirname(output_path), dataset)
-            os.makedirs(save_dir, exist_ok=True)
+    for (_, _, _), stats in results.items():
+        base_name = stats.get("base_name", f"unnamed_{count}")
+        file_name = f"{base_name}.json"
+        file_path = os.path.join(output_dir, file_name)
 
-            file_name = f"r2_stats_{initial_sample}.json"
-            file_path = os.path.join(save_dir, file_name)
+        with open(file_path, 'w') as f:
+            json.dump(stats, f, indent=2)
 
-            # Create summary
-            summary = {
-                'dataset': dataset,
-                'initial_sample': initial_sample,
-                'sampling_types': list(set(r['sampling_type'] for r in stats_list)),
-                'size_ranges': {
-                    st: {
-                        'min_size': min(r['intended_sample_size'] for r in stats_list if r['sampling_type'] == st),
-                        'max_size': max(r['intended_sample_size'] for r in stats_list if r['sampling_type'] == st),
-                        'num_groups': len([r for r in stats_list if r['sampling_type'] == st])
-                    }
-                    for st in set(r['sampling_type'] for r in stats_list)
-                },
-                'total_groups': len(stats_list),
-            }
-
-            output_data = {
-                'summary': summary,
-                'results': sorted(stats_list, key=lambda r: (r['sampling_type'], r['intended_sample_size']))
-            }
-
-            with open(file_path, 'w') as f:
-                json.dump(output_data, f, indent=2)
-
-            count += 1
-            if verbose:
-                print(f"✓ Saved {len(stats_list)} results to {file_path}")
+        count += 1
+        if verbose:
+            print(f"✓ Saved {file_path}")
 
     print(f"\nSaved {count} JSON files.")
 
 def seeded_sampling_r2_analysis(dataset_name, features_path, sampling_dir, results_dir, ridge_regression_fn,
-                               min_samples=0, verify_subsets=True, verbose=True, **kwargs):
+                               min_samples=1100, verify_subsets=True, verbose=True, **kwargs):
     """Main function to perform seeded sampling R² analysis."""
     print(f"\n{'='*80}")
     print(f"STARTING SEEDED SAMPLING R² ANALYSIS")
@@ -586,15 +554,12 @@ def seeded_sampling_r2_analysis(dataset_name, features_path, sampling_dir, resul
     # Compute R² statistics
     results = compute_r2_statistics(
         groups, id_to_index, X_train_full, y_train_full, X_test, y_test,
-        ridge_regression_fn, min_samples, verbose
+        ridge_regression_fn, min_samples, verbose=True
     )
     from IPython import embed; embed()
-    initial_sample_name = results['base_name']
-    
     # Save results
-    output_filename = f"seeded_sampling_r2_statistics_{os.path.basename(sampling_dir)}.json"
-    output_path = os.path.join(results_dir, output_filename)
-    save_results_to_json(results, output_path, dataset_name, initial_sample_name, verbose=verbose)
+    output_dir = results_dir  # or wherever you want the per-base_name files saved
+    save_results_to_json(results, output_dir, verbose=verbose)
     
     print(f"\n{'='*80}")
     print(f"COMPLETED SEEDED SAMPLING R² ANALYSIS")
@@ -617,7 +582,7 @@ def get_sampling_directories(dataset, label=None):
             'convenience_sampling_urban_dir': f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based",
             'convenience_sampling_region_dir': f"/home/libe2152/optimizedsampling/0_data/initial_samples/usavars/{label}/convenience_sampling/region_based",
             'random_sampling_dir': None,
-            'results_dir': f"/home/libe2152/optimizedsampling/0_results/usavars/{label}",
+            'results_dir': f"{dataset}_{label}_sampling_stats_json",
             'dataset': dataset
         }
     
@@ -628,7 +593,7 @@ def get_sampling_directories(dataset, label=None):
             'convenience_sampling_urban_dir': None,
             'convenience_sampling_region_dir': None,
             'random_sampling_dir': None,
-            'results_dir': "/home/libe2152/optimizedsampling/0_results/togo",
+            'results_dir': f"{dataset}_sampling_stats_json",
             'dataset': dataset,
             'label': 'ph_h2o'
         }
@@ -636,11 +601,11 @@ def get_sampling_directories(dataset, label=None):
     elif dataset == "india_secc":
         return {
             'features_path': "/home/libe2152/optimizedsampling/0_data/features/india_secc/India_SECC_with_splits_4000.pkl",
-            'cluster_sampling_dir': "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/randomstrata",
+            'cluster_sampling_dir': "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/cluster_sampling/fixedstrata_01-04-06-08-09-11-21-23-25-33",
             'convenience_sampling_urban_dir': "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/urban_based",
             'convenience_sampling_region_dir': "/home/libe2152/optimizedsampling/0_data/initial_samples/india_secc/convenience_sampling/cluster_based",
             'random_sampling_dir': None,
-            'results_dir': "/home/libe2152/optimizedsampling/0_results/india_secc",
+            'results_dir': f"{dataset}_sampling_stats_json",
             'dataset': dataset
         }
     
@@ -667,7 +632,7 @@ def process_dataset_seeded_analysis(dataset, label=None, ridge_regression_fn=Non
         'results_dir': dirs['results_dir'],
         'ridge_regression_fn': ridge_regression_fn,
         'verbose': True,
-        'min_samples': 0,
+        'min_samples': 1100,
         'verify_subsets': True
     }
     
@@ -702,24 +667,24 @@ def main():
     print("="*80)
     
     # Process Togo dataset
-    process_dataset_seeded_analysis(
-        dataset="togo",
-        ridge_regression_fn=ridge_regression,
-        run_cluster=True,
-        run_convenience_urban=False,
-        run_convenience_region=False,
-        run_random=False
-    )
+    # process_dataset_seeded_analysis(
+    #     dataset="togo",
+    #     ridge_regression_fn=ridge_regression,
+    #     run_cluster=True,
+    #     run_convenience_urban=False,
+    #     run_convenience_region=False,
+    #     run_random=False
+    # )
     
     # Process India dataset
-    process_dataset_seeded_analysis(
-        dataset="india_secc",
-        ridge_regression_fn=ridge_regression,
-        run_cluster=False,
-        run_convenience_urban=True,
-        run_convenience_region=True,
-        run_random=False
-    )
+    # process_dataset_seeded_analysis(
+    #     dataset="india_secc",
+    #     ridge_regression_fn=ridge_regression,
+    #     run_cluster=True,
+    #     run_convenience_urban=False,
+    #     run_convenience_region=False,
+    #     run_random=False
+    # )
     
     # Process USAVars datasets (commented out)
     for label in ['population', 'treecover']:
@@ -728,9 +693,9 @@ def main():
             label=label,
             ridge_regression_fn=ridge_regression,
             run_cluster=True,
-            run_convenience_urban=True,
+            run_convenience_urban=False,
             run_convenience_region=False,
-            run_random=True
+            run_random=False
         )
     
     print("\n" + "="*80)

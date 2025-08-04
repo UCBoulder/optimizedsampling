@@ -8,7 +8,7 @@ run_setting3() {
     DATASET="usavars"
     ALPHAS=(10)
     GROUP_PATH="../../0_data/groups/usavars/treecover/image_8_cluster_assignments.pkl"
-    GROUP_TYPE="image_cluster_8"
+    GROUP_TYPE="image_clusters_8"
 
     for SIZE in 100; do
         INIT_NAME_EXP="cluster_sampling_5_fixedstrata_10ppc_${SIZE}_size"

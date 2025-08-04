@@ -1,7 +1,7 @@
 # === run_setting2.sh ===
 
 #!/bin/bash
-source "$(dirname "$0")/run_india.sh"
+source "$(dirname "$0")/run_togo.sh"
 
 run_setting2() {
     local seed="$1"

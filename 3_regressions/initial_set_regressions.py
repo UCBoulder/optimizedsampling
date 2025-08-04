@@ -495,8 +495,8 @@ def process_usavars_datasets(ridge_regression_fn):
             label=label,
             ridge_regression_fn=ridge_regression_fn,
             run_cluster=False,
-            run_convenience_urban=True,
-            run_convenience_region=False,
+            run_convenience_urban=False,
+            run_convenience_region=True,
             run_random=False
         )
 
@@ -541,9 +541,9 @@ def main():
     print("="*80)
     
     # Process different datasets
-    # process_usavars_datasets(ridge_regression)
-    process_togo_dataset(ridge_regression)
-    process_india_dataset(ridge_regression)
+    process_usavars_datasets(ridge_regression)
+    # process_togo_dataset(ridge_regression)
+    # process_india_dataset(ridge_regression)
     
     print("\n" + "="*80)
     print("ANALYSIS COMPLETE")

@@ -1,4 +1,4 @@
-initial_set_size,initial_r2_mean,initial_r2_std
-100,-0.0,0.26
-200,0.31,0.11
-300,0.38,0.07
+initial_set_size,initial_r2_mean,initial_r2_std,initial_r2_se
+100,-0.0,0.26,0.08811558854393724
+200,0.31,0.11,0.03812313150248226
+300,0.38,0.07,0.021669769008664786

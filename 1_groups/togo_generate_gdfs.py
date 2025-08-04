@@ -45,7 +45,7 @@ def get_nearest_polygon_index(point, gdf, buffer_degrees=0.5):
     return distances.idxmin()
 
 def process_or_load_adm3(gdf_points):
-    all_adm3_path = f"/home/libe2152/optimizedsampling/0_data/admin_gdfs/togo/gdf_adm3.geojson"
+    all_adm3_path = f"../../0_data/admin_gdfs/togo/gdf_adm3.geojson"
     gdf_adm3 = load_adm3_admin_columns(ADM3_SHP)
 
     if os.path.exists(all_adm3_path):
@@ -166,7 +166,7 @@ def plot_points_distribution(label, counts, division_type, division_col, log_sca
 
 if __name__ == "__main__":
     type_str = "2017_Jan_Jun_P20"
-    with open(f"/home/libe2152/optimizedsampling/0_data/features/togo/togo_fertility_data_all_{type_str}.pkl", "rb") as f:
+    with open(f"../../0_data/features/togo/togo_fertility_data_all_{type_str}.pkl", "rb") as f:
         arrs = dill.load(f)
     
     ids = arrs['ids_train']

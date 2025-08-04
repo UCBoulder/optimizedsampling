@@ -1,2 +1,2 @@
-dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,random_updated_r2_mean,random_updated_r2_std,random_delta_r2_mean,random_delta_r2_se
-INDIA_SECC,10_state_district_desired_20ppc_1000_size,cluster_based_c1_20_c2_30,10,1000,10.0,-0.15,0.4,-0.15,0.4,-0.0,0.0003699999999999995
+dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,initial_r2_se,random_updated_r2_mean,random_updated_r2_std,random_updated_r2_se,random_delta_r2_mean,random_delta_r2_se
+INDIA_SECC,10_state_district_desired_20ppc_1000_size,cluster_based_c1_20_c2_30,10,1000,10.0,-0.15,0.4,0.13370550096719613,-0.15,0.4,0.13362262765797647,-0.0,0.0003699999999999995

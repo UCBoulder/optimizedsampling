@@ -21,22 +21,18 @@ def compute_exact_geodesic_nn_balltree(points_geom, urban_geom):
         """Convert Polygon/MultiPolygon to centroid if necessary."""
         return [geom.centroid if geom.geom_type != "Point" else geom for geom in geoms]
 
-    # Ensure all are points
     points_geom_clean = ensure_points(points_geom)
     urban_geom_clean = ensure_points(urban_geom)
 
-    # Extract lat/lon and convert to radians
     points_coords = np.array([[pt.y, pt.x] for pt in points_geom_clean])
     urban_coords = np.array([[pt.y, pt.x] for pt in urban_geom_clean])
 
     points_rad = np.radians(points_coords)
     urban_rad = np.radians(urban_coords)
 
-    # BallTree NN query with haversine distance
     tree = BallTree(urban_rad, metric='haversine')
     dist_rad, _ = tree.query(points_rad, k=1)
 
-    # Convert to kilometers
     dist_km = dist_rad.flatten() * 6371.0  # Earth radius in km
 
     return dist_km
@@ -53,12 +49,11 @@ def compute_or_load_distances_to_urban(gdf_points, gdf_urban_top, dist_path, id_
     assert gdf_points.crs.to_string() == "EPSG:4326"
     assert gdf_urban_top.crs.to_string() == "EPSG:4326"
 
-    # Project to CEA for accurate centroid computation
+    # project to CEA for accurate centroid computation
     cea_crs = "+proj=cea"
     gdf_points_proj = gdf_points.to_crs(cea_crs)
     gdf_urban_proj = gdf_urban_top.to_crs(cea_crs)
 
-    # Compute centroids (only if not Point)
     def get_centroids(gdf_orig, gdf_proj):
         return gdf_proj.geometry.centroid if not all(gdf_orig.geom_type == "Point") else gdf_orig.geometry
 
@@ -92,7 +87,6 @@ def compute_or_load_cluster_centroid_distances_to_urban(gdf_clusters, gdf_urban_
     assert gdf_clusters.crs.to_string() == "EPSG:4326"
     assert gdf_urban_top.crs.to_string() == "EPSG:4326"
 
-    # Project to projected CRS for centroid accuracy
     cluster_centroids = (
         gdf_clusters.to_crs("+proj=cea").geometry.centroid.to_crs("EPSG:4326")
     )
@@ -204,7 +198,6 @@ def save_cost_array(ids, costs, out_path):
 
     print(f"Saved cost array with {len(ids)} points to {out_path}")
 
-# === Example Usage ===
 if __name__ == "__main__":
     #usavars 
     for label in ["population", "treecover"]:

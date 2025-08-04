@@ -25,7 +25,7 @@ from torchgeo.datasets.utils import Path, download_url, extract_archive
 invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
 
 def load_from_pkl(label, split):
-    data_path = f"/home/libe2152/optimizedsampling/0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
+    data_path = f"../..0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
 
     with open(data_path, "rb") as f:
         arrs = dill.load(f)
@@ -199,7 +199,6 @@ class USAVars(NonGeoDataset):
 
     def _verify(self) -> None:
         """Verify the integrity of the dataset."""
-        # Check if the extracted files already exist
         pathname = os.path.join(self.root, 'uar')
         csv_pathname = os.path.join(self.root, '*.csv')
         split_pathname = os.path.join(self.root, '*_split.txt')
@@ -208,13 +207,11 @@ class USAVars(NonGeoDataset):
         if glob.glob(pathname) and csv_split_count == (8, 3):
             return
 
-        # Check if the zip files have already been downloaded
         pathname = os.path.join(self.root, self.dirname + '.zip')
         if glob.glob(pathname) and csv_split_count == (8, 3):
             self._extract()
             return
 
-        # Check if the user requested to download the dataset
         if not self.download:
             print("Raising DatasetNotFoundError")
             raise DatasetNotFoundError(self)
@@ -279,7 +276,7 @@ class USAVars(NonGeoDataset):
     def plot_subset_on_map(
         self,
         indices: Sequence[int],
-        country_shape_file: str = '/home/libe2152/optimizedsampling/0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp',
+        country_shape_file: str = '../../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp',
         country_name: str | None = None,
         exclude_names: list[str] = ['Alaska', 'Hawaii', 'Puerto Rico'],
         point_color: str = 'red',
@@ -303,7 +300,6 @@ class USAVars(NonGeoDataset):
             A matplotlib Figure showing the points on the map.
         """
         print("Plotting latlon subset...")
-        # Load the country shapefile
         country = gpd.read_file(country_shape_file)
 
         if country_name is not None and 'NAME' in country.columns:
@@ -312,11 +308,9 @@ class USAVars(NonGeoDataset):
         if exclude_names:
             country = country[~country['name'].isin(exclude_names)]
 
-        # Create GeoDataFrame of selected lat/lons
         latlons_subset = self.latlons[indices]
         points_gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(latlons_subset[:, 1], latlons_subset[:, 0]), crs='EPSG:4326')
 
-        # Plot
         fig, ax = plt.subplots(figsize=(12, 10))
         country.plot(ax=ax, edgecolor='black', facecolor='none')
         points_gdf.plot(ax=ax, color=point_color, markersize=point_size)

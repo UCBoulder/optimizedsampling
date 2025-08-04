@@ -6,13 +6,13 @@ source "$(dirname "$0")/run_india.sh"
 run_setting3() {
     local seed="$1"
     SEEDS=(1 42 123 456 789)
-    METHODS=("random" "poprisk")
-    BUDGETS=(200 400 600 800 1000 2000)
+    METHODS=("poprisk")
+    BUDGETS=(600)
     DATASET="india"
-    GROUP_TYPE="urban_rural"
-    GROUP_PATH="/home/libe2152/optimizedsampling/0_data/groups/india_secc/urban_rural_groups.pkl"
+    GROUP_TYPE="states"
+    GROUP_PATH="../../0_data/groups/india_secc/state_assignments_dict.pkl"
 
-    for SIZE in 0 2000 3000 4000 5000; do
+    for SIZE in 4000; do
         for PPC in 20; do
             if [ "$SIZE" -eq 0 ]; then
                 INIT_NAME_EXP="empty_initial_set"

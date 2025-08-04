@@ -11,25 +11,40 @@ import matplotlib.ticker as mticker\
 mpl.rcParams['font.family'] = 'serif'
 plt.rcParams.update({'font.size': 24}) 
 
+tab10 = plt.get_cmap("tab10")
+
+# Group method keys by display name
 METHOD_NAMES = {
-    "random" : "Random",
     "random_unit": "Random Clusters",
-    # "greedycost": "Greedy Low-Cost", 
-    "poprisk_nlcd_0.5": "PopRisk ($\lambda = 0.5$)",
-    "poprisk_regions_0.5": "PopRisk ($\lambda = 0.5$)"
+    "poprisk_regions_0.5": "Admin-Rep",
+    "poprisk_image_clusters_3_0.5": "Image-Rep",
+    "poprisk_states_0.5": "Admin-Rep",
+    #"poprisk_image_clusters_8_0.5": "Image-Rep",
 }
 
+# Unique display names in desired color order
+display_name_order = [
+    "Image-Rep",        # tab10(0)
+    "Random Clusters",  # tab10(1)
+    "Admin-Rep",        # tab10(2)
+]
+
+# Assign color per display name
+DISPLAY_NAME_COLORS = {
+    name: tab10(i) for i, name in enumerate(display_name_order)
+}
+
+# Build final METHOD_COLORS using display names
 METHOD_COLORS = {
-    "random": "#1f77b4",        # blue
-    "random_unit": "#ff7f0e",   # orange
-    # "greedycost": "#2ca02c",    # green
-    "poprisk_nlcd_0.5" : "#d62728",       # red
-    "poprisk_regions_0.5": "#d62728"
+    method_key: DISPLAY_NAME_COLORS[display_name]
+    for method_key, display_name in METHOD_NAMES.items()
 }
 
+# Example dataset names (unchanged)
 DATASET_NAMES = {
     "INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O"
 }
+
 
 def load_and_filter_csv(csv_path, budget):
     """
@@ -70,12 +85,13 @@ def plot_delta_r2_vs_alpha(df, r2_mean_cols, r2_se_cols, budget, save_path=None,
 
     # Color, marker, and linestyle settings
     markers = ['o', 's', 'D', '^', 'v', 'P', 'X'] * 2
-    linestyles = ['-', '--', '-.', ':'] * 3
+    linestyles = ['--', '-', '-.', ':'] * 3
 
     for idx, (mean_col, se_col) in enumerate(zip(r2_mean_cols, r2_se_cols)):
         method_name = extract_method_name(mean_col)
         if method_name not in METHOD_NAMES.keys():
             continue
+        print(method_name)
 
         method_name_str = METHOD_NAMES[method_name]
         alpha_vals = df['alpha']
@@ -95,7 +111,7 @@ def plot_delta_r2_vs_alpha(df, r2_mean_cols, r2_se_cols, budget, save_path=None,
             marker=markers[idx],
             linestyle=linestyles[idx],
             color=METHOD_COLORS[method_name],
-            linewidth=2,
+            linewidth=4,
             markersize=6
         )
         print('plotted')
@@ -109,8 +125,8 @@ def plot_delta_r2_vs_alpha(df, r2_mean_cols, r2_se_cols, budget, save_path=None,
             alpha=0.1
         )
 
-    ax.set_xlabel("Cost Difference", fontsize=24, fontweight='bold')
-    ax.set_ylabel("Δ R²", fontsize=24, fontweight='bold')
+    ax.set_xlabel("Cost Difference", fontsize=24)
+    ax.set_ylabel("Δ R²", fontsize=24)
 
     ax.tick_params(labelsize=20)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(5))

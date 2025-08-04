@@ -1,7 +1,7 @@
 import pandas as pd
 
 #base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'similarity', 'diversity']
-base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd']
+base_method_order = ['greedycost', 'random_unit', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd', 'diversity']
 # base_method_order = ['poprisk', 'poprisk2']
 
 #base_method_order = ['poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'poprisk_avg_img', 'poprisk_avg_img_8']
@@ -98,14 +98,14 @@ if __name__ == "__main__":
     admin_types = {
         'USAVARS_POP': 'states',
         'USAVARS_TC': 'states',
-        'INDIA_SECC': 'urban_rural',
+        'INDIA_SECC': 'states',
         'TOGO_PH_H2O': 'regions'
     }
 
     cluster_nums = {
         'USAVARS_POP': '8',
         'USAVARS_TC': '8',
-        'INDIA_SECC': '2',
+        'INDIA_SECC': '8',
         'TOGO_PH_H2O': '3'
     }
 

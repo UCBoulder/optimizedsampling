@@ -1,4 +1,4 @@
-filename,seed,sample_size,points_per_cluster,strata,cluster,r2
+initial_set,seed,size,points_per_cluster,strata,cluster,r2
 sample_state_combined_county_id_10ppc_1000_size_seed_1.pkl,1,973,1000,county,id,0.7874047254039661
 sample_state_combined_county_id_10ppc_1000_size_seed_1213.pkl,1213,977,1000,county,id,0.7737762762656955
 sample_state_combined_county_id_10ppc_1000_size_seed_123.pkl,123,977,1000,county,id,0.8016834221847967

@@ -7,8 +7,6 @@ run_setting3() {
     local seed="$1"
     DATASET="usavars"
     ALPHAS=(10)
-    GROUP_PATH="../../0_data/groups/usavars/population/image_8_cluster_assignments.pkl"
-    GROUP_TYPE="image_8_clusters"
 
     for SIZE in 100; do
         INIT_NAME_EXP="cluster_sampling_5_fixedstrata_10ppc_${SIZE}_size"

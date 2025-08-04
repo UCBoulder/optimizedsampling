@@ -22,7 +22,7 @@ SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
 METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
 BUDGETS=(50 100 200 300 400 500 1000)
 
-UTIL_LAMBDAS=(0.5)
+UTIL_LAMBDAS=(0.5 1.0)
 
 # === Helpers ===
 send_error_email() {
