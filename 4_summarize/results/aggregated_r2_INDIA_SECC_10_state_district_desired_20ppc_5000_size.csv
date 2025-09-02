@@ -1,2 +1,0 @@
-dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,initial_r2_se,random_updated_r2_mean,random_updated_r2_std,random_updated_r2_se,random_delta_r2_mean,random_delta_r2_se
-INDIA_SECC,10_state_district_desired_20ppc_5000_size,cluster_based_c1_20_c2_30,10,5000,10.0,0.23,0.03,0.010624456064508273,0.21,0.07,0.02234609312112025,-0.03,0.021542170787138007
