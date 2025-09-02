@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Sampling Type} & \multirow{2}{*}{Size} & \multicolumn{2}{c}{Admin-Rep} & \multicolumn{2}{c}{Image-Rep} & \multicolumn{2}{c}{NLCD-Rep}  \\
+\cmidrule(lr){3-4}
+ & & NLCD & Image & \\
+\midrule
+Cluster & 0.425 & 0.427 & 0.443 & 0.459 \\
+Convenience (Urban) & 0.168 & 0.124 & 0.172 & 0.189 \\
+Random & 0.768 & 0.042 & 0.765 & 0.703 \\
+\midrule
+Overall & 0.163 & 0.303 & 0.494 & 0.559 \\
+\bottomrule
+\end{tabular}
+\caption{Spearman correlation coefficients ($\rho$) between utility metrics and $R^2$ scores}
+\label{tab:rho_values}
+\end{table}
