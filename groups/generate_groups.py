@@ -139,7 +139,5 @@ def main():
         output_path = f"{output_dir}/{args.group_type}_assignments.pkl"
         save_dict_to_pkl(group_dict, output_path)
         print(f"Saved group assignments to: {output_path}")
-        from IPython import embed; embed()
-
 if __name__ == "__main__":
     main()

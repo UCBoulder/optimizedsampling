@@ -37,23 +37,28 @@ Download using `torchgeo`.
 Process/download from this repository: https://github.com/emilylaiken/satellite-fairness-replication
 
 #### India SECC Dataset Files:
+
 - `mosaiks_features_by_shrug_condensed_regions_25_max_tiles_100_india.csv`  
- - **Description**: Precomputed MOSAIKS features (4000-dim)  
- - **Columns**:  
-   - `condensed_shrug_id`: Unique ID per unit  
-   - `Feature0` to `Feature3999`: Satellite features  
+  - **Description**:  
+    - Precomputed MOSAIKS features (4000-dim)  
+  - **Columns**:  
+    - `condensed_shrug_id`: Unique ID per unit  
+    - `Feature0` to `Feature3999`: Satellite features  
 
 - `grouped.csv`  
- - **Description**: Contains labels  
- - **Columns**:  
-   - `condensed_shrug_id` (matching above)  
-   - `secc_cons_pc_combined`: Target variable  
+  - **Description**:  
+    - Contains labels  
+  - **Columns**:  
+    - `condensed_shrug_id` (matching above)  
+    - `secc_cons_pc_combined`: Target variable  
 
 - `villages_with_regions.shp`  
- - **Description**: Shapefile with spatial polygons  
- - **Columns**:  
-   - `condensed_`: Will be renamed to `condensed_shrug_id`  
-   - `geometry`: Polygon geometries  
+  - **Description**:  
+    - Shapefile with spatial polygons  
+  - **Columns**:  
+    - `condensed_`: Will be renamed to `condensed_shrug_id`  
+    - `geometry`: Polygon geometries  
+
 
 ### Togo Soil Fertility Data
 *Not yet available.* Will be released by the Togolese Ministry of Agriculture.
@@ -67,6 +72,8 @@ Process/download from this repository: https://github.com/emilylaiken/satellite-
 Run:
 
 ```bash
+cd datasets
+
 python featurization.py \
  --dataset_name USAVars \
  --data_root /path/to/your/data/root \
@@ -86,13 +93,15 @@ Follow instructions at: [satellite-fairness-replication](https://github.com/emil
 Run `format_data.py`:
 
 ```bash
+cd datasets
+
 python format_data.py \
  --save \
  --label population \  # or other label
- --feature_path CONTUS_UAR_torchgeo4096.pkl  # or India features
+ --feature_path /path/to/featurized/data/CONTUS_UAR_torchgeo4096.pkl  # or India features
 ```
 
-Creates an 80/20 split, saved as a `.pkl` file.
+Creates an 80/20 split, saved as a `.pkl` file with {X, y, latlon}_{train, test}.
 
 ---
 
@@ -105,11 +114,12 @@ GeoDataFrames are used for clusters and region-based sampling strategies.
 First, download US county shape files from [census.gov](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) (Here we use 2015 shape files):
 
 ```bash
+cd groups
+
 python usavars_generate_gdfs.py \
  --labels population,treecover \
  --input_folder ../0_data/features/usavars \
  --year 2015 \
- --invalid_ids "615,2801 1242,645 539,3037 666,2792 1248,659 216,2439" \
  --county_shp ../0_data/boundaries/us/us_county_2015 \
  --output_dir ./admin_gdfs/usavars
 ```
@@ -136,56 +146,42 @@ python togo_generate_gdfs.py
 - **Image Groups**: Feature-based KMeans clustering  
 - **NLCD Groups**: Land cover classes (U.S. only)  
 
-### Image Clustering
-
-Run:
-
-```bash
-python image_clusters.py
-```
-
 ### Group Assignment Example
 
 #### Admin Groups
 
-```bash
-python generate_groups.py \
- --datasets "usavars_pop,usavars_tc,india_secc,togo" \
- --gdf_paths \
-   "../0_data/admin_gdfs/usavars/gdf_counties_population_2015.geojson" \
-   "../0_data/admin_gdfs/usavars/gdf_counties_treecover_2015.geojson" \
-   "/share/india_secc/train_shrugs_with_admins.geojson" \
-   "../../togo/gdf_adm3.geojson" \
- --id_cols "id" "id" "condensed_shrug_id" "id" \
- --shape_files "../0_data/boundaries/us/us_county_2015" \
- --country_names "None" "None" "India" "None" \
- --exclude_names "Alaska,Hawaii,Puerto Rico" \
- --group_type "counties" \
- --group_cols "combined_county_id"
-```
+### County Groups Example
 
-and
+Generate **county-level groups** for a single dataset (US population):
 
 ```bash
 python generate_groups.py \
- --datasets "usavars_pop,usavars_tc,india_secc,togo" \
- --gdf_paths \
-   "../0_data/admin_gdfs/usavars/gdf_counties_population_2015.geojson" \
-   "../0_data/admin_gdfs/usavars/gdf_counties_treecover_2015.geojson" \
-   "/share/india_secc/train_shrugs_with_admins.geojson" \
-   "../../togo/gdf_adm3.geojson" \
- --id_cols "id" "id" "condensed_shrug_id" "id" \
- --shape_files "../0_data/boundaries/us/us_county_2015" \
- --country_names "None" "None" "India" "None" \
- --exclude_names "Alaska,Hawaii,Puerto Rico" \
- --group_type "states" \
- --group_cols "state_name"
+    --datasets "usavars_pop" \
+    --gdf_paths "../0_data/admin_gdfs/usavars/gdf_counties_population_2015.geojson" \
+    --id_cols "id" \
+    --shape_files "../0_data/boundaries/us/us_county_2015" \
+    --group_type "counties" \
+    --group_cols "combined_county_id"
 ```
+
+To run for other datasets (`usavars_tc`, `india_secc`, `togo`), replace the `--datasets`, `--gdf_paths`, `--id_cols` arguments accordingly.
+
+Note: the following groups should be made:
+- USAVars: `state`, `county`
+- India SECC: `state`, `district`
+- Togo : `region`, `cantons`
 
 #### Image Groups
 
+The `image_clusters.py` script generates clusters from image features.
+
 ```bash
-python image_clusters.py
+python image_clusters.py \
+    --dataset USAVars \ #or India SECC, Togo
+    --num_clusters 8 \ #or 3
+    --feature_path /path/to/features.pkl \
+    --output_path /path/to/save/clusters_{num_clusters}.pkl
+
 ```
 
 #### NLCD Groups (U.S. only)

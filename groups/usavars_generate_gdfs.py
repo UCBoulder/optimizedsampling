@@ -182,12 +182,6 @@ if __name__ == "__main__":
         help="Year for county processing",
     )
     parser.add_argument(
-        "--invalid_ids",
-        type=str,
-        default="615,2801 1242,645 539,3037 666,2792 1248,659 216,2439",
-        help="Space-separated list of invalid IDs",
-    )
-    parser.add_argument(
         "--county_shp",
         type=str,
         default="../../0_data/boundaries/us/us_county_2015",
@@ -203,9 +197,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     COUNTY_SHP = args.county_shp  # Define COUNTY_SHP here from args
+    INVALID_IDS = ['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439']
 
     labels = [lbl.strip() for lbl in args.labels.split(",")]
-    invalid_ids = np.array(args.invalid_ids.split())
 
     for label in labels:
         feature_path = f"{args.input_folder}/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl"
@@ -217,7 +211,7 @@ if __name__ == "__main__":
         ids_train = arrs["ids_train"]
         latlons_train = arrs["latlons_train"]
 
-        valid_idxs = np.where(~np.isin(ids_train, invalid_ids))[0]
+        valid_idxs = np.where(~np.isin(ids_train, INVALID_IDS))[0]
         valid_ids = ids_train[valid_idxs]
         valid_latlons = latlons_train[valid_idxs]
 
