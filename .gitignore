@@ -1,24 +1,63 @@
-__pycache__
-0_data/
-*.png
+# ----------------------
+# Python artifacts
+# ----------------------
+__pycache__/
+*.pyc
+
+# ----------------------
+# Jupyter / notebook outputs
+# ----------------------
+*.ipynb_checkpoints
+*.ipynb
+
+# ----------------------
+# IDE / editor
+# ----------------------
 .vscode/
-0_results/*/*/summaries
-0_results/*/*/plots
-0_output
-00_old_data
-00_old_results
-00_old_output
-00_old_output2
-india_secc
-shapefiles
-00_output_from_jetstream
-*.tex
-0_output_backup
+
+# ----------------------
+# Large data folders
+# ----------------------
+0_data/
 0_data_folder/
-*.zip
+00_old_data/
+shapefiles/
 cosine_similarity/
 cosine_distance/
 features copy/
+
+# ----------------------
+# Outputs / results
+# ----------------------
+0_output/
 0_output_*
+0_output_backup/
+00_old_output/
+00_old_output2/
+00_output_from_jetstream/
+#0_results/
+0_results/*/*/summaries
+0_results/*/*/plots
+00_old_results/
+india_secc/
+
+# ----------------------
+# Archives / compressed
+# ----------------------
+*.zip
+*.tar.gz
+
+# ----------------------
+# Images / figures
+# ----------------------
+*.png
+
+# ----------------------
+# LaTeX / auxiliary files
+# ----------------------
+*.tex
+
+# ----------------------
+# JSON / other intermediate files
+# ----------------------
 *.json
-0_results/

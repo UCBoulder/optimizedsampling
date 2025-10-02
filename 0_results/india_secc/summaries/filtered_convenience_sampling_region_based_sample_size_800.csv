@@ -1,5 +1,0 @@
-filename,sample_size,seed,source,r2
-IDS_region_28_800_points_seed_1.pkl,800,,region_based,-7.521747915449277
-IDS_region_28_800_points_seed_123.pkl,800,,region_based,-0.5911030203197007
-IDS_region_28_800_points_seed_42.pkl,800,,region_based,-0.743828177571535
-IDS_region_28_800_points_seed_456.pkl,800,,region_based,-1.5193264551831258
