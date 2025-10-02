@@ -6,7 +6,7 @@ import torch
 import dill
 import numpy as np
 
-from torchgeo.models import RCF
+from torchgeo.models import RCF, swin_v2_t, swin_v2_b
 from USAVars import USAVars
 
 DATASET_CLASSES = {
@@ -29,6 +29,49 @@ def load_dataset(dataset_name, data_root, split, labels):
         checksum=False,
     )
 
+def transformer_featurization(train, val, test, total_num_images):
+    num_features=1024
+    out_fpath = f"data/int/feature_matrices/CONTUS_UAR_swin_v2_b.pkl"
+
+    # ids, latlons extraction
+    ids, latlons = format_ids_latlons(total_num_images, train, val, test)
+
+    # Load SwinV2-B pretrained on NAIP MI-SATLAS
+    model = swin_v2_b(weights="NAIP_RGB_MI_SATLAS")
+    model.eval()
+    model.head = torch.nn.Identity()  # remove classification head
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    print("Featurizing images...")
+
+    featurized_imgs = np.empty((total_num_images, num_features), dtype=np.float32)
+
+    for i in range(total_num_images):
+        print(f"Featurizing image {i}/{total_num_images}")
+
+        if i < len(train):
+            img = train[i]['image']
+        elif i < len(train) + len(val):
+            img = val[i - len(train)]['image']
+        else:
+            img = test[i - len(train) - len(val)]['image']
+
+        # Ensure batch dimension and move to device
+        img = img.unsqueeze(0).to(device)  # shape (1, C, H, W)
+
+        with torch.no_grad():
+            feats = model(img)  # shape (1, D)
+            featurized_imgs[i] = feats.squeeze(0).cpu().numpy()
+
+    # Save features
+    with open(out_fpath, "wb") as f:
+        dill.dump(
+            {"X": featurized_imgs, "ids_X": ids, "latlon": latlons},
+            f,
+            protocol=4,
+        )
 
 
 def torchgeo_featurization(train, val, test, num_features, total_num_images):
@@ -152,7 +195,10 @@ def main(args):
 
     print(f"Image dimensions: {args.image_size}x{args.image_size}, Channels: {args.num_channels}")
 
-    torchgeo_featurization(train, val, test, args.num_features, total_num_images)
+    if args.feat_type == 'RCF':
+        torchgeo_featurization(train, val, test, args.num_features, total_num_images)
+    else:
+        transformer_featurization(train, val, test, total_num_images)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run featurization on USAVars dataset.")
@@ -170,6 +216,8 @@ if __name__ == "__main__":
                         help="Number of channels per image.")
     parser.add_argument("--num_features", type=int, default=4096,
                         help="Number of features.")
+    parser.add_argument("--feat_type", type=str, default="RCF",
+                        help="type of features")
 
     args = parser.parse_args()
     main(args)

@@ -210,7 +210,7 @@ class USAVars(NonGeoDataset):
 
         # Check if the zip files have already been downloaded
         pathname = os.path.join(self.root, self.dirname + '.zip')
-        if glob.glob(pathname) and csv_split_count == (8, 3):
+        if glob.glob(pathname):
             self._extract()
             return
 

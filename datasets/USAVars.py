@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+# Code from https://torchgeo.readthedocs.io/en/v0.3.1/_modules/torchgeo/datasets/usavars.html
+
 """USAVars dataset."""
 
 import glob

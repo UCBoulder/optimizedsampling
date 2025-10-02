@@ -3,6 +3,6 @@
 DATASET:
   NAME: USAVARS_POP
   LABEL: POPULATION
-  ROOT_DIR: '/share/usavars'
+  ROOT_DIR: '/media/volume/opt_data/data/usavars/'
 OPTIM:
   CV: true

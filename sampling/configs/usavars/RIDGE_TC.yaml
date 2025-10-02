@@ -3,6 +3,6 @@
 DATASET:
   NAME: USAVARS_TC
   LABEL: TREECOVER
-  ROOT_DIR: '/share/usavars'
+  ROOT_DIR: '/media/volume/opt_data/data'
 OPTIM:
   CV: true
