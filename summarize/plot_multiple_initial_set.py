@@ -7,8 +7,20 @@ import matplotlib.colors as mcolors
 import numpy as np
 import os
 
+# AAAI column width in inches
+COLUMNWIDTH_PT = 220
+COLUMNWIDTH_IN = COLUMNWIDTH_PT / 72.27  # ≈ 3.31 inches
+
 mpl.rcParams['font.family'] = 'Arial'
-plt.rcParams.update({'font.size': 24}) 
+plt.rcParams.update({
+    "font.size": 10,        # main text / title
+    "axes.titlesize": 10,
+    "axes.labelsize": 10,    # axis labels slightly smaller
+    "xtick.labelsize": 9,   # tick labels
+    "ytick.labelsize": 9,
+    "legend.fontsize": 9,   # legend
+})
+
 
 METHOD_LABELS = {
     "poprisk_states_0.5": "Admin-Rep",
@@ -67,7 +79,7 @@ def plot_sample_cost_vs_r2(csv_path, initial_set_r2_csv_path, method_labels, ini
         y_init = sorted_init["initial_r2_mean"].values
         y_se = sorted_init["initial_r2_se"].values
 
-        plt.plot(x_init, y_init, color="grey", linestyle="--", linewidth=2, label="$R^2$ trend over multiple random initial samples")
+        plt.plot(x_init, y_init, color="grey", linestyle="--", linewidth=1.5, label="$R^2$ trend over multiple random initial samples")
         plt.fill_between(x_init, y_init - y_se, y_init + y_se, color="lightgrey", alpha=0.5)
 
     initial_points = df.groupby("initial_size").first().reset_index()
@@ -185,11 +197,13 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
     
     # Create subplots based on layout preference
     if layout == "side_by_side":
-        fig, axes = plt.subplots(1, num_datasets, figsize=(8 * num_datasets, 6),
-                                 sharex=False, sharey=False)
+        # side-by-side layout (horizontal)
+        fig, axes = plt.subplots(1, num_datasets, figsize=(COLUMNWIDTH_IN*num_datasets, 2.5), 
+                                sharex=False, sharey=False)
     else:  # stacked (default)
-        fig, axes = plt.subplots(num_datasets, 1, figsize=(16, 6 * num_datasets),
-                                 sharex=False, sharey=False)
+        # stacked layout (vertical)
+        fig, axes = plt.subplots(num_datasets, 1, figsize=(COLUMNWIDTH_IN, 2.5*num_datasets), 
+                                sharex=False, sharey=False)
 
     if num_datasets == 1:
         axes = [axes]  # Make it iterable
@@ -283,15 +297,15 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
             y_init = np.array(y_init)
             y_se = np.array(y_se)
 
-            ax.plot(x_init, y_init, color="grey", linestyle="--", linewidth=2, 
-                   label="$R^2$ trend over multiple random initial samples")
+            ax.plot(x_init, y_init, color="grey", linestyle="--", linewidth=1.5, 
+                   label="Trend (random init)") #$R^2$ trend over multiple random initial samples
             ax.fill_between(x_init, y_init - y_se, y_init + y_se, 
                            color="lightgrey", alpha=0.5)
 
         # Plot single initial sample points
         initial_points = df.groupby("initial_size").first().reset_index()
         ax.scatter(initial_points["initial_size"], initial_points["initial_r2_mean"],
-                  color='black', marker='x', s=200, linewidths=3, 
+                  color='black', marker='x', s=40, linewidths=1.5, 
                   label="Single initial sample")
 
         # Plot empty_initial_set augmentation (lines starting at 0)
@@ -316,7 +330,7 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
                 y_se_empty = df_empty_sorted[se_col].fillna(0).tolist()
                 
                 color = method_to_color[method_key]
-                ax.plot(x_empty, y_empty, color=color, linewidth=2)
+                ax.plot(x_empty, y_empty, color=color, linewidth=1.5)
                 ax.fill_between(x_empty, np.array(y_empty) - np.array(y_se_empty), 
                                np.array(y_empty) + np.array(y_se_empty),
                                alpha=0.2, color=color)
@@ -342,10 +356,10 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
                 y = [subset["initial_r2_mean"].iloc[0]] + subset[mean_col].tolist()
                 y_se = [0] + subset[se_col].tolist()
 
-                label = f"$R^2$ trend over augmented samples" if first_plot else None
+                label = f"Trend (augmented)" if first_plot else None #$R^2$ trend over augmented samples
                 color = method_to_color[method_key]
 
-                ax.plot(x, y, label=label, color=color, linewidth=2)
+                ax.plot(x, y, label=label, color=color, linewidth=1.5)
                 ax.fill_between(x, np.array(y) - np.array(y_se), 
                                np.array(y) + np.array(y_se),
                                alpha=0.2, color=color)
@@ -354,8 +368,9 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
         # Subplot formatting with (a), (b) labels
         subplot_labels = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
         ax.text(0.02, 0.98, subplot_labels[idx], transform=ax.transAxes, 
-                fontsize=24, fontweight='bold', va='top', ha='left')
-        ax.set_ylabel("$R^2$", fontsize=24)
+                fontsize=10, fontweight='bold', va='top', ha='left')
+
+        ax.set_ylabel("$R^2$", fontsize=10)
         ax.grid(True, linestyle="--", alpha=0.5)
         
         # Set y-axis limits: bottom=0.05, top varies by dataset
@@ -370,23 +385,23 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
         
         # Set x-label for all subplots in side-by-side layout
         if layout == "side_by_side":
-            ax.set_xlabel("Total Sample Cost", fontsize=24)
+            ax.set_xlabel("Total Sample Cost", fontsize=10)
     
     # Legend positioning based on layout
     if layout == "side_by_side":
         # Place legend in bottom right corner of second (b) subplot (index 1)
         if len(axes) > 1:
-            axes[1].legend(fontsize=14, loc='lower right', frameon=True,
+            axes[1].legend(fontsize=8, loc='lower right', frameon=True,
                           handletextpad=0.5, handlelength=1.0, columnspacing=0.4)
         elif len(axes) == 1:
-            axes[0].legend(fontsize=14, loc='lower right', frameon=True,
+            axes[0].legend(fontsize=8, loc='lower right', frameon=True,
                           handletextpad=0.5, handlelength=1.0, columnspacing=0.4)
     else:
         # Show legend on second subplot for stacked (original behavior)
         if len(axes) > 1:
-            axes[1].legend(fontsize=24, loc='lower right')
+            axes[1].legend(fontsize=10, loc='lower right')
         elif len(axes) == 1:
-            axes[0].legend(fontsize=24, loc='lower right')
+            axes[0].legend(fontsize=10, loc='lower right')
     
     # Set x-label only on bottom subplot for stacked layout
     if layout == "stacked":
@@ -394,6 +409,7 @@ def plot_stacked_augmented_r2_trends(csv_paths, initial_r2_paths, method_labels,
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Saved to {output_path}")
     plt.close()
 
 # if __name__ == "__main__":
@@ -452,6 +468,6 @@ if __name__ == "__main__":
         budget_limits=budget_limits,
         init_set_lists=init_set_lists,
         r2_lower_bound=r2_lower_bound,
-        output_path="comparison_stacked.png",
+        output_path="comparison_stacked.pdf",
         layout="side_by_side"  # Change to "stacked" for vertical layout
     )
