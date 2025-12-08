@@ -14,9 +14,10 @@ from sklearn.linear_model import Ridge
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 '''
-Run ridge regression and return R2 score
+Run ridge regression and return R2, MSE, RMSE, and MAE scores
 '''
 def ridge_regression(X_train, 
                      y_train, 
@@ -29,7 +30,7 @@ def ridge_regression(X_train,
 
     if n_samples < 2*n_folds:
         print("Not enough samples for cross-validation.")
-        return
+        return None
      
     print("Fitting regression...")
 
@@ -52,16 +53,26 @@ def ridge_regression(X_train,
         n_jobs=-1                   #parallelize across folds
     )
 
-
-    def evaluate_r2(model, X_test, y_test):
-        return model.score(X_test, y_test)
-    
     ridge_search.fit(X_train, y_train)
-    r2 = evaluate_r2(ridge_search, X_test, y_test)
+    
+    # Get predictions
+    y_pred = ridge_search.predict(X_test)
+    
+    # Calculate all metrics
+    r2 = ridge_search.score(X_test, y_test)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(y_test, y_pred)
 
     if abs(r2) > 1:
         print("Warning: Severe overfitting. Add more samples.")
-    return r2
+    
+    return {
+        'r2': r2,
+        'mse': mse,
+        'rmse': rmse,
+        'mae': mae
+    }
 
 
 def load_data_from_pkl(features_path, dataset=None, label=None):
@@ -273,7 +284,8 @@ def group_files_by_type_and_size(sampling_dir, verbose=True):
     print(f"Found {len(sample_files)} sample files")
     
     for fname in sample_files:
-        full_path = os.path.join(sampling_dir, fname)
+        #full_path = os.path.join(sampling_dir, fname)
+        full_path = fname
         metadata = parse_seeded_filename(fname)
         
         if metadata is None:
@@ -416,9 +428,9 @@ def verify_subset_relationship(groups, verbose=True):
 
 
 def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_test, y_test, 
-                         ridge_regression_fn, min_samples=1100, max_samples=1100, verbose=True):
-    """Compute R² statistics for each group of samples."""
-    print("\nComputing R² statistics...")
+                         ridge_regression_fn, min_samples=0, max_samples=1100, verbose=True):
+    """Compute R² and error statistics for each group of samples."""
+    print("\nComputing regression statistics...")
     
     results = {}
     
@@ -436,6 +448,9 @@ def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_tes
         print(f"Base: {base_name}")
         
         r2_scores = []
+        mse_scores = []
+        rmse_scores = []
+        mae_scores = []
         valid_files = 0
         actual_sizes = []
         
@@ -456,12 +471,18 @@ def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_tes
             
             # Run regression
             try:
-                r2 = ridge_regression_fn(X_subset, y_subset, X_test, y_test)
-                r2_scores.append(r2)
+                metrics = ridge_regression_fn(X_subset, y_subset, X_test, y_test)
+                if metrics is None:
+                    continue
+                    
+                r2_scores.append(metrics['r2'])
+                mse_scores.append(metrics['mse'])
+                rmse_scores.append(metrics['rmse'])
+                mae_scores.append(metrics['mae'])
                 valid_files += 1
                 
                 if verbose:
-                    print(f"✓ Seed {metadata['seed']}: R² = {r2:.4f} (actual size: {actual_size})")
+                    print(f"✓ Seed {metadata['seed']}: R²={metrics['r2']:.4f}, RMSE={metrics['rmse']:.4f}, MAE={metrics['mae']:.4f} (actual size: {actual_size})")
                     
             except Exception as e:
                 if verbose:
@@ -476,20 +497,43 @@ def compute_r2_statistics(groups, id_to_index, X_train_full, y_train_full, X_tes
                 'actual_sample_size_mean': float(np.mean(actual_sizes)) if actual_sizes else None,
                 'actual_sample_size_std': float(np.std(actual_sizes)) if actual_sizes else None,
                 'num_seeds': valid_files,
+                # R² statistics
                 'r2_mean': float(np.mean(r2_scores)),
                 'r2_std': float(np.std(r2_scores)),
                 'r2_min': float(np.min(r2_scores)),
                 'r2_max': float(np.max(r2_scores)),
-                'r2_scores': [float(r2) for r2 in r2_scores]  # Keep individual scores for debugging
+                'r2_scores': [float(r2) for r2 in r2_scores],
+                # MSE statistics
+                'mse_mean': float(np.mean(mse_scores)),
+                'mse_std': float(np.std(mse_scores)),
+                'mse_min': float(np.min(mse_scores)),
+                'mse_max': float(np.max(mse_scores)),
+                'mse_scores': [float(mse) for mse in mse_scores],
+                # RMSE statistics
+                'rmse_mean': float(np.mean(rmse_scores)),
+                'rmse_std': float(np.std(rmse_scores)),
+                'rmse_min': float(np.min(rmse_scores)),
+                'rmse_max': float(np.max(rmse_scores)),
+                'rmse_scores': [float(rmse) for rmse in rmse_scores],
+                # MAE statistics
+                'mae_mean': float(np.mean(mae_scores)),
+                'mae_std': float(np.std(mae_scores)),
+                'mae_min': float(np.min(mae_scores)),
+                'mae_max': float(np.max(mae_scores)),
+                'mae_scores': [float(mae) for mae in mae_scores]
             }
             
             results[(sampling_type, intended_size, base_name)] = stats
             
-            print(f"✓ {sampling_type} intended size {intended_size}: μ={stats['r2_mean']:.4f}, σ={stats['r2_std']:.4f} (n={valid_files})")
+            print(f"✓ {sampling_type} intended size {intended_size}:")
+            print(f"  R²: μ={stats['r2_mean']:.4f}, σ={stats['r2_std']:.4f}")
+            print(f"  RMSE: μ={stats['rmse_mean']:.4f}, σ={stats['rmse_std']:.4f}")
+            print(f"  MAE: μ={stats['mae_mean']:.4f}, σ={stats['mae_std']:.4f}")
+            print(f"  (n={valid_files} seeds)")
             if stats['actual_sample_size_mean']:
                 print(f"  Actual sizes: μ={stats['actual_sample_size_mean']:.1f}, σ={stats['actual_sample_size_std']:.1f}")
         else:
-            print(f"[WARNING] No valid R² scores for {sampling_type} intended size {intended_size}")
+            print(f"[WARNING] No valid scores for {sampling_type} intended size {intended_size}")
     
     return results
 
@@ -515,10 +559,10 @@ def save_results_to_json(results, output_dir, verbose=True):
     print(f"\nSaved {count} JSON files.")
 
 def seeded_sampling_r2_analysis(dataset_name, features_path, sampling_dir, results_dir, ridge_regression_fn,
-                               min_samples=1100, verify_subsets=True, verbose=True, **kwargs):
-    """Main function to perform seeded sampling R² analysis."""
+                               min_samples=0, verify_subsets=True, verbose=True, **kwargs):
+    """Main function to perform seeded sampling analysis with multiple metrics."""
     print(f"\n{'='*80}")
-    print(f"STARTING SEEDED SAMPLING R² ANALYSIS")
+    print(f"STARTING SEEDED SAMPLING ANALYSIS (R², MSE, RMSE, MAE)")
     print(f"{'='*80}")
     
     # Create results directory
@@ -551,18 +595,18 @@ def seeded_sampling_r2_analysis(dataset_name, features_path, sampling_dir, resul
             print(f"\n[CRITICAL ERROR] {e}")
             return None  # Stop processing and return None
     
-    # Compute R² statistics
+    # Compute statistics
     results = compute_r2_statistics(
         groups, id_to_index, X_train_full, y_train_full, X_test, y_test,
         ridge_regression_fn, min_samples, verbose=True
     )
-    from IPython import embed; embed()
+    
     # Save results
-    output_dir = results_dir  # or wherever you want the per-base_name files saved
+    output_dir = results_dir
     save_results_to_json(results, output_dir, verbose=verbose)
     
     print(f"\n{'='*80}")
-    print(f"COMPLETED SEEDED SAMPLING R² ANALYSIS")
+    print(f"COMPLETED SEEDED SAMPLING ANALYSIS")
     print(f"{'='*80}")
     
     return results
@@ -572,15 +616,15 @@ def get_sampling_directories(dataset, label=None):
     """Get sampling directories for a given dataset and label."""
     if dataset == "usavars":
         cluster_dirs = {
-            'population': "../../0_data/initial_samples/usavars/population/cluster_sampling/fixedstrata_Idaho_16-Louisiana_22-Mississippi_28-New Mexico_35-Pennsylvania_42",
-            "treecover": "../../0_data/initial_samples/usavars/treecover/cluster_sampling/fixedstrata_Alabama_01-Colorado_08-Montana_30-New York_36-Ohio_39"
+            'population': "../0_data/initial_samples/usavars/population/cluster_sampling/fixedstrata_Idaho_16-Louisiana_22-Mississippi_28-New Mexico_35-Pennsylvania_42",
+            "treecover": "../0_data/initial_samples/usavars/treecover/cluster_sampling/fixedstrata_Alabama_01-Colorado_08-Montana_30-New York_36-Ohio_39"
         }
         
         return {
-            'features_path': f"../../0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl",
+            'features_path': f"../0_data/features/usavars/CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl",
             'cluster_sampling_dir': cluster_dirs[label],
-            'convenience_sampling_urban_dir': f"../../0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based",
-            'convenience_sampling_region_dir': f"../../0_data/initial_samples/usavars/{label}/convenience_sampling/region_based",
+            'convenience_sampling_urban_dir': f"../0_data/initial_samples/usavars/{label}/convenience_sampling/urban_based",
+            'convenience_sampling_region_dir': f"../0_data/initial_samples/usavars/{label}/convenience_sampling/region_based",
             'random_sampling_dir': None,
             'results_dir': f"{dataset}_{label}_sampling_stats_json",
             'dataset': dataset
@@ -588,8 +632,8 @@ def get_sampling_directories(dataset, label=None):
     
     elif dataset == "togo":
         return {
-            'features_path': "../../0_data/features/togo/togo_fertility_data_all_2021_Jan_Jun_P20.pkl",
-            'cluster_sampling_dir': "../../0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux",
+            'features_path': "../0_data/features/togo/togo_fertility_data_all_2021_Jan_Jun_P20.pkl",
+            'cluster_sampling_dir': "../0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux",
             'convenience_sampling_urban_dir': None,
             'convenience_sampling_region_dir': None,
             'random_sampling_dir': None,
@@ -600,10 +644,10 @@ def get_sampling_directories(dataset, label=None):
     
     elif dataset == "india_secc":
         return {
-            'features_path': "../../0_data/features/india_secc/India_SECC_with_splits_4000.pkl",
-            'cluster_sampling_dir': "../../0_data/initial_samples/india_secc/cluster_sampling/fixedstrata_01-04-06-08-09-11-21-23-25-33",
-            'convenience_sampling_urban_dir': "../../0_data/initial_samples/india_secc/convenience_sampling/urban_based",
-            'convenience_sampling_region_dir': "../../0_data/initial_samples/india_secc/convenience_sampling/cluster_based",
+            'features_path': "../0_data/features/india_secc/India_SECC_with_splits_4000.pkl",
+            'cluster_sampling_dir': "../0_data/initial_samples/india_secc/cluster_sampling/fixedstrata_01-04-06-08-09-11-21-23-25-33",
+            'convenience_sampling_urban_dir': "../0_data/initial_samples/india_secc/convenience_sampling/urban_based",
+            'convenience_sampling_region_dir': "../0_data/initial_samples/india_secc/convenience_sampling/cluster_based",
             'random_sampling_dir': None,
             'results_dir': f"{dataset}_sampling_stats_json",
             'dataset': dataset
@@ -632,7 +676,7 @@ def process_dataset_seeded_analysis(dataset, label=None, ridge_regression_fn=Non
         'results_dir': dirs['results_dir'],
         'ridge_regression_fn': ridge_regression_fn,
         'verbose': True,
-        'min_samples': 1100,
+        'min_samples': 0,
         'verify_subsets': True
     }
     

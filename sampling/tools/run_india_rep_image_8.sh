@@ -10,7 +10,7 @@ run_setting3() {
     GROUP_PATH="../../0_data/groups/india_secc/image_8_cluster_assignments.pkl"
     GROUP_TYPE="image_clusters_8"
 
-    for SIZE in 1000 2000 3000 4000 5000; do
+    for SIZE in 3000 4000; do
         for PPC in 20; do
             INIT_NAME_EXP="cluster_sampling_10_state_district_desired_${PPC}ppc_${SIZE}_size"
             INIT_NAME="cluster_sampling/10_state_district_desired_${PPC}ppc_${SIZE}_size"

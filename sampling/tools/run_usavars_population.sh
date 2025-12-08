@@ -3,18 +3,17 @@
 #!/bin/bash
 
 # === Shared Config ===
-CFG_FILE="../../sampling/configs/usavars/RIDGE_POP.yaml"
-SCRIPT="train.py"
+CFG_FILE="../../sampling/configs/usavars/population.yaml"
+SCRIPT="train_ridge.py"
 SEND_EMAIL_PY="send_email.py"
 LOGFILE="completed_experiments_usavars_population.log"
 FAILED_LOG="failed_experiments_usavars_population.log"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-#METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
-METHODS=("random" "random_unit")
-BUDGETS=(50 100 500 1000)
+METHODS=("random_unit" "greedycost" "poprisk" "poprisk_avg")
+BUDGETS=(50 100 200 300 400 500 1000)
 
-UTIL_LAMBDAS=(0.5)
+UTIL_LAMBDAS=(0.01 0.1 0.9 0.99)
 
 # === Helpers ===
 send_error_email() {

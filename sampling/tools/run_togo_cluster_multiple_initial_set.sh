@@ -9,13 +9,14 @@ run_setting3() {
     METHODS=("poprisk")
     BUDGETS=(100 200 300 400 500 600 700 800 900 1000)
     DATASET="togo"
+    GROUP_PATH="../../0_data/groups/togo/image_3_cluster_assignments.pkl"
+    GROUP_TYPE="image_clusters_3"
 
     for SIZE in 500 1000 1500 2000 2500; do
-        for PPC in 20; do
+        for PPC in 25; do
             if [ "$SIZE" -eq 0 ]; then
                 INIT_NAME_EXP="empty_initial_set"
                 INIT_NAME="multiple/cluster_sampling/empty_initial_set"
-                INIT_SET_IDS=None
             else
                 INIT_NAME_EXP="multiple_cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"
                 INIT_NAME="multiple/cluster_sampling/2_strata_desired_25ppc_${SIZE}_size"

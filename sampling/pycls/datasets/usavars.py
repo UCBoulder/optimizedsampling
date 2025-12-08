@@ -111,12 +111,11 @@ class USAVars(NonGeoDataset):
     def __init__(
         self,
         root: Path = 'data',
-        split: str = 'train',
+        isTrain: bool = True,
         label: str = 'population',
         transforms: Callable[[dict[str, Tensor]], dict[str, Tensor]] | None = None,
         download: bool = False,
         checksum: bool = False,
-        load_RCF_features: bool = True
     ) -> None:
         """Initialize a new USAVars dataset instance.
 
@@ -134,35 +133,27 @@ class USAVars(NonGeoDataset):
             DatasetNotFoundError: If dataset is not found and *download* is False.
         """
         self.root = root
-        self.split = split
+        if isTrain:
+            self.split = 'train'
+        else:
+            self.split = 'test'
 
         assert label in ('treecover', 'elevation', 'population', 'income'), "Label information does not exist."
 
         self.label = label
+        self.label_dfs = {
+            self.label: pd.read_csv(os.path.join(self.root, self.label + ".csv"), index_col="ID")
+        }
 
         self.transforms = transforms
         self.download = download
         self.checksum = checksum
 
-        self.load_RCF_features = load_RCF_features
+        #self._verify()
 
-        if load_RCF_features:
-            self.X, self.y, self.latlons, self.ids = load_from_pkl(self.label, self.split)
-        else:
-            self.files = self._load_files()
+        self.files = self._load_files()
 
-            self.label_df = pd.read_csv(os.path.join(self.root, self.label + '.csv'), index_col='ID')
-
-            # filter out bad labels
-            invalid_mask = (
-                (self.label_df[self.label] == -999) |
-                (self.label_df[self.label].isna()) |
-                (~np.isfinite(self.label_df[self.label]))
-            )
-            self.label_df = self.label_df.loc[~invalid_mask]
-
-            # keep only files that correspond to cleaned label_df
-            self.files = [f for f in self.files if f[5:-4] in self.label_df.index]
+        self.X, self.y, self.latlons, self.ids = load_from_pkl(self.label, self.split)
 
 
     def __getitem__(self, index: int) -> dict[str, Tensor]:
@@ -174,24 +165,7 @@ class USAVars(NonGeoDataset):
         Returns:
             data and label at that index
         """
-        if self.load_RCF_features:
-            return self.X[index], self.y[index], self.latlons[index], self.ids[index]
-        else:
-            tif_file = self.files[index]
-            id_ = tif_file[5:-4]
-
-            sample = {
-                'label': torch.tensor([self.label_df.loc[id_][self.label]], dtype=torch.float32),
-                'name': tif_file,
-                'image': self._load_image(os.path.join(self.root, 'uar', tif_file)),
-                'centroid_lat': Tensor([self.label_df.loc[id_]['lat']]),
-                'centroid_lon': Tensor([self.label_df.loc[id_]['lon']]),
-            }
-
-            if self.transforms is not None:
-                sample = self.transforms(sample)
-
-            return sample
+        return self.X[index], self.y[index], self.latlons[index], self.ids[index]
 
 
     def __len__(self) -> int:
@@ -200,15 +174,12 @@ class USAVars(NonGeoDataset):
         Returns:
             length of the dataset
         """
-        if self.load_RCF_features:
-            return self.X.shape[0]
-        else:
-            return len(self.files)
+        return self.X.shape[0]
 
 
     def _load_files(self) -> list[str]:
         """Loads file names."""
-        with open(os.path.join(self.root, f'splits/{self.label}_{self.split}_split.txt')) as f:
+        with open(os.path.join(self.root, f'{self.split}_split.txt')) as f:
             files = f.read().splitlines()
         return files
 
@@ -234,12 +205,12 @@ class USAVars(NonGeoDataset):
         split_pathname = os.path.join(self.root, '*_split.txt')
 
         csv_split_count = (len(glob.glob(csv_pathname)), len(glob.glob(split_pathname)))
-        if glob.glob(pathname):
+        if glob.glob(pathname) and csv_split_count == (8, 3):
             return
 
         # Check if the zip files have already been downloaded
         pathname = os.path.join(self.root, self.dirname + '.zip')
-        if glob.glob(pathname):
+        if glob.glob(pathname) and csv_split_count == (8, 3):
             self._extract()
             return
 

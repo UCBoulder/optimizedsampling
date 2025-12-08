@@ -41,7 +41,7 @@ run_setting3() {
                                 REGION_ASSIGNMENT_PATH="../../0_data/groups/usavars/population/state_assignments_dict.pkl"
                             fi
                             
-                            EXP_NAME="usavars_population_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_budget_${BUDGET}_seed_${seed}"
+                            EXP_NAME="usavars_population_${MODEL}_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_budget_${BUDGET}_seed_${seed}"
                             if [[ "$METHOD" == "poprisk" || "$METHOD" == "poprisk_avg" ]]; then
                                 EXP_NAME="usavars_population_${INIT_NAME_EXP}_cost_${COST_FN_WITH_SPECIFICS}_method_${METHOD}_${GROUP_TYPE}_${UTIL_LAMBDA}_budget_${BUDGET}_seed_${seed}"
                             fi

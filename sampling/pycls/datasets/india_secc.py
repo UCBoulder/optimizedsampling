@@ -51,7 +51,7 @@ class IndiaSECC(NonGeoDataset):
 
         self.label = label
 
-        self._check_for_dataset()
+        #self._check_for_dataset()
 
         if not self._try_load_from_pickle():
             self.X, self.y, self.ids, self.geometries = self._load_features_and_labels()

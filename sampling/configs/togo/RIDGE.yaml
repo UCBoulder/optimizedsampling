@@ -2,6 +2,9 @@
 # RNG_SEED: 1
 DATASET:
   NAME: TOGO_PH_H2O
-  ROOT_DIR: '/share/togo'
+  ROOT_DIR: '/media/volume/mapping_data/optimizedsampling/0_data/features/togo/'
   LABEL: 'ph_h2o'
   FEATURE_IDENTIFIER: '2021_Jan_Jun_P20'
+
+MODEL:
+  TYPE: 'ridge'

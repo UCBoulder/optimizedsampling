@@ -3,6 +3,7 @@
 DATASET:
   NAME: USAVARS_TC
   LABEL: TREECOVER
-  ROOT_DIR: '/media/volume/opt_data/data'
-OPTIM:
-  CV: true
+  ROOT_DIR: '/media/volume/mapping_data/data/usavars'
+
+MODEL:
+  TYPE: 'ridge'

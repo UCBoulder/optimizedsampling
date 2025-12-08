@@ -1,0 +1,5 @@
+dataset,initial_set,cost_type,budget,initial_set_size,alpha,initial_r2_mean,initial_r2_std,initial_r2_se,random_unit_updated_r2_mean,random_unit_updated_r2_std,random_unit_updated_r2_se,random_unit_delta_r2_mean,random_unit_delta_r2_se
+USAVARS_POP,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,50,100,10.0,-0.0,0.26,0.08811558854393724,0.2,0.16,0.05215607815862777,0.21,0.0834716950695131
+USAVARS_POP,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,100,100,10.0,-0.0,0.26,0.08811558854393724,0.23,0.12,0.03927529956035415,0.23,0.06108240781472555
+USAVARS_POP,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,500,100,10.0,-0.0,0.26,0.08811558854393724,0.45,0.05,0.01672457572954642,0.45,0.0795449798681364
+USAVARS_POP,5_fixedstrata_10ppc_100_size,cluster_based_c1_10_c2_20,1000,100,10.0,-0.0,0.26,0.08811558854393724,0.5,0.03,0.008672962456841252,0.5,0.0828307323535306

@@ -1,17 +1,20 @@
 import pandas as pd
+import os
 
 #base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'similarity', 'diversity']
-base_method_order = ['greedycost', 'random_unit', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd', 'diversity']
+base_method_order = ['greedycost', 'random_unit', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd']
 # base_method_order = ['poprisk', 'poprisk2']
 
 #base_method_order = ['poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'poprisk_avg_img', 'poprisk_avg_img_8']
 
-def load_df(dataset, init_set, cost_type, csv_path="results/aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"):
+METRICS = ['r2', 'mse', 'rmse', 'mae']
+
+def load_df(dataset, init_set, cost_type, csv_path="results/_metrics_{dataset}_{init_set}_{cost_type}.csv"):
     csv_path = csv_path.format(dataset=dataset, init_set=init_set, cost_type=cost_type)
     df = pd.read_csv(csv_path)
     return df
 
-def generate_latex_table(df, dataset, init_set, cost_type, method_map):
+def generate_latex_table(df, dataset, init_set, cost_type, method_map, metric='r2'):
     lines = []
     lines.append("\\hline%")
 
@@ -22,8 +25,8 @@ def generate_latex_table(df, dataset, init_set, cost_type, method_map):
         cells = []
         for method in method_labels:
             print(method)
-            mean = row.get(f"{method}_updated_r2_mean")
-            std = row.get(f"{method}_updated_r2_std")
+            mean = row.get(f"{method}_updated_{metric}_mean")
+            std = row.get(f"{method}_updated_{metric}_std")
             if pd.notnull(mean) and pd.notnull(std):
                 cells.append(f"{mean:.2f} ± {std:.2f}")
             else:
@@ -32,12 +35,15 @@ def generate_latex_table(df, dataset, init_set, cost_type, method_map):
         lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
     lines.append("\\hline%")
 
-    tex_path = f"latex_table_r2/latex_table_r2_{dataset}_{init_set}_{cost_type}.tex"
+    # Create directory if it doesn't exist
+    os.makedirs(f"latex_table_{metric}", exist_ok=True)
+    
+    tex_path = f"latex_table_{metric}/latex_table_{metric}_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
     print(f'Wrote latex table to {tex_path}')
 
-def generate_delta_latex_table(df, dataset, init_set, cost_type, method_map):
+def generate_delta_latex_table(df, dataset, init_set, cost_type, method_map, metric='r2'):
     lines = []
     lines.append("\\hline%")
 
@@ -48,8 +54,8 @@ def generate_delta_latex_table(df, dataset, init_set, cost_type, method_map):
         cells = []
         for method in method_labels:
             print(method)
-            mean = row.get(f"{method}_delta_r2_mean")
-            std = row.get(f"{method}_delta_r2_se")
+            mean = row.get(f"{method}_delta_{metric}_mean")
+            std = row.get(f"{method}_delta_{metric}_se")
             if pd.notnull(mean) and pd.notnull(std):
                 cells.append(f"{mean:.2f} ± {std:.2f}")
             else:
@@ -58,7 +64,10 @@ def generate_delta_latex_table(df, dataset, init_set, cost_type, method_map):
         lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
     lines.append("\\hline%")
 
-    tex_path = f"latex_table_r2/latex_table_delta_r2_{dataset}_{init_set}_{cost_type}.tex"
+    # Create directory if it doesn't exist
+    os.makedirs(f"latex_table_{metric}", exist_ok=True)
+    
+    tex_path = f"latex_table_{metric}/latex_table_delta_{metric}_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
     print(f'Wrote latex table to {tex_path}')
@@ -68,12 +77,15 @@ def generate_table_from_csv(dataset,
                             cost_type, 
                             method_map,
                             delta=False,
-                            csv_path="results/aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"):
+                            csv_path="results/aggregated_metrics_{dataset}_{init_set}_{cost_type}.csv"):
     df = load_df(dataset, init_set, cost_type, csv_path=csv_path)
-    if delta:
-        generate_delta_latex_table(df, dataset, init_set, cost_type, method_map)
-    else:
-        generate_latex_table(df, dataset, init_set, cost_type, method_map)
+    
+    # Generate tables for all metrics
+    for metric in METRICS:
+        if delta:
+            generate_delta_latex_table(df, dataset, init_set, cost_type, method_map, metric=metric)
+        else:
+            generate_latex_table(df, dataset, init_set, cost_type, method_map, metric=metric)
 
 if __name__ == "__main__":
 
@@ -115,7 +127,7 @@ if __name__ == "__main__":
                         help="Whether to include delta R² (True/False)")
     args = parser.parse_args()
     delta = args.delta
-    print(delta)
+    print(f"Delta mode: {delta}")
 
     for dataset in DATASET_NAMES:
         method_map = {
@@ -136,4 +148,4 @@ if __name__ == "__main__":
                         try:
                             generate_table_from_csv(dataset, initial_set, cost_type, method_map, delta=delta)
                         except Exception as e:
-                            print(e)
+                            x=1

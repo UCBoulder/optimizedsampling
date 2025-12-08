@@ -147,6 +147,20 @@ _C.REGIONS.REGION_ASSIGNMENT = None
 _C.REGIONS.IN_REGION_UNIT_COST = None
 _C.REGIONS.OUT_OF_REGION_UNIT_COST = None
 
+_C.MODEL = CN()
+_C.MODEL.TYPE = None
+_C.MODEL.OUTPUT_DIM = 1
+_C.MODEL.LOSS_TYPE = None
+
+_C.OPTIM = CN()
+_C.OPTIM.BATCH_SIZE = 32
+_C.OPTIM.NUM_EPOCHS = None
+_C.OPTIM.LR = 1e-3
+_C.OPTIM.WEIGHT_DECAY = 1e-4
+_C.OPTIM.NUM_EPOCHS = 10
+_C.OPTIM.TYPE = None
+_C.OPTIM.SCHEDULER = None
+
 def assert_cfg():
     """Checks config values invariants."""
     assert _C.TRAIN.SPLIT in ['train', 'val', 'test'], \

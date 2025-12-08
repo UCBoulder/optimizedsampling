@@ -7,10 +7,10 @@ run_setting3() {
     local seed="$1"
     DATASET="india"
     ALPHAS=(10)
-    GROUP_PATH="../../0_data/groups/india_secc/state_assignment_dict.pkl"
+    GROUP_PATH="../../0_data/groups/india_secc/state_assignments_dict.pkl"
     GROUP_TYPE="states"
 
-    for SIZE in 1000 2000 3000 4000 5000; do
+    for SIZE in 2500 3000 4000; do
         for PPC in 20; do
             INIT_NAME_EXP="cluster_sampling_10_state_district_desired_${PPC}ppc_${SIZE}_size"
             INIT_NAME="cluster_sampling/10_state_district_desired_${PPC}ppc_${SIZE}_size"

@@ -7,17 +7,16 @@ run_setting3() {
     local seed="$1"
     SEEDS=(1 42 123 456 789)
     METHODS=("poprisk")
-    BUDGETS=(0 100 200 300 400 500 600 700 800 900 1000 1100)
+    BUDGETS=(100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000)
     DATASET="india"
     GROUP_TYPE="states"
     GROUP_PATH="../../0_data/groups/india_secc/state_assignments_dict.pkl"
 
-    for SIZE in 4000; do
+    for SIZE in 0; do
         for PPC in 20; do
             if [ "$SIZE" -eq 0 ]; then
                 INIT_NAME_EXP="empty_initial_set"
                 INIT_NAME="multiple/cluster_sampling/empty_initial_set"
-                INIT_SET_IDS=None
             else
                 INIT_NAME_EXP="multiple_cluster_sampling_10_state_district_desired_${PPC}ppc_${SIZE}_size"
                 INIT_NAME="multiple/cluster_sampling/10_state_district_desired_${PPC}ppc_${SIZE}_size"

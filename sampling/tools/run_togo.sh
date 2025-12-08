@@ -4,14 +4,17 @@
 
 # === Shared Config ===
 CFG_FILE="../../sampling/configs/togo/RIDGE.yaml"
-SCRIPT="train.py"
+SCRIPT="train_ridge.py"
 LOGFILE="completed_experiments_togo.log"
 FAILED_LOG="failed_experiments_togo.log"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
-BUDGETS=(500 100 500 1000)
-UTIL_LAMBDAS=(1.0)
+#METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
+METHODS=("random")
+# BUDGETS=(50 100 500 1000)
+BUDGETS=(100)
+#UTIL_LAMBDAS=(0.01 0.1 0.5 0.9 0.99 1.0)
+UTIL_LAMBDAS=(0.0)
 
 # === Helpers ===
 send_error_email() {

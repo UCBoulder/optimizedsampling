@@ -4,7 +4,7 @@
 
 # === Shared Config ===
 CFG_FILE="../../sampling/configs/india_secc/RIDGE.yaml"
-SCRIPT="train.py"
+SCRIPT="train_ridge.py"
 LOGFILE="completed_experiments_india.log"
 FAILED_LOG="failed_experiments_india.log"
 
@@ -14,7 +14,7 @@ GROUP_TYPE="image_clusters_2"
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
 METHODS=("random_unit" "greedycost" "poprisk")
 BUDGETS=(500 1000 2000 5000)
-UTIL_LAMBDAS=(0.5)
+UTIL_LAMBDAS=(0.01 0.1 0.5 0.9 0.99 1.0)
 
 # === Helpers ===
 send_error_email() {

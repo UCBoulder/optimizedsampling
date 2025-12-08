@@ -1,0 +1,9 @@
+# EXP_NAME: 'YOUR_EXPERIMENT_NAME'
+# RNG_SEED: 1
+DATASET:
+  NAME: USAVARS_POP
+  LABEL: POPULATION
+  ROOT_DIR: '/media/volume/mapping_data/data/usavars/'
+
+MODEL:
+  TYPE: 'ridge'  # or 'swin', 'resnet'

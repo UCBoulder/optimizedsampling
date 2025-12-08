@@ -7,7 +7,7 @@ run_setting3() {
     local seed="$1"
     DATASET="usavars"
     ALPHAS=(10)
-    GROUP_PATH="../../0_data/groups/usavars/population/NLCD_assignments_8_dict.pkl"
+    GROUP_PATH="../../0_data/groups/usavars/population/NLCD_cluster_assignments_8_dict.pkl"
     GROUP_TYPE="nlcd"
 
     for SIZE in 100; do

@@ -9,7 +9,7 @@ from mosaiks.code.mosaiks import config as cfg
 # IDs containing NaN in metadata or outside US
 invalid_ids = np.array(['615,2801', '1242,645', '539,3037', '666,2792', '1248,659', '216,2439'])
 
-def save_with_splits(c, label, out_fpath, feature_path):
+def save_with_splits(c, label, out_fpath, feature_path, val=False):
     with open(feature_path, "rb") as f:
         arrs = dill.load(f)
 
@@ -25,36 +25,77 @@ def save_with_splits(c, label, out_fpath, feature_path):
     X = X.reindex(latlons.index)
 
     #call Mosaiks parser for merge, dropna, transform, split
-    (
-        X_train,
-        X_test,
-        y_train,
-        y_test,
-        latlons_train,
-        latlons_test,
-        ids_train,
-        ids_test
-    ) = parse.merge_dropna_transform_split_train_test(
-        c, label, X, latlons
-    )
-
-    out_fpath = out_fpath.format(label=label)
-
-    with open(out_fpath, "wb") as f:
-        dill.dump(
-            {
-                "X_train": X_train,
-                "latlons_train": latlons_train,
-                "y_train": y_train,
-                "X_test": X_test,
-                "latlons_test": latlons_test,
-                "y_test": y_test,
-                "ids_train": ids_train,
-                "ids_test": ids_test,
-            },
-            f,
-            protocol=4,
+    if val:
+        (
+            X_train,
+            X_val,
+            X_test,
+            y_train,
+            y_val,
+            y_test,
+            latlons_train,
+            latlons_val,
+            latlons_test,
+            ids_train,
+            ids_val,
+            ids_test
+        ) = parse.merge_dropna_transform_split_train_test(
+            c, label, X, latlons, val=val
         )
+
+        out_fpath = out_fpath.format(label=label)
+
+        with open(out_fpath, "wb") as f:
+            dill.dump(
+                {
+                    "X_train": X_train,
+                    "latlons_train": latlons_train,
+                    "y_train": y_train,
+                    "X_val": X_val,
+                    "latlons_val": latlons_val,
+                    "y_val": y_val,
+                    "X_test": X_test,
+                    "latlons_test": latlons_test,
+                    "y_test": y_test,
+                    "ids_train": ids_train,
+                    "ids_val": ids_val,
+                    "ids_test": ids_test,
+                },
+                f,
+                protocol=4,
+            )
+
+    else:
+        (
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            latlons_train,
+            latlons_test,
+            ids_train,
+            ids_test
+        ) = parse.merge_dropna_transform_split_train_test(
+            c, label, X, latlons
+        )
+
+        out_fpath = out_fpath.format(label=label)
+
+        with open(out_fpath, "wb") as f:
+            dill.dump(
+                {
+                    "X_train": X_train,
+                    "latlons_train": latlons_train,
+                    "y_train": y_train,
+                    "X_test": X_test,
+                    "latlons_test": latlons_test,
+                    "y_test": y_test,
+                    "ids_train": ids_train,
+                    "ids_test": ids_test,
+                },
+                f,
+                protocol=4,
+            )
 
 
 def retrieve_splits(label):
@@ -98,6 +139,9 @@ if __name__ == "__main__":
         "--feature_path", type=str, default=None, help="Path to feature .pkl file (required for saving)"
     )
     parser.add_argument(
+        "--val", type=bool, default=False, help="Whether to include val"
+    )
+    parser.add_argument(
         "--out_fpath",
         type=str,
         default="CONTUS_UAR_{label}_with_splits_torchgeo4096.pkl",
@@ -110,6 +154,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if args.val:
+        args.out_fpath = args.out_fpath.replace("_with_splits_", "_with_splits_val_")
+
 
     if args.save:
         if args.feature_path is None:

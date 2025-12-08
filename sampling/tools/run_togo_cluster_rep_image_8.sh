@@ -10,7 +10,7 @@ run_setting3() {
     GROUP_PATH="../../0_data/groups/togo/image_3_cluster_assignments.pkl"
     GROUP_TYPE="image_clusters_3"
 
-    for SIZE in 500; do
+    for SIZE in 600 1000 1500; do
         INIT_NAME_EXP="cluster_sampling_2_strata_desired_25ppc_${SIZE}_size"
         INIT_NAME="cluster_sampling/2_strata_desired_25ppc_${SIZE}_size"
         INIT_SET_IDS="../../0_data/initial_samples/togo/cluster_sampling/fixedstrata_kara-plateaux/sample_region_canton_25ppc_${SIZE}_size_seed_${seed}.pkl"

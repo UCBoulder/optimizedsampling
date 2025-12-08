@@ -5,7 +5,6 @@ import numpy as np
 import dill
 import json
 from datetime import datetime
-from utils import get_free_cpus
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -27,6 +26,8 @@ from pycls.al.ActiveLearning import ActiveLearning
 from pycls.core.config import cfg, dump_cfg
 from pycls.datasets.data import Data
 import pycls.utils.logging as lu
+
+from pycls.models import model_builder
 
 logger = lu.get_logger(__name__)
 
@@ -118,15 +119,16 @@ def main(cfg, train_data):
         else:
             exp_dir = base_dir
 
-    exp_dir = os.path.join(dataset_dir, exp_dir)
+    dataset_and_model_dir = os.path.join(dataset_dir, cfg.MODEL.TYPE)
+    exp_dir = os.path.join(dataset_and_model_dir, exp_dir)
     # if os.path.exists(exp_dir) and cfg.ACTIVE_LEARNING.SAMPLING_FN not in ['similarity', 'diversity']:
     #     print("Experiment already done!")
     #     return
     
     os.makedirs(exp_dir, exist_ok=True)
     cfg.EXP_DIR = exp_dir
-    cfg.INITIAL_SET_DIR = os.path.join(dataset_dir, cfg.INITIAL_SET.STR)
-    cfg.SAMPLING_DIR = os.path.join(dataset_dir, base_dir)
+    cfg.INITIAL_SET_DIR = os.path.join(dataset_and_model_dir, cfg.INITIAL_SET.STR)
+    cfg.SAMPLING_DIR = os.path.join(dataset_and_model_dir, base_dir)
     dump_cfg(cfg)
 
     lu.setup_logging(cfg)
@@ -134,27 +136,13 @@ def main(cfg, train_data):
 
     cfg.DATASET.ROOT_DIR = os.path.abspath(cfg.DATASET.ROOT_DIR)
     data_obj = Data(cfg)
-    #train_data, _ = data_obj.getDataset(isTrain=True)
-    test_data, _ = data_obj.getDataset(isTrain=False)
+    #train_data, _ = data_obj.getDataset(split='train)
+    test_data, _ = data_obj.getDataset(split='test')
 
-    model = Pipeline([
-        ('scaler', StandardScaler()),
-        ('ridge', Ridge())
-    ])
+    X_test, y_test = test_data[:][0], test_data[:][1]
 
-    param_grid = {
-        'ridge__alpha': np.logspace(-5, 5, 10)
-    }
-
-    cv = KFold(n_splits=5, shuffle=True, random_state=42)
-
-    ridge_search = GridSearchCV(
-        estimator=model,
-        param_grid=param_grid,
-        scoring='r2',        
-        cv=cv,
-        n_jobs=-1                   #parallelize across folds
-    )
+    model = model_builder.build_model(cfg)
+    logger.info(f"Model type: {cfg.MODEL.TYPE}")
 
     if cfg.LSET_IDS:
         lSet_path, uSet_path, valSet_path = data_obj.makeLUVSets_from_ids(cfg.LSET_IDS, data=train_data, save_dir=cfg.EXP_DIR)
@@ -165,13 +153,7 @@ def main(cfg, train_data):
         lSet, uSet, _= data_obj.loadPartitions(lSetPath=lSet_path, \
             uSetPath=uSet_path, valSetPath = valSet_path )
 
-
-    def evaluate_r2(model, X_test, y_test):
-        return model.score(X_test, y_test)
-    
-    X_test, y_test = test_data[:][0], test_data[:][1]
-
-    run_regression = True
+    train_on_lSet = True
     if len(lSet) > 0:
         initial_set_r2_path = f"{cfg.INITIAL_SET_DIR}/initial_set_r2_seed_{cfg.RNG_SEED}.json"
         if os.path.exists(initial_set_r2_path):
@@ -183,13 +165,13 @@ def main(cfg, train_data):
                 if isinstance(r2, dict):
                     r2 = r2['initial_set_r2']
                 logger.info(f"Initial R² score: {r2:.4f}")
-                run_regression = False
+                train_on_lSet = False
             except Exception as e:
-                run_regression = True
-        if run_regression:
+                train_on_lSet = True
+        if train_on_lSet:
             n_splits = 5
-            print("Training ridge regression on initial set...")
-            logger.info("Training ridge regression on initial set...")
+            print("Training model on initial set...")
+            logger.info("Training model on initial set...")
             lSet = lSet.astype(int)
             uSet = uSet.astype(int)
             X_train, y_train = train_data[lSet][0], train_data[lSet][1]
@@ -197,9 +179,10 @@ def main(cfg, train_data):
             if X_train.shape[0] < 5:
                 print("Not enough samples...")
             else:
-                ridge_search.fit(X_train, y_train)
-                r2 = evaluate_r2(ridge_search, X_test, y_test)
-                logger.info(f"Initial R² score: {r2:.4f}")
+                model.train(X_train, y_train, logger=logger)
+
+                r2 = model.evaluate(X_test, y_test, logger=logger) #CHANGE, RECORD ALL METRICS
+                from IPython import embed; embed()
 
                 os.makedirs(cfg.INITIAL_SET_DIR, exist_ok=True)
                 with open(initial_set_r2_path, "w") as f:
@@ -211,7 +194,7 @@ def main(cfg, train_data):
 
     logger.info("Starting subset selection...")
     al_obj = ActiveLearning(data_obj, cfg)
-    activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data, X_train=train_data.X)
+    activeSet, new_uSet = al_obj.sample_from_uSet(model, lSet, uSet, train_data, X_train=train_data.X_rcf)
     print(f"Sampled {len(activeSet)} points!")
     if len(activeSet) > 0:
         train_data.plot_subset_on_map(activeSet, save_path=f"{exp_dir}/activeSet_plot.png")
@@ -223,24 +206,7 @@ def main(cfg, train_data):
     lSet_updated = lSet_updated.astype(int)
     train_data.plot_subset_on_map(lSet_updated, save_path=f"{exp_dir}/lSet_updated_plot.png")
 
-    model = Pipeline([
-        ('scaler', StandardScaler()),
-        ('ridge', Ridge())
-    ])
-
-    param_grid = {
-        'ridge__alpha': np.logspace(-5, 5, 10)
-    }
-
-    cv = KFold(n_splits=5, shuffle=True, random_state=42)
-
-    ridge_search = GridSearchCV(
-        estimator=model,
-        param_grid=param_grid,
-        scoring='r2',        
-        cv=cv,
-        n_jobs=get_free_cpus()                  #parallelize across folds
-    )
+    model = model_builder.build_model(cfg)
 
     # Train again on the updated labeled set
     if lSet_updated.size > 0:
@@ -251,9 +217,8 @@ def main(cfg, train_data):
         if n_splits > X_train_updated.shape[0]:
             print("Not enough samples...")
         else:
-            ridge_search.fit(X_train_updated, y_train_updated)
-            r2_updated = evaluate_r2(ridge_search, X_test, y_test)
-            logger.info(f"Updated R² score: {r2_updated:.4f}")
+            model.train(X_train_updated, y_train_updated, logger=logger)
+            r2_updated = model.evaluate(X_test, y_test, logger=logger)
 
     data_obj.saveSets(lSet_updated, new_uSet, activeSet, os.path.join(cfg.EXP_DIR, 'episode_1'))
 
@@ -270,7 +235,7 @@ def main_wrapper():
     cfg.DATASET.ROOT_DIR = os.path.abspath(cfg.DATASET.ROOT_DIR)
 
     data_obj = Data(cfg)
-    train_data, _ = data_obj.getDataset(isTrain=True)
+    train_data, _ = data_obj.getDataset(split='train')
 
     if args.id_path:
         with open(args.id_path, "rb") as f:

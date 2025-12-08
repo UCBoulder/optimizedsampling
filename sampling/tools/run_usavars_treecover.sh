@@ -3,16 +3,16 @@
 #!/bin/bash
 
 # === Shared Config ===
-CFG_FILE="../../sampling/configs/usavars/RIDGE_TC.yaml"
-SCRIPT="train.py"
+CFG_FILE="../../sampling/configs/usavars/treecover.yaml"
+SCRIPT="train_ridge.py"
 LOGFILE="completed_experiments_usavars_treecover.log"
 FAILED_LOG="failed_experiments_usavars_treecover.log"
 
 SEEDS=(1 42 123 456 789 1234 5678 9101 1213 1415)
-METHODS=("random" "random_unit" "greedycost" "poprisk" "poprisk_avg")
+METHODS=("random_unit" "greedycost" "poprisk" "poprisk_avg")
 BUDGETS=(50 100 200 300 400 500 1000)
 
-UTIL_LAMBDAS=(0.5 1.0)
+UTIL_LAMBDAS=(0.01 0.1 0.5 0.9 0.99 1.0)
 
 run_experiment() {
     local cmd="$1"

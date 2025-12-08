@@ -72,7 +72,7 @@ def merge(df_w_subset, *dfs):
     return [df_w_subset.values] + [d.reindex(df_w_subset.index).values for d in dfs if d is not None]
 
 
-def split_idxs_train_test(n, nums_train_test=None, frac_test=None, seed=0):
+def split_idxs_train_test(n, nums_train_test=None, frac_test=None, seed=0, val=False, frac_val=None):
     """separate indices into train and test sets by using frac_test
     specificy either nums_train_test or frac_test but not both.
     don't change the seed unless you have a good reason to."""
@@ -99,11 +99,20 @@ def split_idxs_train_test(n, nums_train_test=None, frac_test=None, seed=0):
 
     train_idxs = new_idxs[0:train_size]
     test_idxs = new_idxs[train_size : train_size + test_size]
+
+    if val:
+        # default 25% of train -> for 60:20:20 split if test_frac=0.2
+        frac_val = 0.25 if frac_val is None else frac_val
+        val_size = int(len(train_idxs) * frac_val)
+        val_idxs = train_idxs[:val_size]
+        train_idxs = train_idxs[val_size:]
+        return train_idxs, val_idxs, test_idxs
+
     return train_idxs, test_idxs
 
 
 def split_data_train_test(
-    X, y, frac_test=None, nums_train_test=None, seed=0, return_idxs=False
+    X, y, frac_test=None, nums_train_test=None, seed=0, return_idxs=False, val=False, frac_val=None
 ):
     """separate X and y  into train and test sets by using frac_test
     specificy either nums_train_test or frac_test but not both.
@@ -112,21 +121,28 @@ def split_data_train_test(
     indicies, for e.g. spliting the latlon values later."""
 
     assert X.shape[0] == len(y), "dimensions of X and y do not match!"
-    train_idxs, test_idxs = split_idxs_train_test(
-        X.shape[0], frac_test=frac_test, nums_train_test=nums_train_test, seed=seed
-    )
-    if return_idxs:
-        return (
-            X[train_idxs],
-            X[test_idxs],
-            y[train_idxs],
-            y[test_idxs],
-            train_idxs,
-            test_idxs,
-        )
-    else:
-        return X[train_idxs], X[test_idxs], y[train_idxs], y[test_idxs]
 
+    if val:
+        train_idxs, val_idxs, test_idxs = split_idxs_train_test(
+            X.shape[0], frac_test=frac_test, nums_train_test=nums_train_test, seed=seed, val=True, frac_val=frac_val
+        )
+        if return_idxs:
+            return (
+                X[train_idxs], X[val_idxs], X[test_idxs],
+                y[train_idxs], y[val_idxs], y[test_idxs],
+                train_idxs, val_idxs, test_idxs
+            )
+        else:
+            return X[train_idxs], X[val_idxs], X[test_idxs], y[train_idxs], y[val_idxs], y[test_idxs]
+
+    else:
+        train_idxs, test_idxs = split_idxs_train_test(
+            X.shape[0], frac_test=frac_test, nums_train_test=nums_train_test, seed=seed
+        )
+        if return_idxs:
+            return X[train_idxs], X[test_idxs], y[train_idxs], y[test_idxs], train_idxs, test_idxs
+        else:
+            return X[train_idxs], X[test_idxs], y[train_idxs], y[test_idxs]
 
 def split_world_sample(data):
     """
@@ -222,7 +238,7 @@ def split_world_sample_regular(data, xvec, yvec):
     return data
 
 
-def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, ACS=False, seed=0):
+def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, ACS=False, seed=0, val=False, frac_val=None):
     """This function performs a common workflow for many of our experiments. It involves
     the following steps:
         1. Load label values
@@ -285,13 +301,29 @@ def merge_dropna_transform_split_train_test(c, app, X, latlons, loc_emb=None, AC
     ## Split the data into the training/validation sample vs. test sample
     ## (discarding test set for now to keep memory low)
     print("Splitting training/test...")
-    X_train, X_test, Y_train, Y_test, idxs_train, idxs_test = split_data_train_test(
-        X, Y, frac_test=c.ml_model["test_set_frac"], seed=seed, return_idxs=True
-    )
-    latlons_train = latlons[idxs_train]
-    latlons_test = latlons[idxs_test]
+    if val:
+        X_train, X_val, X_test, Y_train, Y_val, Y_test, idxs_train, idxs_val, idxs_test = split_data_train_test(
+            X, Y, frac_test=c.ml_model["test_set_frac"], seed=seed, return_idxs=True, val=val, frac_val=frac_val
+        )
+        latlons_train = latlons[idxs_train]
+        latlons_test = latlons[idxs_test]
+        latlons_val = latlons[idxs_val]
 
-    ids_train = ids[idxs_train]
-    ids_test = ids[idxs_test]
+        ids_train = ids[idxs_train]
+        ids_test = ids[idxs_test]
+        ids_val = ids[idxs_val]
+
+        return X_train, X_val, X_test, Y_train, Y_val, Y_test, latlons_train, latlons_val, latlons_test, ids_train, ids_val, ids_test
+    
+    else:
+        X_train, X_test, Y_train, Y_test, idxs_train, idxs_test = split_data_train_test(
+            X, Y, frac_test=c.ml_model["test_set_frac"], seed=seed, return_idxs=True
+        )
+
+        latlons_train = latlons[idxs_train]
+        latlons_test = latlons[idxs_test]
+
+        ids_train = ids[idxs_train]
+        ids_test = ids[idxs_test]
 
     return X_train, X_test, Y_train, Y_test, latlons_train, latlons_test, ids_train, ids_test
