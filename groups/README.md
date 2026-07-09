@@ -19,8 +19,10 @@ Admin geodataframes are built with `usavars_generate_gdfs.py` (USAVars, requires
 **Image clusters** (KMeans over feature vectors):
 
 ```bash
-python image_clusters.py --dataset USAVars --feature_path /path/to/features.pkl --num_clusters 8
+python image_clusters.py --dataset usavars_population --feature_path /path/to/features.pkl --num_clusters 8
 ```
+
+`--dataset` must be one of: `usavars_population`, `usavars_treecover`, `india_secc`, `togo_ph_h20`.
 
 **NLCD land-cover clusters** (US only, requires a [2016 NLCD raster](https://earthexplorer.usgs.gov/)):
 
