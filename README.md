@@ -229,7 +229,7 @@ Set correct paths, especially `DATASET.ROOT_DIR`.
 
 ### Step 2: Train
 
-Example usage:
+Run from `sampling/scripts/`. Example usage:
 
 ```bash
 python train.py \
@@ -262,42 +262,21 @@ python train.py \
 
 ## Bash Scripts
 
-### Base Experiments
+Sweep scripts live in `sampling/scripts/shell/` and are configured entirely via
+environment variables (no hardcoded paths) — see the usage comment at the top
+of each file for the full variable list and an example invocation.
 
-- `run_india.sh`  
-- `run_togo.sh`  
-- `run_usavars_population.sh`  
-- `run_usavars_treecover.sh`
+- `base.sh` — method x budget x seed sweep, no initial set
+- `rep_sampling.sh` — representative-sampling sweep (states / image clusters / NLCD), grouped by `GROUP_TYPE`
+- `multiple_initial_sets.sh` — initial-set size x cost function sweep (Figure 4)
+- `cost_sensitivity.sh` — alpha x group-assignment sweep (Figure 5)
 
-### Representative Sampling – Admin Regions
+Example:
 
-- `run_india_rep_states.sh`  
-- `run_togo_rep_regions.sh`  
-- `run_usavars_population_rep_states.sh`  
-- `run_usavars_treecover_rep_states.sh`
-
-### Representative Sampling – Image Clusters
-
-- `run_india_rep_image_8.sh`  
-- `run_togo_cluster_rep_image_8.sh`  
-- `run_usavars_population_rep_image_8.sh`  
-- `run_usavars_treecover_rep_image_8.sh`
-
-### Representative Sampling – NLCD
-
-(U.S. only)
-
-- `run_usavars_population_rep_nlcd.sh`  
-- `run_usavars_treecover_rep_nlcd.sh`
-
-### Multiple Initial Sets (Figure 4)
-
-- `run_india_cluster_multiple.sh`  
-- `run_togo_cluster_multiple_initial_set.sh`
-
-### Cost Sensitivity (Figure 5)
-
-- `run_togo_cost_diff.sh`
+```bash
+DATASET=togo CFG=../configs/togo/RIDGE.yaml METHODS="poprisk" BUDGETS="100 500" \
+  ./sampling/scripts/shell/base.sh
+```
 
 ---
 

@@ -1,10 +1,8 @@
 import pickle
 import argparse
 import geopandas as gpd
-import dill
 import os
 import matplotlib.pyplot as plt
-import numpy as np
 
 def make_group_assignment(df, columns, id_col):
     group_ids = df[columns].astype(str).agg("_".join, axis=1)
@@ -72,50 +70,22 @@ def main():
                             "../0_data/admin_gdfs/togo/gdf_adm3.geojson",
                         ],
                         help="List of paths to GeoDataFrames, in same order as datasets.")
-    parser.add_argument("--group_paths", type=str, nargs="+",
-                        default=[
-                            "../0_data/groups/usavars/population/image_8_cluster_assignments.pkl",
-                            "../0_data/groups/usavars/treecover/image_8_cluster_assignments.pkl",
-                            "../0_data/groups/india_secc/image_8_cluster_assignments.pkl",
-                            "../0_data/groups/togo/image_8_cluster_assignments.pkl",
-                        ],
-                        help="List of paths to group assignment pkl files, same order as datasets.")
     parser.add_argument("--id_cols", type=str, nargs="+",
                         default=["id", "id", "condensed_shrug_id", "id"],
                         help="List of ID column names, same order as datasets.")
     parser.add_argument("--group_cols", type=str, nargs="+",
                         default=["state_name", "state_name", "admin_1", "admin_1"],
                         help="List of admin column names for grouping, same order as datasets.")
-    parser.add_argument("--shape_files", type=str, nargs="+",
-                        default=[
-                            "../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp",
-                            "../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp",
-                            "../0_data/boundaries/world/ne_10m_admin_0_countries.shp",
-                            "/share/togo/Shapefiles/tgo_admbnda_adm0_inseed_itos_20210107.shp",
-                        ],
-                        help="List of shapefile paths, same order as datasets.")
-    parser.add_argument("--country_names", type=str, nargs="+",
-                        default=[None, None, "India", None],
-                        help="Country names or None, same order as datasets.")
-    parser.add_argument("--exclude_names", type=str, nargs="+",
-                        default=["Alaska,Hawaii,Puerto Rico", "Alaska,Hawaii,Puerto Rico", "", ""],
-                        help="Comma separated names to exclude, empty string for none, same order as datasets.")
     parser.add_argument("--group_type", type=str, default="admin_groups",
                         help="Group type string to pass to plot_group_assignments.")
 
     args = parser.parse_args()
-
     datasets = args.datasets.split(",")
-    exclude_lists = [ex.split(",") if ex else [] for ex in args.exclude_names]
 
     for i, dataset in enumerate(datasets):
         gdf_path = args.gdf_paths[i]
-        group_path = args.group_paths[i]
         id_col = args.id_cols[i]
-        group_col = args.group_cols[i]  # Get the group column for this dataset
-        # shape_file = args.shape_files[i]
-        # country_name = args.country_names[i]
-        # exclude_names = exclude_lists[i]
+        group_col = args.group_cols[i]
 
         print(f"Processing dataset: {dataset}")
         print(f"Using group column: {group_col}")
@@ -127,17 +97,14 @@ def main():
             print(f"Warning: Column '{group_col}' not found in {dataset}. Available columns: {list(gdf_points.columns)}")
             continue
 
-        # Load group assignments from file 
-        # with open(group_path, "rb") as f:
-        #     group_dict = dill.load(f)
-
         group_dict = make_group_assignment(gdf_points, columns=[group_col], id_col=id_col)
-        
+
         output_dir = f"../0_data/groups/{dataset}"
         os.makedirs(output_dir, exist_ok=True)
-        
+
         output_path = f"{output_dir}/{args.group_type}_assignments.pkl"
         save_dict_to_pkl(group_dict, output_path)
         print(f"Saved group assignments to: {output_path}")
+        
 if __name__ == "__main__":
     main()

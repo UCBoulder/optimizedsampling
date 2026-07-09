@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Sequence, Optional
+from typing import Sequence
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -8,6 +8,7 @@ from torchgeo.datasets.geo import NonGeoDataset
 
 from matplotlib.figure import Figure
 from shapely.geometry import Point
+from map_plotting import plot_geometries_on_map
 
 
 class TogoSoilFertility(NonGeoDataset):
@@ -16,7 +17,7 @@ class TogoSoilFertility(NonGeoDataset):
     def __init__(
         self,
         root: Path = Path("data"),
-        isTrain: bool = True,
+        is_train: bool = True,
         label_col: str = "p_mgkg",
         unique_id_col: str = "unique_id",
         is_feather: bool = False,
@@ -26,14 +27,14 @@ class TogoSoilFertility(NonGeoDataset):
         """
         Args:
             root: Path to the data directory
-            isTrain: Whether to load the training split
+            is_train: Whether to load the training split
             label_col: Column name for the label
             unique_id_col: Column name for unique identifiers
         """
         self.root = Path(root) if isinstance(root, str) else root
         self.label_col = label_col
         self.unique_id_col = unique_id_col
-        self.split = "train" if isTrain else "test"
+        self.split = "train" if is_train else "test"
         self.csv_name = csv_name
 
         self.df = self._load_csv()
@@ -145,30 +146,14 @@ class TogoSoilFertility(NonGeoDataset):
         Returns:
             A matplotlib Figure showing the points on the map.
         """
-        import matplotlib.pyplot as plt
-        print("Plotting latlon subset...")
-        # Load the country shapefile
-        country = gpd.read_file(country_shape_file)
-
-        if country_name is not None and 'NAME' in country.columns:
-            country = country[country['NAME'] == country_name]
-
-        if exclude_names:
-            country = country[~country['name'].isin(exclude_names)]
-
-        latlons = self.latlons[indices]
-        points = [Point(lon, lat) for lat, lon in latlons]
-        points_gdf = gpd.GeoDataFrame(geometry=points, crs='EPSG:4326')
-
-        fig, ax = plt.subplots(figsize=(12, 10))
-        country.plot(ax=ax, edgecolor='black', facecolor='none')
-        points_gdf.plot(ax=ax, color=point_color, markersize=point_size)
-
-        ax.set_axis_off()
-        if title:
-            ax.set_title(title, fontsize=14)
-
-        if save_path:
-            fig.savefig(save_path, dpi=300)
-
-        return fig
+        points = [Point(lon, lat) for lat, lon in self.latlons[indices]]
+        return plot_geometries_on_map(
+            points,
+            country_shape_file=country_shape_file,
+            country_name=country_name,
+            exclude_names=exclude_names,
+            point_color=point_color,
+            point_size=point_size,
+            title=title,
+            save_path=save_path,
+        )

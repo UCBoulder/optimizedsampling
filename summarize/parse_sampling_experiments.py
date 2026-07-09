@@ -4,18 +4,14 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
-# === CONFIGURATION ===
 LOG_FILENAME = "stdout.log"
 BASE_DIR = "../../0_output"
 
-# === REGEX ===
 initial_r2_re = re.compile(r"Initial R² score: (-?[0-9.]+)")
 updated_r2_re = re.compile(r"Updated R² score: (-?[0-9.]+)")
-
 seed_re = re.compile(r"_seed_\d+")
 size_re = re.compile(r"Selected (\d+) new samples")
 
-# === METHOD LABELS FOR LATEX ===
 METHOD_LABELS = {
     "random": "Random",
     "greedycost": "Greedy Low-Cost",
@@ -32,7 +28,6 @@ METHOD_LABELS = {
     "poprisk_mod_nlcd_1.0": "PopRisk Mod NLCD ($\\lambda = 1.0$)"
 }
 
-# === FUNCTION DEFINITIONS ===
 
 def parse_log_file(log_path, root):
     with open(log_path, "r") as f:
@@ -47,27 +42,21 @@ def parse_log_file(log_path, root):
         size = float(m.group(1))
 
     path_parts = root.split("/")
-    dataset_names = {"INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O", "TOGO_P_2022_JUL_DEC_P20"}  # add other dataset names here
+    dataset_names = {"INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O", "TOGO_P_2022_JUL_DEC_P20"}
 
-    # Find dataset index dynamically
     dataset_idx = next((i for i, part in enumerate(path_parts) if part in dataset_names), None)
     if dataset_idx is None:
         raise ValueError("Dataset name not found in path_parts")
 
     dataset = path_parts[dataset_idx]
-
-    # Example extraction assuming fixed offsets relative to dataset_idx
     seed = path_parts[-1].split("_")[1]
 
-    # Now adjust following logic relative to dataset_idx
     if path_parts[dataset_idx + 1] == "empty_initial_set":
         init_set_base = "empty_initial_set"
         cost_type = path_parts[dataset_idx + 2]
         method_base_idx = dataset_idx + 3
     else:
-        # Handle 'multiple' or 'multiple_cluster_sampling' presence relative to dataset_idx
-        # Check if those keywords are anywhere after dataset_idx, or specifically at some offset
-        post_dataset_parts = path_parts[dataset_idx + 1 : dataset_idx + 5]  # slice as needed
+        post_dataset_parts = path_parts[dataset_idx + 1 : dataset_idx + 5]
         if any(p in {"multiple", "multiple_cluster_sampling"} for p in post_dataset_parts):
             dataset += "_MULTIPLE"
             init_set_idx = dataset_idx + 3
@@ -108,8 +97,7 @@ def aggregate_results(base_dir=BASE_DIR, log_filename=LOG_FILENAME):
             log_path = os.path.join(root, log_filename)
             try:
                 key, method, size, initial_r2, updated_r2, seed = parse_log_file(log_path, root)
-            except Exception as e:
-                print(f"Failed to parse {log_path}: {e}")
+            except Exception:
                 continue
 
             if initial_r2 is not None and seed not in results[key]["seeds"]:
@@ -161,7 +149,7 @@ def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
         "cluster_sampling": "Cluster Sampling",
         "empty_initial_set": "No Initial Set",
     }.get(init, "Initial Setting")
-    
+
     def detail_for_init(init): return {
         "cluster_sampling": "$k$ Points Per Cluster; Total size $M$",
         "empty_initial_set": "No Initial Set",
@@ -209,13 +197,11 @@ def generate_latex_table(df, method_labels, dataset, init_set, cost_type):
     tex_path = f"latex_table_r2/latex_table_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
-    print(f"📄 LaTeX table written to: {tex_path}")
 
 
 def save_csv(df, dataset, init_set, cost_type):
     path = f"aggregated_r2/aggregated_r2_{dataset}_{init_set}_{cost_type}.csv"
     df.to_csv(path, index=False)
-    print(f"📊 CSV saved to: {path}")
 
 def generate_size_latex_table(results_dict, method_labels, dataset, init_set, cost_type):
     rows = []
@@ -237,10 +223,8 @@ def generate_size_latex_table(results_dict, method_labels, dataset, init_set, co
 
     df = pd.DataFrame(rows).sort_values("budget")
     if df.empty:
-        print(f"No size data found for: {dataset}, {init_set}, {cost_type}")
         return
 
-    # Generate LaTeX table
     lines = []
     lines.append("\\begin{table}[t!]")
     lines.append("\\centering")
@@ -260,10 +244,7 @@ def generate_size_latex_table(results_dict, method_labels, dataset, init_set, co
         for method in method_labels:
             mean = row.get(f"{method}_size_mean")
             std = row.get(f"{method}_size_std")
-            if pd.notnull(mean) and pd.notnull(std):
-                cells.append(f"{mean:.1f} ± {std:.1f}")
-            else:
-                cells.append("--")
+            cells.append(f"{mean:.1f} ± {std:.1f}" if pd.notnull(mean) and pd.notnull(std) else "--")
         lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
 
     lines.append("\\hline%")
@@ -275,23 +256,20 @@ def generate_size_latex_table(results_dict, method_labels, dataset, init_set, co
     tex_path = f"latex_table_sizes/latex_table_sizes_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
-    print(f"📄 Size LaTeX table written to: {tex_path}")
 
 
 if __name__ == "__main__":
     results = aggregate_results()
 
-    # Group all available (dataset, initial_set, cost_type)
     keys = set((ds, iset, ctype) for (ds, iset, ctype, _) in results)
 
     for dataset, init_set, cost_type in sorted(keys):
         try:
             df = build_filtered_df(results, dataset, init_set, cost_type)
             if df.empty:
-                print(f"Skipping empty table for: {dataset}, {init_set}, {cost_type}")
                 continue
             save_csv(df, dataset, init_set, cost_type)
             generate_latex_table(df, METHOD_LABELS, dataset, init_set, cost_type)
             generate_size_latex_table(results, METHOD_LABELS, dataset, init_set, cost_type)
-        except Exception as e:
-            print(e)
+        except Exception:
+            pass

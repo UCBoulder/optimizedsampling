@@ -1,138 +1,60 @@
 import pandas as pd
 import os
 
-#base_method_order = ['random', 'random_unit', 'greedycost', 'poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'similarity', 'diversity']
 base_method_order = ['greedycost', 'random_unit', 'poprisk_admin', 'poprisk_img', 'poprisk_nlcd']
-# base_method_order = ['poprisk', 'poprisk2']
-
-#base_method_order = ['poprisk_avg', 'poprisk', 'poprisk_img', 'poprisk_img_8', 'poprisk_avg_img', 'poprisk_avg_img_8']
-
 METRICS = ['r2', 'mse', 'rmse', 'mae']
 
 def load_df(dataset, init_set, cost_type, csv_path="results/_metrics_{dataset}_{init_set}_{cost_type}.csv"):
-    csv_path = csv_path.format(dataset=dataset, init_set=init_set, cost_type=cost_type)
-    df = pd.read_csv(csv_path)
-    return df
+    return pd.read_csv(csv_path.format(dataset=dataset, init_set=init_set, cost_type=cost_type))
 
-def generate_latex_table(df, dataset, init_set, cost_type, method_map, metric='r2'):
-    lines = []
-    lines.append("\\hline%")
+def generate_latex_table(df, dataset, init_set, cost_type, method_map, metric='r2', delta=False):
+    method_labels = [method_map.get(m, m) for m in base_method_order]
+    std_suffix = "se" if delta else "std"
+    prefix = "delta_" if delta else ""
 
-    method_labels = [method_map.get(method, method) for method in base_method_order]
-
+    lines = ["\\hline%"]
     for _, row in df.iterrows():
         budget = int(row["budget"])
         cells = []
         for method in method_labels:
-            print(method)
-            mean = row.get(f"{method}_updated_{metric}_mean")
-            std = row.get(f"{method}_updated_{metric}_std")
-            if pd.notnull(mean) and pd.notnull(std):
-                cells.append(f"{mean:.2f} ± {std:.2f}")
-            else:
-                cells.append("--")
-        print(len(cells))
+            mean = row.get(f"{method}_{prefix}{metric}_mean" if delta else f"{method}_updated_{metric}_mean")
+            std = row.get(f"{method}_{prefix}{metric}_{std_suffix}" if delta else f"{method}_updated_{metric}_{std_suffix}")
+            cells.append(f"{mean:.2f} ± {std:.2f}" if pd.notnull(mean) and pd.notnull(std) else "--")
         lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
     lines.append("\\hline%")
 
-    # Create directory if it doesn't exist
     os.makedirs(f"latex_table_{metric}", exist_ok=True)
-    
-    tex_path = f"latex_table_{metric}/latex_table_{metric}_{dataset}_{init_set}_{cost_type}.tex"
+    tex_path = f"latex_table_{metric}/latex_table_{prefix}{metric}_{dataset}_{init_set}_{cost_type}.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
-    print(f'Wrote latex table to {tex_path}')
 
-def generate_delta_latex_table(df, dataset, init_set, cost_type, method_map, metric='r2'):
-    lines = []
-    lines.append("\\hline%")
-
-    method_labels = [method_map.get(method, method) for method in base_method_order]
-
-    for _, row in df.iterrows():
-        budget = int(row["budget"])
-        cells = []
-        for method in method_labels:
-            print(method)
-            mean = row.get(f"{method}_delta_{metric}_mean")
-            std = row.get(f"{method}_delta_{metric}_se")
-            if pd.notnull(mean) and pd.notnull(std):
-                cells.append(f"{mean:.2f} ± {std:.2f}")
-            else:
-                cells.append("--")
-        print(len(cells))
-        lines.append(f"{budget} & " + " & ".join(cells) + "\\\\%")
-    lines.append("\\hline%")
-
-    # Create directory if it doesn't exist
-    os.makedirs(f"latex_table_{metric}", exist_ok=True)
-    
-    tex_path = f"latex_table_{metric}/latex_table_delta_{metric}_{dataset}_{init_set}_{cost_type}.tex"
-    with open(tex_path, "w") as f:
-        f.write("\n".join(lines))
-    print(f'Wrote latex table to {tex_path}')
-
-def generate_table_from_csv(dataset, 
-                            init_set, 
-                            cost_type, 
-                            method_map,
-                            delta=False,
+def generate_table_from_csv(dataset, init_set, cost_type, method_map, delta=False,
                             csv_path="results/aggregated_metrics_{dataset}_{init_set}_{cost_type}.csv"):
     df = load_df(dataset, init_set, cost_type, csv_path=csv_path)
-    
-    # Generate tables for all metrics
     for metric in METRICS:
-        if delta:
-            generate_delta_latex_table(df, dataset, init_set, cost_type, method_map, metric=metric)
-        else:
-            generate_latex_table(df, dataset, init_set, cost_type, method_map, metric=metric)
+        generate_latex_table(df, dataset, init_set, cost_type, method_map, metric=metric, delta=delta)
 
 if __name__ == "__main__":
+    import argparse
 
-    DATASET_NAMES = {
-        "INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O"
-    }
-
+    DATASET_NAMES = {"INDIA_SECC", "USAVARS_POP", "USAVARS_TC", "TOGO_PH_H2O"}
     initial_set_strs = {
         'USAVARS_POP': '{num_strata}_fixedstrata_{ppc}ppc_{size}_size',
         'USAVARS_TC': '{num_strata}_fixedstrata_{ppc}ppc_{size}_size',
         'INDIA_SECC': '{num_strata}_state_district_desired_{ppc}ppc_{size}_size',
         'TOGO_PH_H2O': '{num_strata}_strata_desired_{ppc}ppc_{size}_size'
     }
+    admin_types = {'USAVARS_POP': 'states', 'USAVARS_TC': 'states', 'INDIA_SECC': 'states', 'TOGO_PH_H2O': 'regions'}
+    cluster_nums = {'USAVARS_POP': '8', 'USAVARS_TC': '8', 'INDIA_SECC': '8', 'TOGO_PH_H2O': '3'}
 
-    group_types = {
-        'USAVARS_POP': 'nlcd',
-        'USAVARS_TC': 'nlcd',
-        'INDIA_SECC': 'urban_rural',
-        'TOGO_PH_H2O': 'regions'
-    }
-
-    admin_types = {
-        'USAVARS_POP': 'states',
-        'USAVARS_TC': 'states',
-        'INDIA_SECC': 'states',
-        'TOGO_PH_H2O': 'regions'
-    }
-
-    cluster_nums = {
-        'USAVARS_POP': '8',
-        'USAVARS_TC': '8',
-        'INDIA_SECC': '8',
-        'TOGO_PH_H2O': '3'
-    }
-
-    import argparse
     parser = argparse.ArgumentParser(description="Run sampling evaluation script")
-    parser.add_argument("--delta", type=lambda x: x.lower() == 'true', default=False,
-                        help="Whether to include delta R² (True/False)")
-    args = parser.parse_args()
-    delta = args.delta
-    print(f"Delta mode: {delta}")
+    parser.add_argument("--delta", type=lambda x: x.lower() == 'true', default=False)
+    delta = parser.parse_args().delta
 
     for dataset in DATASET_NAMES:
         method_map = {
             'poprisk_admin': f'poprisk_{admin_types[dataset]}_0.5',
-            'poprisk_nlcd': f'poprisk_nlcd_0.5',
+            'poprisk_nlcd': 'poprisk_nlcd_0.5',
             'poprisk_img': f'poprisk_image_clusters_{cluster_nums[dataset]}_0.5',
         }
 
@@ -140,12 +62,9 @@ if __name__ == "__main__":
             for size in [100, 200, 300, 500, 2000]:
                 for num_strata in [2, 5, 10]:
                     initial_set = initial_set_strs[dataset].format(num_strata=num_strata, ppc=ppc, size=size)
-                    sampling_type = 'cluster_sampling'
                     for alpha in [1, 5, 10, 15, 20, 25, 30]:
-                        in_region_cost = ppc
-                        out_of_region_cost = in_region_cost + alpha
-                        cost_type = f"cluster_based_c1_{in_region_cost}_c2_{out_of_region_cost}"
+                        cost_type = f"cluster_based_c1_{ppc}_c2_{ppc + alpha}"
                         try:
                             generate_table_from_csv(dataset, initial_set, cost_type, method_map, delta=delta)
-                        except Exception as e:
-                            x=1
+                        except Exception:
+                            pass

@@ -1,24 +1,18 @@
 """India SECC dataset."""
 
-import glob
-import os
-from collections.abc import Callable, Sequence
-from typing import ClassVar
+from collections.abc import Sequence
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import rasterio
-import torch
 from matplotlib.figure import Figure
 from torch import Tensor
-import dill
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
 from torchgeo.datasets.geo import NonGeoDataset
 from torchgeo.datasets import DatasetNotFoundError
+from map_plotting import plot_geometries_on_map
 
 
 class IndiaSECC(NonGeoDataset):
@@ -31,7 +25,7 @@ class IndiaSECC(NonGeoDataset):
     def __init__(
         self,
         root: Path = 'data',
-        isTrain: bool = True,
+        is_train: bool = True,
         label: str = 'secc_cons_pc_combined'
     ) -> None:
         """Initialize a new IndiaSECC dataset instance.
@@ -44,11 +38,7 @@ class IndiaSECC(NonGeoDataset):
             DatasetNotFoundError: If dataset is not found and *download* is False.
         """
         self.root = Path(root)
-        if isTrain:
-            self.split = 'train'
-        else:
-            self.split = 'test'
-
+        self.split = 'train' if is_train else 'test'
         self.label = label
 
         self._check_for_dataset()
@@ -216,28 +206,13 @@ class IndiaSECC(NonGeoDataset):
         Returns:
             A matplotlib Figure showing the points on the map.
         """
-        print("Plotting latlon subset...")
-        # Load the country shapefile
-        country = gpd.read_file(country_shape_file)
-
-        if country_name is not None and 'NAME' in country.columns:
-            country = country[country['NAME'] == country_name]
-
-        if exclude_names:
-            country = country[~country['name'].isin(exclude_names)]
-
-        geometries_subset = self.geometries[indices]
-        points_gdf = gpd.GeoDataFrame(geometry=geometries_subset, crs='EPSG:4326')
-
-        fig, ax = plt.subplots(figsize=(12, 10))
-        country.plot(ax=ax, edgecolor='black', facecolor='none')
-        points_gdf.plot(ax=ax, color=point_color, markersize=point_size)
-
-        ax.set_axis_off()
-        if title:
-            ax.set_title(title, fontsize=14)
-
-        if save_path:
-            fig.savefig(save_path, dpi=300)
-
-        return fig
+        return plot_geometries_on_map(
+            self.geometries[indices],
+            country_shape_file=country_shape_file,
+            country_name=country_name,
+            exclude_names=exclude_names,
+            point_color=point_color,
+            point_size=point_size,
+            title=title,
+            save_path=save_path,
+        )
