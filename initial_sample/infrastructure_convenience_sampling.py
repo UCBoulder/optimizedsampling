@@ -1,4 +1,5 @@
 import os
+import argparse
 import dill
 import numpy as np
 import geopandas as gpd
@@ -209,3 +210,52 @@ class UrbanConvenienceSampler:
             legend_kwargs={'loc': 'lower left', 'fontsize': 10, 'title': 'Legend', 'title_fontsize': 11, 'frameon': True},
             equal_aspect=True, title_pad=None, use_tight_layout=False,
         )
+
+def main():
+    parser = argparse.ArgumentParser(description="Run convenience sampling over USAVars labels.")
+    parser.add_argument("--labels", type=str, nargs="+", default=["population", "treecover"])
+    parser.add_argument("--data_dir", type=str, default="../../0_data")
+    parser.add_argument("--id_col", type=str, default="id")
+    parser.add_argument("--urban_shp", type=str, default=None, help="Shapefile of candidate urban areas")
+    parser.add_argument("--pop_col", type=str, default="population")
+    parser.add_argument("--city_lon", type=float, default=None, help="Use a single city point instead of --urban_shp")
+    parser.add_argument("--city_lat", type=float, default=None)
+    parser.add_argument("--n_urban", type=int, default=1)
+    parser.add_argument("--cluster_col", type=str, nargs="+", default=None,
+                        help="Sample whole clusters (e.g. counties) instead of individual points")
+    parser.add_argument("--points_per_cluster", type=int, default=5)
+    parser.add_argument("--sample_sizes", type=int, nargs="+", required=True)
+    parser.add_argument("--method", type=str, default="deterministic", choices=["deterministic", "probabilistic"])
+    parser.add_argument("--temp", type=float, default=0.025)
+    parser.add_argument("--seeds", type=int, nargs="+", default=[1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415])
+    parser.add_argument("--country_shape_file", type=str,
+                        default="../../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp")
+    parser.add_argument("--exclude_names", type=str, nargs="+", default=["Alaska", "Hawaii", "Puerto Rico"])
+    args = parser.parse_args()
+
+    gdf_urban = gpd.read_file(args.urban_shp) if args.urban_shp else None
+    city_coord = (args.city_lon, args.city_lat) if args.city_lon is not None else None
+    cluster_col = args.cluster_col
+    if cluster_col is not None:
+        cluster_col = cluster_col[0] if len(cluster_col) == 1 else cluster_col
+
+    for label in args.labels:
+        gdf_points = gpd.read_file(f"{args.data_dir}/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson")
+        out_path = f"{args.data_dir}/initial_samples/usavars/{label}/convenience_sampling"
+
+        sampler = UrbanConvenienceSampler(
+            id_col=args.id_col, gdf_points=gdf_points, gdf_urban=gdf_urban, city_coord=city_coord,
+            n_urban=args.n_urban, pop_col=args.pop_col, cluster_col=cluster_col,
+            points_per_cluster=args.points_per_cluster, admin_ids={},
+        )
+        for total_sample_size in args.sample_sizes:
+            for seed in args.seeds:
+                if cluster_col is not None:
+                    sampler.sample_by_clusters(total_sample_size, method=args.method, temp=args.temp, seed=seed)
+                else:
+                    sampler.sample(total_sample_size, method=args.method, temp=args.temp, seed=seed)
+                sampler.save_sampled_ids(out_path)
+                sampler.plot(args.country_shape_file, exclude_names=args.exclude_names)
+
+if __name__ == '__main__':
+    main()

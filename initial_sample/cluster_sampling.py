@@ -1,7 +1,9 @@
 import os
+import argparse
 import pandas as pd
 import numpy as np
 import dill
+import geopandas as gpd
 
 from plotting_utils import plot_sampled_points_on_map
 
@@ -231,3 +233,39 @@ class ClusterSampler:
             self.gdf_points, self.sampled_gdf, self.sample_size, country_shape_file,
             title=title, save_path=save_path, country_name=country_name, exclude_names=exclude_names,
         )
+
+def main():
+    parser = argparse.ArgumentParser(description="Run cluster sampling over USAVars labels.")
+    parser.add_argument("--labels", type=str, nargs="+", default=["population", "treecover"])
+    parser.add_argument("--data_dir", type=str, default="../../0_data")
+    parser.add_argument("--id_col", type=str, default="id")
+    parser.add_argument("--strata_col", type=str, default="state_name")
+    parser.add_argument("--cluster_col", type=str, nargs="+", default=["combined_county_id"])
+    parser.add_argument("--sample_sizes", type=int, nargs="+", required=True)
+    parser.add_argument("--points_per_cluster", type=int, default=5)
+    parser.add_argument("--n_strata", type=int, default=None)
+    parser.add_argument("--fixed_strata", type=str, nargs="+", default=None)
+    parser.add_argument("--country_shape_file", type=str,
+                        default="../../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp")
+    parser.add_argument("--exclude_names", type=str, nargs="+", default=["Alaska", "Hawaii", "Puerto Rico"])
+    parser.add_argument("--seeds", type=int, nargs="+", default=[1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415])
+    args = parser.parse_args()
+
+    cluster_col = args.cluster_col[0] if len(args.cluster_col) == 1 else args.cluster_col
+
+    for label in args.labels:
+        gdf = gpd.read_file(f"{args.data_dir}/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson")
+        out_path = f"{args.data_dir}/initial_samples/usavars/{label}/cluster_sampling"
+
+        sampler = ClusterSampler(gdf, id_col=args.id_col, strata_col=args.strata_col,
+                                  cluster_col=cluster_col, ADMIN_IDS={})
+        for total_sample_size in args.sample_sizes:
+            for seed in args.seeds:
+                sampler.sample(total_sample_size=total_sample_size, points_per_cluster=args.points_per_cluster,
+                                seed=seed, n_strata=args.n_strata, fixed_strata=args.fixed_strata)
+                sampler.save_sampled_ids(out_path)
+                sampler.plot(args.country_shape_file, exclude_names=args.exclude_names)
+                sampler.reset_sample()
+
+if __name__ == '__main__':
+    main()

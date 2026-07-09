@@ -3,6 +3,7 @@ __pycache__/
 *.ipynb_checkpoints
 *.ipynb
 .vscode/
+*.pdf
 
 0_data/
 0_data_folder/
