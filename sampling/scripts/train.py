@@ -11,10 +11,11 @@ def add_path(path):
         sys.path.insert(0, path)
 
 add_path(os.path.abspath('..'))
+add_path(os.path.abspath('../..'))
 
 from active_learning.ActiveLearning import ActiveLearning
 from core.config import cfg, dump_cfg
-from datasets.data import Data
+from datasets.featurized.data import Data
 import utils.logging as lu
 
 from models.ridge import RidgeModel

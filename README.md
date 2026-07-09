@@ -1,6 +1,6 @@
 # Optimized Sampling Pipeline
 
-### Attribution This repository makes use of and builds on external code from the following sources: - **`datasets/mosaiks`**: Adapted from the [Global Policy Lab's mosaiks-paper repository](https://github.com/Global-Policy-Lab/mosaiks-paper), which provides code for feature extraction and dataset handling using MOSAIKS features. - **`sampling/`**: Adapted from [TypiClust's deep-al module](https://github.com/avihu111/TypiClust/tree/main/deep-al), which includes implementations for active learning and sampling methods. We thank the authors of these repositories for making their code available.
+### Attribution This repository makes use of and builds on external code from the following sources: - **`datasets/raw/mosaiks`**: Adapted from the [Global Policy Lab's mosaiks-paper repository](https://github.com/Global-Policy-Lab/mosaiks-paper), which provides code for feature extraction and dataset handling using MOSAIKS features. - **`sampling/`**: Adapted from [TypiClust's deep-al module](https://github.com/avihu111/TypiClust/tree/main/deep-al), which includes implementations for active learning and sampling methods. We thank the authors of these repositories for making their code available.
 
 This repository contains a complete data processing pipeline for **optimized sampling analysis** across three datasets:
 
@@ -72,7 +72,7 @@ Process/download from this repository: https://github.com/emilylaiken/satellite-
 Run:
 
 ```bash
-cd datasets
+cd datasets/raw
 
 python featurization.py \
  --dataset_name USAVars \
@@ -93,7 +93,7 @@ Follow instructions at: [satellite-fairness-replication](https://github.com/emil
 Run `format_data.py`:
 
 ```bash
-cd datasets
+cd datasets/raw
 
 python format_data.py \
  --save \

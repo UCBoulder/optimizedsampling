@@ -1,9 +1,9 @@
 import os
 import numpy as np
 
-from datasets.usavars import USAVars
-from datasets.india_secc import IndiaSECC
-from datasets.togo_soil_fertility import TogoSoilFertility
+from .usavars import USAVars
+from .india_secc import IndiaSECC
+from .togo_soil_fertility import TogoSoilFertility
 
 
 class Data:

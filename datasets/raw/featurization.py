@@ -6,7 +6,7 @@ import dill
 import numpy as np
 
 from torchgeo.models import RCF, swin_v2_b, Swin_V2_Weights
-from USAVars import USAVars
+from usavars import USAVars
 
 DATASET_CLASSES = {
     "USAVars": USAVars,
