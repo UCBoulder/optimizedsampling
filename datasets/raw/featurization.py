@@ -5,7 +5,7 @@ import torch
 import dill
 import numpy as np
 
-from torchgeo.models import RCF, swin_v2_b, Swin_V2_Weights
+from torchgeo.models import RCF
 from usavars import USAVars
 
 DATASET_CLASSES = {
@@ -28,59 +28,8 @@ def load_dataset(dataset_name, data_root, split, labels):
         checksum=False,
     )
 
-def transformer_featurization(train, val, test, total_num_images, label):
-    num_features=1024
-    out_fpath = f"data/int/feature_matrices/CONTUS_UAR_{label}_swin_v2_b.pkl"
-
-    # ids, latlons extraction
-    ids, latlons = format_ids_latlons(total_num_images, train, val, test)
-
-    # Load SwinV2-B pretrained on NAIP MI-SATLAS
-    model = swin_v2_b(weights=Swin_V2_Weights.NAIP_RGB_MI_SATLAS)
-    model.eval()
-    model.head = torch.nn.Identity()  # remove classification head
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-
-    print("Featurizing images...")
-
-    featurized_imgs = np.empty((total_num_images, num_features), dtype=np.float32)
-
-    for i in range(total_num_images):
-        print(f"Featurizing image {i}/{total_num_images}")
-
-        if i < len(train):
-            img = train[i]['image']
-        elif i < len(train) + len(val):
-            img = val[i - len(train)]['image']
-        else:
-            img = test[i - len(train) - len(val)]['image']
-
-        img_rgb = img[:3, :, :]  # take first 3 channels
-
-        # Ensure batch dimension and move to device
-        img_rgb = img_rgb.unsqueeze(0).to(device)  # shape (1, C, H, W)
-
-        with torch.no_grad():
-            feats = model(img_rgb)
-            featurized_imgs[i] = feats.squeeze(0).cpu().numpy()
-
-        # with torch.no_grad():
-        #     feats = model(img)  # shape (1, D)
-        #     featurized_imgs[i] = feats.squeeze(0).cpu().numpy()
-
-    # Save features
-    with open(out_fpath, "wb") as f:
-        dill.dump(
-            {"X": featurized_imgs, "ids_X": ids, "latlon": latlons},
-            f,
-            protocol=4,
-        )
-
-
 def torchgeo_featurization(train, val, test, num_features, total_num_images, label):
-    out_fpath = f"data/int/feature_matrices/CONTUS_UAR_{label}_torchgeo{num_features}.pkl"
+    out_fpath = f"../../data/CONTUS_UAR_{label}_torchgeo{num_features}.pkl"
 
     ids, latlons = format_ids_latlons(total_num_images, train, val, test)
 
@@ -113,6 +62,8 @@ def torchgeo_featurization(train, val, test, num_features, total_num_images, lab
             img = test[i - len(train) - len(val)]['image'].to(device)
 
         featurized_imgs[i] = rcf.forward(img).cpu().numpy()
+    
+    from IPython import embed; embed()
 
     with open(out_fpath, "wb") as f:
         dill.dump(
@@ -168,7 +119,7 @@ def main(args):
         if args.feat_type == 'RCF':
             torchgeo_featurization(train, val, test, args.num_features, total_num_images, label)
         else:
-            transformer_featurization(train, val, test, total_num_images, label)
+            raise ValueError(f"Feature type '{args.feat_type}' is not supported. Please use 'RCF'.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run featurization on USAVars dataset.")

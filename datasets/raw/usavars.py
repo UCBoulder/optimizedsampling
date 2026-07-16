@@ -271,3 +271,12 @@ class USAVars(NonGeoDataset):
             plt.suptitle(suptitle)
 
         return fig
+
+if __name__ == '__main__':
+    dataset = USAVars(root='data', download=True)
+    print(dataset)
+    print(len(dataset))
+    sample = dataset[0]
+    print(sample)
+    fig = dataset.plot(sample, show_labels=True, suptitle='USAVars Sample')
+    plt.show()

@@ -40,6 +40,8 @@ Process/download from [satellite-fairness-replication](https://github.com/emilyl
 
 Train/test splits are generated and cached automatically on first load.
 
+To get `villages_with_regions.shp`, download SHRUG's shrid-level `shrid2.gpkg` (not the pc11 village shapefile) and run `raw/build_india_secc_pkl.py` to produce `splits/India_SECC_with_splits_4000.pkl` directly.
+
 ## Togo Soil Fertility
 
 Not yet available. `featurized/togo_soil_fertility.py` expects a `togo_fertility_data_all_{identifier}.pkl` with `X`, `ids`, lat/lon, and label columns, split into `_train`/`_test`.

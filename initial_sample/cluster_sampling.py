@@ -3,8 +3,8 @@ import argparse
 import pandas as pd
 import numpy as np
 import dill
-import geopandas as gpd
 
+from load_points import DATASET_DEFAULTS, load_gdf
 from plotting_utils import plot_sampled_points_on_map
 
 class ClusterSampler:
@@ -235,36 +235,46 @@ class ClusterSampler:
         )
 
 def main():
-    parser = argparse.ArgumentParser(description="Run cluster sampling over USAVars labels.")
-    parser.add_argument("--labels", type=str, nargs="+", default=["population", "treecover"])
-    parser.add_argument("--data_dir", type=str, default="../../0_data")
-    parser.add_argument("--id_col", type=str, default="id")
-    parser.add_argument("--strata_col", type=str, default="state_name")
-    parser.add_argument("--cluster_col", type=str, nargs="+", default=["combined_county_id"])
+    parser = argparse.ArgumentParser(description="Run cluster sampling.")
+    parser.add_argument("--dataset", choices=DATASET_DEFAULTS, default="usavars")
+    parser.add_argument("--labels", type=str, nargs="+", default=None)
+    parser.add_argument("--data_dir", type=str, default=None)
+    parser.add_argument("--id_col", type=str, default=None)
+    parser.add_argument("--strata_col", type=str, default=None)
+    parser.add_argument("--cluster_col", type=str, nargs="+", default=None)
     parser.add_argument("--sample_sizes", type=int, nargs="+", required=True)
     parser.add_argument("--points_per_cluster", type=int, default=5)
     parser.add_argument("--n_strata", type=int, default=None)
     parser.add_argument("--fixed_strata", type=str, nargs="+", default=None)
-    parser.add_argument("--country_shape_file", type=str,
-                        default="../../0_data/boundaries/us/us_states_provinces/ne_110m_admin_1_states_provinces.shp")
-    parser.add_argument("--exclude_names", type=str, nargs="+", default=["Alaska", "Hawaii", "Puerto Rico"])
+    parser.add_argument("--country_shape_file", type=str, default=None)
+    parser.add_argument("--country_name", type=str, default=None)
+    parser.add_argument("--exclude_names", type=str, nargs="+", default=None)
     parser.add_argument("--seeds", type=int, nargs="+", default=[1, 42, 123, 456, 789, 1234, 5678, 9101, 1213, 1415])
     args = parser.parse_args()
 
-    cluster_col = args.cluster_col[0] if len(args.cluster_col) == 1 else args.cluster_col
+    defaults = DATASET_DEFAULTS[args.dataset]
+    labels = args.labels or defaults["labels"]
+    data_dir = args.data_dir or defaults["data_dir"]
+    id_col = args.id_col or defaults["id_col"]
+    strata_col = args.strata_col or defaults["strata_col"]
+    cluster_col_list = args.cluster_col or defaults["cluster_col"]
+    cluster_col = cluster_col_list[0] if len(cluster_col_list) == 1 else cluster_col_list
+    country_shape_file = args.country_shape_file or defaults["country_shape_file"]
+    country_name = args.country_name or defaults["country_name"]
+    exclude_names = args.exclude_names or defaults["exclude_names"]
 
-    for label in args.labels:
-        gdf = gpd.read_file(f"{args.data_dir}/admin_gdfs/usavars/{label}/gdf_counties_2015.geojson")
-        out_path = f"{args.data_dir}/initial_samples/usavars/{label}/cluster_sampling"
+    for label in labels:
+        gdf = load_gdf(args.dataset, data_dir, label)
+        out_path = f"{data_dir}/initial_samples/{args.dataset}/{label}/cluster_sampling"
 
-        sampler = ClusterSampler(gdf, id_col=args.id_col, strata_col=args.strata_col,
+        sampler = ClusterSampler(gdf, id_col=id_col, strata_col=strata_col,
                                   cluster_col=cluster_col, ADMIN_IDS={})
         for total_sample_size in args.sample_sizes:
             for seed in args.seeds:
                 sampler.sample(total_sample_size=total_sample_size, points_per_cluster=args.points_per_cluster,
                                 seed=seed, n_strata=args.n_strata, fixed_strata=args.fixed_strata)
                 sampler.save_sampled_ids(out_path)
-                sampler.plot(args.country_shape_file, exclude_names=args.exclude_names)
+                sampler.plot(country_shape_file, country_name=country_name, exclude_names=exclude_names)
                 sampler.reset_sample()
 
 if __name__ == '__main__':

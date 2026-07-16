@@ -5,9 +5,7 @@ __pycache__/
 .vscode/
 *.pdf
 
-0_data/
-0_data_folder/
-00_old_data/
+data/
 shapefiles/
 cosine_similarity/
 cosine_distance/
